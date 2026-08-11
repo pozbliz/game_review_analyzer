@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getHealth, getPublicConfig } from "../api/shell";
 
 type HealthState = "loading" | "ready" | "unavailable";
 
@@ -7,13 +8,9 @@ export default function App(): JSX.Element {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/health")
-      .then((response) => {
-        if (!response.ok) throw new Error("Health request failed");
-        return response.json() as Promise<{ status: string }>;
-      })
-      .then((payload) => {
-        if (active) setHealth(payload.status === "ok" ? "ready" : "unavailable");
+    Promise.all([getHealth(), getPublicConfig()])
+      .then(() => {
+        if (active) setHealth("ready");
       })
       .catch(() => {
         if (active) setHealth("unavailable");

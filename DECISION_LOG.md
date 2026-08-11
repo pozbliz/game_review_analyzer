@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Shell API contracts validated at runtime
+
+**What changed:**
+
+- Added explicit FastAPI response models for health and public configuration.
+- Added small TypeScript response validators and required both shell endpoints before reporting backend connectivity.
+
+**Why:**
+
+- Static TypeScript types alone cannot validate untrusted HTTP payloads, while code generation is unnecessary for two stable endpoints.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Implementation plan and task frontier synchronized
 
 **What changed:**

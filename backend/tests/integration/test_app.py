@@ -40,3 +40,13 @@ def test_public_config_does_not_expose_database_path(tmp_path: Path) -> None:
 
     assert response.json() == {"environment": "test", "api_prefix": "/api"}
     assert "database_path" not in response.text
+
+
+def test_shell_endpoints_publish_explicit_response_contracts(tmp_path: Path) -> None:
+    settings = Settings(database_path=tmp_path / "app.sqlite3")
+
+    with TestClient(create_app(settings)) as client:
+        schemas = client.get("/openapi.json").json()["components"]["schemas"]
+
+    assert schemas["HealthResponse"]["required"] == ["status", "service"]
+    assert schemas["PublicConfigResponse"]["required"] == ["environment", "api_prefix"]
