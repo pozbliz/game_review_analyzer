@@ -11,6 +11,9 @@ This is a workflow and candidate-quality pilot. It is not a production accuracy 
 | Check | Result |
 | --- | ---: |
 | Candidate Opinion Points accepted | 38/38 (100%) |
+| Opinion Point extraction precision | 38/38 (100%) |
+| Opinion Point extraction recall | 38/40 (95.0%) |
+| Opinion Point extraction F1 | 97.4% |
 | Exact excerpts resolving to their source review | 38/38 (100%) |
 | Sentiment unchanged after human review | 37/38 (97.4%) |
 | Proposed positive labels confirmed | 12/12 (100%) |
@@ -27,11 +30,13 @@ This is a workflow and candidate-quality pilot. It is not a production accuracy 
 | Opposing/unrelated Theme links confirmed | 2/2 (100%) |
 | Review-level classifications confirmed | 2/2 (100%) |
 
-The sole correction changed a difficulty description from negative to neutral. The positive statement about the same difficulty remained positive. This confirms that difficulty intensity alone must not be treated as criticism.
+The sole sentiment correction changed a difficulty description from negative to neutral. The positive statement about the same difficulty remained positive. This confirms that difficulty intensity alone must not be treated as criticism.
+
+The completeness follow-up added two exact gold spans from one Hades II review: the reviewer's initial disengagement and their recommendation to Hades players. The reviewer rejected the general affection and developer-praise spans. Against the resulting 40 gold Opinion Points, the proposal produced 38 true positives, no false positives, and two false negatives.
 
 ## Honest limits
 
-- Candidate acceptance measures precision only. The completeness round found one review with missing Opinion Points; exact missing spans still need adjudication before extraction recall can be calculated.
+- Extraction metrics cover this deliberately small, short-review pilot only.
 - Category, subject, and Theme-title confirmation was anchored by visible candidate values rather than collected blind.
 - Eight selected Theme pairs were reviewed, but this small anchored sample does not establish general paraphrase-grouping quality.
 - Five summaries and two opposing-link cases passed human review, but the small selected sample does not establish general accuracy.
@@ -42,4 +47,4 @@ The sole correction changed a difficulty description from negative to neutral. T
 
 The reviewer completed all 35 button-only judgments. Seventeen of 18 reviews were complete; the missing case was review `232551790` from Hades II. All eight grouping judgments, five summary-faithfulness judgments, two opposing-link judgments, and two review-level classifications passed.
 
-The prepared `missing_opinion_followup_pilot_v1.json` asks the reviewer to accept or reject four exact candidate spans from the incomplete review. Extraction recall remains unreported until that correction round is complete.
+The reviewer accepted two of the four proposed missing spans. The local `extraction_gold_additions_pilot_v1.json` records only their review identifiers and exact excerpts, avoiding unreviewed sentiment or Theme labels. The correction closes the pilot extraction-recall gap; broader stability and threshold calibration remain open.

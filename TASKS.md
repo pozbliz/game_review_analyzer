@@ -126,10 +126,10 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Define the provider-independent evaluation format, scoring rubric, and synthetic conformance fixture without treating it as calibration evidence.
 
 - [x] Define the labeled evaluation-set format and create representative samples spanning several games and review styles.
-- [ ] [HUMAN] Complete and export the four-item missing-Opinion-Point correction round.
-- [ ] Add and complete a missing-Opinion-Point review round before calculating extraction recall.
-- [ ] Evaluate Opinion Point extraction, Opinion Sentiment, neutral exclusion, paraphrase grouping, categories, summary faithfulness, and exact excerpts.
-- [ ] Evaluate opposing-Theme linkage and review-level liked/disliked/mixed classification.
+- [x] [HUMAN] Complete and export the four-item missing-Opinion-Point correction round.
+- [x] Add and complete a missing-Opinion-Point review round before calculating extraction recall.
+- [x] Evaluate Opinion Point extraction, Opinion Sentiment, neutral exclusion, paraphrase grouping, categories, summary faithfulness, and exact excerpts.
+- [x] Evaluate opposing-Theme linkage and review-level liked/disliked/mixed classification.
 - [ ] Measure whether the latest 5,000 eligible reviews produce stable headline Themes across representative games.
 - [ ] Calibrate provisional absolute support, percentage support, cluster-coherence, and Technical Theme thresholds.
 - [ ] Evaluate exact-excerpt validation and resistance to instructions embedded in review text.

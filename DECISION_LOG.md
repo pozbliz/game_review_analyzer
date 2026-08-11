@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-11 — Pilot extraction recall established
+
+**What changed:**
+
+- Added the two human-approved missing Opinion Point spans to a local extraction-only gold artifact.
+- Recorded pilot extraction precision of 100%, recall of 95.0%, and F1 of 97.4%.
+- Kept sentiment, category, and Theme labels absent from the new spans because the correction round did not ask the reviewer to judge those fields.
+
+**Why:**
+
+- Extraction recall requires human-reviewed missing spans, while inventing unreviewed semantic labels would weaken the gold set.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None until the broader evaluation baseline and provisional thresholds are ready for approval.
+
+---
+
 ## 2026-08-11 — Pilot quality follow-up completed
 
 **What changed:**
