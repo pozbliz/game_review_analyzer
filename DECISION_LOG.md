@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-11 — Provisional Manual Codex report path completed
+
+**What changed:**
+
+- Added one application operation that validates a Manual Codex result, calculates deterministic metrics, creates a typed provisional snapshot, and appends it to the Report Version repository.
+- Verified the complete path with the approved synthetic evaluation fixture and exact persisted Review Revision bindings.
+- Fixed a migration test that unnecessarily hard-coded the previous schema version.
+
+**Why:**
+
+- One narrow orchestration boundary proves the backend stages compose without adding report HTTP or UI surfaces prematurely.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None until real-world calibration resumes.
+
+---
+
 ## 2026-08-11 — Typed immutable Report Versions persisted
 
 **What changed:**

@@ -151,7 +151,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Implement strict Manual Codex result validation against exact Review Revisions and source spans.
 - [x] Write failing deterministic Theme Metrics tests, then implement polarity, denominators, caps, categories, Technical Themes, and mixed reception.
 - [x] Write repository tests, then implement immutable Report Versions bound to exact Review Revisions and provenance.
-- [ ] Complete a fixture-driven Codex export, import, metrics, and minimal-report scenario.
+- [x] Complete a fixture-driven Codex export, import, metrics, and minimal-report scenario.
 
 ### Slice 5 — Explore an evidence-rich report
 
