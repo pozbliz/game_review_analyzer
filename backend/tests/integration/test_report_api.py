@@ -35,6 +35,8 @@ def test_report_summary_and_complete_evidence_preserve_metrics_and_context(
     assert report_response.status_code == 200
     report = report_response.json()
     assert report["game"] == {"app_id": 1145350, "title": "Hades II"}
+    assert report["metadata"]["storefront_source_status"] == "unavailable"
+    assert "tags" in report["metadata"]["storefront_missing_fields"]
     assert report["scope"] == {"review_count": 2, "thresholds_calibrated": False}
     assert report["provenance"] == {
         "provider": "manual-codex",

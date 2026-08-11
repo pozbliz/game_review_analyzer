@@ -232,14 +232,14 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 **Blocked by:** Slice 2 plus validated Steam storefront reliability and obligations.
 
-- [ ] Validate and document Steam retention, attribution, and request-rate expectations before release.
-- [ ] Create fixtures for catalog search, fallback search, tags, descriptions, regional prices, features, DLC, editions, packages, and media.
-- [ ] Write synchronization tests, then implement the keyed Steam Game Catalog.
-- [ ] Write fallback behavior tests, then implement replaceable unkeyed game search.
-- [ ] Expand normalized Steam Metadata Snapshots with source-status and missing-field provenance.
-- [ ] Write regional-setting tests, then implement visible and configurable country/currency behavior without silent conversion.
-- [ ] Write component tests, then build grouped feature, storefront, DLC, description, and media views.
-- [ ] Verify unknown states, content sanitization, safe links, and explicit non-autoplay trailer behavior.
+- [x] Validate and document Steam retention, attribution, and request-rate expectations before release.
+- [x] Create fixtures for catalog search, fallback search, tags, descriptions, regional prices, features, DLC, editions, packages, and media.
+- [x] Write synchronization tests, then implement the keyed Steam Game Catalog.
+- [x] Write fallback behavior tests, then implement replaceable unkeyed game search.
+- [x] Expand normalized Steam Metadata Snapshots with source-status and missing-field provenance.
+- [x] Write regional-setting tests, then implement visible and configurable country/currency behavior without silent conversion.
+- [x] Write component tests, then build grouped feature, storefront, DLC, description, and media views.
+- [x] Verify unknown states, content sanitization, safe links, and explicit non-autoplay trailer behavior.
 
 ### Slice 12 — Support Full import, reconciliation, and local data control
 

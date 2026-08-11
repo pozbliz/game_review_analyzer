@@ -19,7 +19,7 @@ describe("application shell", () => {
         );
       }
       return new Response(
-        JSON.stringify({ environment: "test", api_prefix: "/api" }),
+        JSON.stringify(publicConfig()),
         { status: 200 },
       );
     });
@@ -59,7 +59,7 @@ describe("application shell", () => {
       }
       if (url === "/api/config") {
         return new Response(
-          JSON.stringify({ environment: "test", api_prefix: "/api" }),
+          JSON.stringify(publicConfig()),
           { status: 200 },
         );
       }
@@ -79,6 +79,9 @@ describe("application shell", () => {
             "release_status",
             "review_count",
           ],
+          storefront: emptyStorefront(),
+          storefront_source_status: "unavailable",
+          storefront_missing_fields: storefrontFields(),
         }),
         { status: 200 },
       );
@@ -98,11 +101,37 @@ describe("application shell", () => {
     expect(screen.getByRole("button", { name: "Create report" })).toBeEnabled();
   });
 
+  it("searches by game name and previews the selected Steam result", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json({ environment: "test", api_prefix: "/api", steam_country_code: "JP", keyed_catalog_available: true });
+      if (url === "/api/games/search?q=Hades%202") return json([{
+        app_id: 1145350,
+        title: "Hades II",
+        capsule_image_url: null,
+        source: "catalog",
+      }]);
+      return json(metadata());
+    });
+
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("connected"));
+    fireEvent.change(screen.getByRole("textbox", { name: "Game name" }), {
+      target: { value: "Hades 2" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search games" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Hades II.*AppID 1145350/i }));
+
+    expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith("/api/games/preview?appid=1145350");
+  });
+
   it("starts a Quick import and exposes durable progress and cancellation", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
       const url = request.toString();
       if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json({ environment: "test", api_prefix: "/api" });
+      if (url === "/api/config") return json(publicConfig());
       if (url.startsWith("/api/games/preview")) return json(metadata());
       if (url === "/api/games/1145350/imports/quick") {
         expect(options).toMatchObject({ method: "POST", body: JSON.stringify({ target_count: 5000 }) });
@@ -140,7 +169,7 @@ describe("application shell", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url = request.toString();
       if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json({ environment: "test", api_prefix: "/api" });
+      if (url === "/api/config") return json(publicConfig());
       if (url.startsWith("/api/games/preview")) return json(metadata());
       if (url === "/api/games/1145350/imports/quick") return json(job("queued", 0));
       if (url === "/api/jobs/job-1/retry") return json(job("queued", 0));
@@ -161,7 +190,7 @@ describe("application shell", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url = request.toString();
       if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json({ environment: "test", api_prefix: "/api" });
+      if (url === "/api/config") return json(publicConfig());
       return json(job("running", 200));
     });
 
@@ -185,6 +214,15 @@ function json(payload: object): Response {
   return new Response(JSON.stringify(payload), { status: 200 });
 }
 
+function publicConfig(): object {
+  return {
+    environment: "test",
+    api_prefix: "/api",
+    steam_country_code: "US",
+    keyed_catalog_available: false,
+  };
+}
+
 function metadata(): object {
   return {
     app_id: 1145350,
@@ -196,7 +234,23 @@ function metadata(): object {
     review_count: null,
     source_status: "partial",
     missing_fields: ["capsule_image_url", "release_date", "release_status", "review_count"],
+    storefront: emptyStorefront(),
+    storefront_source_status: "unavailable",
+    storefront_missing_fields: storefrontFields(),
   };
+}
+
+function emptyStorefront(): object {
+  return Object.fromEntries(storefrontFields().map((field) => [field, null]));
+}
+
+function storefrontFields(): string[] {
+  return [
+    "publishers", "genres", "short_description", "about_text", "tags", "price",
+    "is_free", "dlc_app_ids", "dlc_names", "demo_app_ids", "package_names", "platforms",
+    "supported_languages", "age_rating", "content_notes", "features",
+    "screenshot_urls", "trailers",
+  ];
 }
 
 function job(state: string, importedCount: number): object {

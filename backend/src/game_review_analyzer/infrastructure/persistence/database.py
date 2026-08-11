@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 7
+CURRENT_SCHEMA_VERSION = 8
 
 
 def initialize_database(database_path: Path) -> None:
@@ -132,6 +132,20 @@ def initialize_database(database_path: Path) -> None:
                 "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
             )
             connection.execute("INSERT INTO schema_migrations(version) VALUES (7)")
+        if 8 not in applied_versions:
+            connection.execute(
+                "CREATE TABLE steam_catalog_games ("
+                "app_id INTEGER PRIMARY KEY CHECK (app_id > 0), "
+                "name TEXT NOT NULL CHECK (length(name) > 0), "
+                "last_modified INTEGER NOT NULL CHECK (last_modified >= 0), "
+                "price_change_number INTEGER NOT NULL CHECK (price_change_number >= 0))"
+            )
+            connection.execute(
+                "CREATE TABLE steam_catalog_state ("
+                "id INTEGER PRIMARY KEY CHECK (id = 1), "
+                "synced_at INTEGER NOT NULL CHECK (synced_at >= 0))"
+            )
+            connection.execute("INSERT INTO schema_migrations(version) VALUES (8)")
 
 
 def schema_version(database_path: Path) -> int:

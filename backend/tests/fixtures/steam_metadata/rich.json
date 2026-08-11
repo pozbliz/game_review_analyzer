@@ -1,0 +1,47 @@
+{
+  "1145350": {
+    "success": true,
+    "data": {
+      "steam_appid": 1145350,
+      "name": "Hades II",
+      "developers": ["Supergiant Games"],
+      "publishers": ["Supergiant Games"],
+      "header_image": "https://cdn.akamai.steamstatic.com/steam/apps/1145350/header.jpg",
+      "release_date": {"coming_soon": false, "date": "6 May, 2024"},
+      "recommendations": {"total": 48239},
+      "genres": [{"id": "1", "description": "Action"}, {"id": "23", "description": "Indie"}],
+      "short_description": "Battle beyond the Underworld &amp; master witchcraft.",
+      "about_the_game": "<h2>Battle beyond</h2><p>Master dark sorcery.</p><script>alert('bad')</script>",
+      "price_overview": {
+        "currency": "JPY",
+        "initial": 450000,
+        "final": 360000,
+        "discount_percent": 20,
+        "initial_formatted": "¥ 4,500",
+        "final_formatted": "¥ 3,600"
+      },
+      "is_free": false,
+      "dlc": [2000001],
+      "demos": [{"appid": 2000002}],
+      "package_groups": [{"subs": [{"packageid": 100, "option_text": "Hades II - ¥ 3,600"}]}],
+      "platforms": {"windows": true, "mac": false, "linux": false},
+      "supported_languages": "<strong>English</strong>, Japanese",
+      "required_age": "18",
+      "content_descriptors": {"notes": "Fantasy violence"},
+      "categories": [
+        {"id": 2, "description": "Single-player"},
+        {"id": 22, "description": "Steam Achievements"},
+        {"id": 28, "description": "Full controller support"}
+      ],
+      "screenshots": [
+        {"path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145350/ss_1.jpg"},
+        {"path_full": "javascript:alert(1)"}
+      ],
+      "movies": [{
+        "name": "Early Access Showcase",
+        "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145350/movie.jpg",
+        "mp4": {"max": "https://video.akamai.steamstatic.com/store_trailers/1145350/movie_max.mp4"}
+      }]
+    }
+  }
+}

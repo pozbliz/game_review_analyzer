@@ -6,6 +6,8 @@ export interface HealthResponse {
 export interface PublicConfigResponse {
   environment: string;
   api_prefix: "/api";
+  steam_country_code: string;
+  keyed_catalog_available: boolean;
 }
 
 type ReleaseStatus = "released" | "coming_soon" | "unknown";
@@ -27,6 +29,59 @@ export interface SteamMetadata {
   review_count: number | null;
   source_status: MetadataSourceStatus;
   missing_fields: MissingMetadataField[];
+  storefront: SteamStorefront;
+  storefront_source_status: "complete" | "partial" | "unavailable";
+  storefront_missing_fields: string[];
+}
+
+export interface SteamPrice {
+  country_code: string;
+  currency: string;
+  initial_minor: number;
+  final_minor: number;
+  discount_percent: number;
+  initial_formatted: string;
+  final_formatted: string;
+}
+
+export interface SteamFeature {
+  name: string;
+  group: "Play modes" | "Input" | "Steam features" | "Platforms and accessibility";
+  state: "supported" | "partial" | "not_supported" | "unknown";
+}
+
+export interface SteamTrailer {
+  name: string;
+  thumbnail_url: string;
+  video_url: string;
+}
+
+export interface SteamStorefront {
+  publishers: string[] | null;
+  genres: string[] | null;
+  short_description: string | null;
+  about_text: string | null;
+  tags: string[] | null;
+  price: SteamPrice | null;
+  is_free: boolean | null;
+  dlc_app_ids: number[] | null;
+  dlc_names: string[] | null;
+  demo_app_ids: number[] | null;
+  package_names: string[] | null;
+  platforms: string[] | null;
+  supported_languages: string | null;
+  age_rating: string | null;
+  content_notes: string | null;
+  features: SteamFeature[] | null;
+  screenshot_urls: string[] | null;
+  trailers: SteamTrailer[] | null;
+}
+
+export interface GameSearchResult {
+  app_id: number;
+  title: string;
+  capsule_image_url: string | null;
+  source: "catalog" | "fallback";
 }
 
 export type JobState = "queued" | "running" | "completed" | "failed" | "cancelled";
@@ -136,53 +191,126 @@ export async function getPublicConfig(): Promise<PublicConfigResponse> {
   if (
     !isRecord(payload) ||
     typeof payload.environment !== "string" ||
-    payload.api_prefix !== "/api"
+    payload.api_prefix !== "/api" ||
+    typeof payload.steam_country_code !== "string" ||
+    typeof payload.keyed_catalog_available !== "boolean"
   ) {
     throw new Error("Invalid public configuration response");
   }
-  return { environment: payload.environment, api_prefix: payload.api_prefix };
+  return {
+    environment: payload.environment,
+    api_prefix: payload.api_prefix,
+    steam_country_code: payload.steam_country_code,
+    keyed_catalog_available: payload.keyed_catalog_available,
+  };
+}
+
+export async function searchGames(query: string): Promise<GameSearchResult[]> {
+  const payload: unknown = await requestJson(`/api/games/search?q=${encodeURIComponent(query)}`);
+  if (!Array.isArray(payload)) throw new Error("Invalid game search response");
+  return payload.map((item) => {
+    if (!isRecord(item) || typeof item.app_id !== "number" || typeof item.title !== "string" ||
+        !(item.capsule_image_url === null || typeof item.capsule_image_url === "string") ||
+        !(item.source === "catalog" || item.source === "fallback")) {
+      throw new Error("Invalid game search response");
+    }
+    return item as unknown as GameSearchResult;
+  });
 }
 
 export async function getGamePreview(appId: string): Promise<SteamMetadata> {
-  const payload: unknown = await requestJson(
+  return parseSteamMetadata(await requestJson(
     `/api/games/preview?appid=${encodeURIComponent(appId)}`,
-  );
+  ));
+}
+
+export function parseSteamMetadata(payload: unknown): SteamMetadata {
+  if (!isRecord(payload)) throw new Error("Invalid Steam metadata response");
+  return parseMetadataRecord(payload);
+}
+
+function parseMetadataRecord(payload: Record<string, unknown>): SteamMetadata {
   if (
-    !isRecord(payload) ||
-    typeof payload.app_id !== "number" ||
-    !Number.isInteger(payload.app_id) ||
+    typeof payload.app_id !== "number" || !Number.isInteger(payload.app_id) ||
     typeof payload.title !== "string" ||
-    !(
-      payload.developers === null ||
-      (Array.isArray(payload.developers) &&
-        payload.developers.every((developer) => typeof developer === "string"))
-    ) ||
+    !(payload.developers === null || stringArray(payload.developers)) ||
     !(payload.capsule_image_url === null || typeof payload.capsule_image_url === "string") ||
     !(payload.release_date === null || typeof payload.release_date === "string") ||
-    !(
-      payload.release_status === "released" ||
-      payload.release_status === "coming_soon" ||
-      payload.release_status === "unknown"
-    ) ||
-    !(
-      payload.review_count === null ||
-      (typeof payload.review_count === "number" && Number.isInteger(payload.review_count))
-    ) ||
+    !["released", "coming_soon", "unknown"].includes(String(payload.release_status)) ||
+    !(payload.review_count === null || (typeof payload.review_count === "number" && Number.isInteger(payload.review_count))) ||
     !(payload.source_status === "complete" || payload.source_status === "partial") ||
-    !Array.isArray(payload.missing_fields) ||
-    !payload.missing_fields.every(isMissingMetadataField)
-  ) {
-    throw new Error("Invalid Steam metadata response");
-  }
+    !Array.isArray(payload.missing_fields) || !payload.missing_fields.every(isMissingMetadataField) ||
+    !isRecord(payload.storefront) ||
+    !["complete", "partial", "unavailable"].includes(String(payload.storefront_source_status)) ||
+    !stringArray(payload.storefront_missing_fields)
+  ) throw new Error("Invalid Steam metadata response");
   return {
     app_id: payload.app_id,
     title: payload.title,
-    developers: payload.developers,
-    capsule_image_url: payload.capsule_image_url,
-    release_date: payload.release_date,
-    release_status: payload.release_status,
-    review_count: payload.review_count,
+    developers: payload.developers as string[] | null,
+    capsule_image_url: payload.capsule_image_url as string | null,
+    release_date: payload.release_date as string | null,
+    release_status: payload.release_status as ReleaseStatus,
+    review_count: payload.review_count as number | null,
     source_status: payload.source_status,
-    missing_fields: payload.missing_fields,
+    missing_fields: payload.missing_fields as MissingMetadataField[],
+    storefront: parseStorefront(payload.storefront),
+    storefront_source_status: payload.storefront_source_status as SteamMetadata["storefront_source_status"],
+    storefront_missing_fields: payload.storefront_missing_fields,
   };
+}
+
+function parseStorefront(value: Record<string, unknown>): SteamStorefront {
+  const nullableStringArrays: string[] = ["publishers", "genres", "tags", "dlc_names", "package_names", "platforms"];
+  const nullableStrings: string[] = ["short_description", "about_text", "supported_languages", "age_rating", "content_notes"];
+  if (!nullableStringArrays.every((field) => value[field] === null || stringArray(value[field])) ||
+      !nullableStrings.every((field) => value[field] === null || typeof value[field] === "string") ||
+      !(value.is_free === null || typeof value.is_free === "boolean") ||
+      !["dlc_app_ids", "demo_app_ids"].every((field) => value[field] === null || numberArray(value[field])) ||
+      !(value.price === null || isPrice(value.price)) ||
+      !(value.screenshot_urls === null || steamUrlArray(value.screenshot_urls)) ||
+      !(value.features === null || (Array.isArray(value.features) && value.features.every(isFeature))) ||
+      !(value.trailers === null || (Array.isArray(value.trailers) && value.trailers.every(isTrailer)))) {
+    throw new Error("Invalid Steam storefront response");
+  }
+  return value as unknown as SteamStorefront;
+}
+
+function stringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function numberArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "number" && Number.isInteger(item));
+}
+
+function isPrice(value: unknown): boolean {
+  return isRecord(value) && ["country_code", "currency", "initial_formatted", "final_formatted"].every((field) => typeof value[field] === "string") &&
+    ["initial_minor", "final_minor", "discount_percent"].every((field) => typeof value[field] === "number");
+}
+
+function isFeature(value: unknown): boolean {
+  return isRecord(value) && typeof value.name === "string" &&
+    ["Play modes", "Input", "Steam features", "Platforms and accessibility"].includes(String(value.group)) &&
+    ["supported", "partial", "not_supported", "unknown"].includes(String(value.state));
+}
+
+function isTrailer(value: unknown): boolean {
+  return isRecord(value) && typeof value.name === "string" &&
+    isSafeSteamUrl(value.thumbnail_url) && isSafeSteamUrl(value.video_url);
+}
+
+function steamUrlArray(value: unknown): boolean {
+  return Array.isArray(value) && value.every(isSafeSteamUrl);
+}
+
+function isSafeSteamUrl(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" &&
+      (url.hostname === "steamstatic.com" || url.hostname.endsWith(".steamstatic.com"));
+  } catch {
+    return false;
+  }
 }

@@ -1,5 +1,31 @@
 # Decision Log
 
+## 2026-08-11 — Steam discovery and regional storefront snapshots completed
+
+**What changed:**
+
+- Replaced the deprecated catalog assumption with paginated incremental `IStoreService/GetAppList` synchronization and protected header-based key submission.
+- Added durable local catalog search plus a replaceable best-effort unkeyed Steam Store fallback.
+- Expanded immutable Steam Metadata Snapshots with regional price provenance, descriptions, publishers, genres, tags, features, platforms, DLC/demo/package facts, and safe Steam-hosted media.
+- Added grouped storefront presentation to previews and reports, with plain-text sanitization, explicit unknown states, ordinary Steam attribution links, and user-activated trailer navigation.
+- Documented Steam key, privacy, attribution, request ceiling, as-is, and termination-cleanup obligations.
+
+**Why:**
+
+- Valve documents `IStoreService/GetAppList` as the scalable replacement for deprecated `ISteamApps/GetAppList` and provides incremental timestamps and cursor pagination.
+- Optional Store endpoints and HTML are undocumented, so their replaceable adapter never blocks direct-AppID analysis and records missing provenance rather than inventing support.
+- Preserving Steam's formatted regional price and country avoids silent or inaccurate currency conversion.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Full acquisition and local data lifecycle completed
 
 **What changed:**

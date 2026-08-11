@@ -17,6 +17,7 @@ from game_review_analyzer.domain.reports import (
     ThemeMetric,
 )
 from game_review_analyzer.domain.reviews import SteamReview
+from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.review_revisions import (
     load_review_revisions_by_ids,
 )
@@ -99,6 +100,7 @@ class ReportResponse(BaseModel):
 
     report_version_id: str
     game: ReportGameResponse
+    metadata: SteamMetadata
     scope: ReportScopeResponse
     provenance: ReportProvenanceResponse
     positive_themes: tuple[ReportThemeResponse, ...]
@@ -189,6 +191,7 @@ def build_report_response(
     return ReportResponse(
         report_version_id=report.report_version_id,
         game=ReportGameResponse(app_id=report.app_id, title=metadata.title),
+        metadata=metadata,
         scope=ReportScopeResponse(
             review_count=len(report.review_revision_ids),
             thresholds_calibrated=report.thresholds_calibrated,

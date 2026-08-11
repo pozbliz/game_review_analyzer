@@ -38,6 +38,7 @@ export interface MixedReception {
 export interface ReportSummary {
   report_version_id: string;
   game: { app_id: number; title: string };
+  metadata: SteamMetadata;
   scope: { review_count: number; thresholds_calibrated: boolean };
   provenance: { provider: string; model: string; request_id: string; scope_sha256: string };
   positive_themes: ReportTheme[];
@@ -113,6 +114,7 @@ async function requestJson(path: string): Promise<unknown> {
 function parseReport(payload: unknown): ReportSummary {
   if (!isRecord(payload) || !isRecord(payload.game) || !isRecord(payload.scope) ||
       !isRecord(payload.provenance) || typeof payload.report_version_id !== "string" ||
+      !isRecord(payload.metadata) ||
       typeof payload.game.app_id !== "number" || typeof payload.game.title !== "string" ||
       typeof payload.scope.review_count !== "number" ||
       typeof payload.scope.thresholds_calibrated !== "boolean" ||
@@ -124,6 +126,7 @@ function parseReport(payload: unknown): ReportSummary {
   return {
     report_version_id: payload.report_version_id,
     game: { app_id: payload.game.app_id, title: payload.game.title },
+    metadata: parseSteamMetadata(payload.metadata),
     scope: {
       review_count: payload.scope.review_count,
       thresholds_calibrated: payload.scope.thresholds_calibrated,
@@ -240,3 +243,4 @@ function numbers(value: Record<string, unknown>, fields: string[]): boolean {
 function booleans(value: Record<string, unknown>, fields: string[]): boolean {
   return fields.every((field) => typeof value[field] === "boolean");
 }
+import { parseSteamMetadata, SteamMetadata } from "./shell";

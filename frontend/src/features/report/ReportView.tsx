@@ -19,6 +19,7 @@ import {
   startRefresh,
 } from "../../api/shell";
 import StorageControls from "../storage/StorageControls";
+import StorefrontOverview from "../game/StorefrontOverview";
 
 interface ReportViewProps {
   reportId: string;
@@ -254,6 +255,8 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
         technical
         {...sharedThemeProps}
       />
+
+      <StorefrontOverview metadata={report.metadata} />
 
       <StorageControls
         appId={appId}

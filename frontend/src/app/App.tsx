@@ -6,12 +6,15 @@ import {
   getHealth,
   getJob,
   getPublicConfig,
+  GameSearchResult,
   retryJob,
+  searchGames,
   startQuickImport,
   SteamMetadata,
 } from "../api/shell";
 import ReportView from "../features/report/ReportView";
 import { deleteIncompleteJob } from "../api/storage";
+import StorefrontOverview from "../features/game/StorefrontOverview";
 
 type HealthState = "loading" | "ready" | "unavailable";
 
@@ -25,6 +28,9 @@ export default function App(): JSX.Element {
 function CatalogApp(): JSX.Element {
   const [health, setHealth] = useState<HealthState>("loading");
   const [appId, setAppId] = useState<string>("");
+  const [gameQuery, setGameQuery] = useState<string>("");
+  const [searchResults, setSearchResults] = useState<GameSearchResult[]>([]);
+  const [searchError, setSearchError] = useState<string>("");
   const [preview, setPreview] = useState<SteamMetadata | null>(null);
   const [previewError, setPreviewError] = useState<string>("");
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
@@ -78,17 +84,35 @@ function CatalogApp(): JSX.Element {
 
   function submitPreview(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
+    loadPreview(appId);
+  }
+
+  function loadPreview(selectedAppId: string): void {
     setPreviewLoading(true);
     setPreviewError("");
     setJob(null);
     window.localStorage.removeItem("active-import-job");
-    getGamePreview(appId)
+    getGamePreview(selectedAppId)
       .then((metadata) => setPreview(metadata))
       .catch(() => {
         setPreview(null);
         setPreviewError("Unable to preview that AppID. Check it and try again.");
       })
       .finally(() => setPreviewLoading(false));
+  }
+
+  function submitSearch(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    setSearchError("");
+    searchGames(gameQuery)
+      .then(setSearchResults)
+      .catch(() => setSearchError("Unable to search Steam games."));
+  }
+
+  function selectSearchResult(result: GameSearchResult): void {
+    const selectedAppId: string = String(result.app_id);
+    setAppId(selectedAppId);
+    loadPreview(selectedAppId);
   }
 
   function beginImport(): void {
@@ -141,7 +165,27 @@ function CatalogApp(): JSX.Element {
         <section className="catalog-search" aria-labelledby="catalog-title">
           <p className="eyebrow">GAME CATALOG</p>
           <h1 id="catalog-title">Select the game to analyze</h1>
-          <p className="intro">Enter the exact Steam AppID to retrieve enough identity data for confirmation.</p>
+          <p className="intro">Search by name or enter an exact Steam AppID, then confirm the game before reviews are downloaded.</p>
+          <form className="game-search-form" onSubmit={submitSearch}>
+            <label htmlFor="game-name">Game name</label>
+            <div className="appid-row">
+              <input id="game-name" minLength={2} required value={gameQuery} onChange={(event) => setGameQuery(event.target.value)} />
+              <button type="submit" disabled={health !== "ready"}>Search games</button>
+            </div>
+          </form>
+          {searchError && <p className="error" role="alert">{searchError}</p>}
+          {searchResults.length > 0 && (
+            <ul className="game-results">
+              {searchResults.map((result) => (
+                <li key={result.app_id}>
+                  <button type="button" onClick={() => selectSearchResult(result)}>
+                    <strong>{result.title}</strong>
+                    <span>AppID {result.app_id} · {result.source === "catalog" ? "Steam catalog" : "Store fallback"}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           <form className="appid-form" onSubmit={submitPreview}>
             <label htmlFor="steam-appid">Steam AppID</label>
             <div className="appid-row">
@@ -222,6 +266,9 @@ function CatalogApp(): JSX.Element {
               </dl>
               {preview.source_status === "partial" && (
                 <p className="source-note">Some optional Steam metadata is unavailable. You can still continue.</p>
+              )}
+              {preview.storefront_source_status !== "unavailable" && (
+                <StorefrontOverview metadata={preview} />
               )}
               <div className="analysis-setup">
                 <p><strong>Quick analysis</strong><br />Latest eligible English reviews</p>

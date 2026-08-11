@@ -2,7 +2,7 @@
 
 ## Status
 
-The product design and this strategic plan are approved. Slices 1–3 and 5–7 are complete, Slice 4 is implemented with deferred real-world calibration, and Slice 12 is complete. Human approval and calibration gates block Slices 8–11; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
+The product design and this strategic plan are approved. Slices 1–3, 5–7, 11, and 12 are complete, while Slice 4 is implemented with deferred real-world calibration. Human approval and calibration gates block Slices 8–10; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
 
 ## Durable verification seams
 
@@ -186,7 +186,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Some storefront fields remain best-effort because Steam exposes no single complete documented endpoint.
 
-**Status:** Blocked.
+**Status:** Complete with current keyed catalog synchronization, local-first search, replaceable unkeyed fallback, regional immutable storefront snapshots, grouped overview UI, safe media, and documented Steam obligations. Optional storefront sources remain explicitly best-effort.
 
 ## Slice 12 — Support Full import, reconciliation, and local data control
 

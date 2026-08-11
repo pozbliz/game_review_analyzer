@@ -138,6 +138,20 @@ describe("report exploration", () => {
       { method: "POST" },
     );
   });
+
+  it("shows grouped regional storefront details and explicit Steam-hosted media links", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(reportFetch);
+    render(<ReportView reportId="report-1" />);
+
+    expect(await screen.findByRole("heading", { name: "Storefront overview" })).toBeVisible();
+    expect(screen.getByText("¥ 3,600 · JPY · JP")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Features" })).toBeVisible();
+    expect(screen.getByText("Single-player · Supported")).toBeVisible();
+    const trailer = screen.getByRole("link", { name: "Play Early Access Showcase on Steam" });
+    expect(trailer).toHaveAttribute("target", "_blank");
+    expect(trailer).toHaveAttribute("rel", "noreferrer");
+    expect(screen.queryByRole("video")).not.toBeInTheDocument();
+  });
 });
 
 function json(payload: object): Response {
@@ -212,6 +226,7 @@ function reportPayload(): object {
   return {
     report_version_id: "report-1",
     game: { app_id: 1145350, title: "Hades II" },
+    metadata: richMetadata(),
     scope: { review_count: 2, thresholds_calibrated: false },
     provenance: {
       provider: "manual-codex",
@@ -236,6 +251,34 @@ function reportPayload(): object {
       mixed_percentage: 0,
       mentioned_percentage: 100,
     }],
+  };
+}
+
+function richMetadata(): object {
+  return {
+    ...metadataIdentity(),
+    storefront: {
+      publishers: ["Supergiant Games"], genres: ["Action", "Indie"],
+      short_description: "Battle beyond the Underworld.", about_text: "Master dark sorcery.",
+      tags: null,
+      price: { country_code: "JP", currency: "JPY", initial_minor: 450000, final_minor: 360000, discount_percent: 20, initial_formatted: "¥ 4,500", final_formatted: "¥ 3,600" },
+      is_free: false, dlc_app_ids: [2000001], dlc_names: ["Hades II Soundtrack"], demo_app_ids: [2000002],
+      package_names: ["Hades II - ¥ 3,600"], platforms: ["Windows"],
+      supported_languages: "English, Japanese", age_rating: "18", content_notes: "Fantasy violence",
+      features: [{ name: "Single-player", group: "Play modes", state: "supported" }],
+      screenshot_urls: ["https://shared.akamai.steamstatic.com/steam/apps/1145350/ss_1.jpg"],
+      trailers: [{ name: "Early Access Showcase", thumbnail_url: "https://shared.akamai.steamstatic.com/steam/apps/1145350/movie.jpg", video_url: "https://video.akamai.steamstatic.com/store_trailers/1145350/movie.mp4" }],
+    },
+    storefront_source_status: "partial",
+    storefront_missing_fields: ["tags"],
+  };
+}
+
+function metadataIdentity(): object {
+  return {
+    app_id: 1145350, title: "Hades II", developers: ["Supergiant Games"],
+    capsule_image_url: null, release_date: "6 May, 2024", release_status: "released",
+    review_count: 48239, source_status: "partial", missing_fields: ["capsule_image_url"],
   };
 }
 

@@ -1,0 +1,9 @@
+{
+  "response": {
+    "apps": [
+      {"appid": 367520, "name": "Hollow Knight", "last_modified": 80, "price_change_number": 3}
+    ],
+    "have_more_results": false,
+    "last_appid": 367520
+  }
+}

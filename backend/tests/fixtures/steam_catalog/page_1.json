@@ -1,0 +1,10 @@
+{
+  "response": {
+    "apps": [
+      {"appid": 1145350, "name": "Hades II", "last_modified": 100, "price_change_number": 2},
+      {"appid": 1245620, "name": "ELDEN RING", "last_modified": 90, "price_change_number": 1}
+    ],
+    "have_more_results": true,
+    "last_appid": 1245620
+  }
+}

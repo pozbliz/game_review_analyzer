@@ -38,7 +38,12 @@ def test_public_config_does_not_expose_database_path(tmp_path: Path) -> None:
     with TestClient(create_app(settings)) as client:
         response = client.get("/api/config")
 
-    assert response.json() == {"environment": "test", "api_prefix": "/api"}
+    assert response.json() == {
+        "environment": "test",
+        "api_prefix": "/api",
+        "steam_country_code": "US",
+        "keyed_catalog_available": False,
+    }
     assert "database_path" not in response.text
 
 
@@ -49,7 +54,12 @@ def test_shell_endpoints_publish_explicit_response_contracts(tmp_path: Path) -> 
         schemas = client.get("/openapi.json").json()["components"]["schemas"]
 
     assert schemas["HealthResponse"]["required"] == ["status", "service"]
-    assert schemas["PublicConfigResponse"]["required"] == ["environment", "api_prefix"]
+    assert schemas["PublicConfigResponse"]["required"] == [
+        "environment",
+        "api_prefix",
+        "steam_country_code",
+        "keyed_catalog_available",
+    ]
 
 
 def test_compiled_frontend_is_served_without_shadowing_api_routes(tmp_path: Path) -> None:

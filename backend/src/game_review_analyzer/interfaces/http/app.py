@@ -13,6 +13,12 @@ from game_review_analyzer.application.game_preview import (
     SteamMetadataSource,
     parse_app_id,
 )
+from game_review_analyzer.application.game_catalog import (
+    CatalogSource,
+    FallbackSearchSource,
+    search_games,
+    synchronize_catalog,
+)
 from game_review_analyzer.application.report_exports import (
     export_report_csv,
     export_report_html,
@@ -29,6 +35,7 @@ from game_review_analyzer.application.storage_lifecycle import (
     verify_database_integrity,
 )
 from game_review_analyzer.domain.reports import ReportVersion
+from game_review_analyzer.domain.game_catalog import CatalogSyncResult, GameSearchResult
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.job_runner import JobRunner, ReviewPageSource
@@ -61,6 +68,11 @@ from game_review_analyzer.infrastructure.steam_metadata import (
     SteamMetadataUnavailable,
     SteamStoreMetadataAdapter,
 )
+from game_review_analyzer.infrastructure.steam_catalog import (
+    SteamCatalogAdapter,
+    SteamCatalogUnavailable,
+    SteamStoreSearchAdapter,
+)
 from game_review_analyzer.infrastructure.steam_reviews import SteamReviewIngestionAdapter
 from game_review_analyzer.shared.config import Settings
 from game_review_analyzer.interfaces.http.reports import (
@@ -85,6 +97,8 @@ class PublicConfigResponse(BaseModel):
 
     environment: str
     api_prefix: Literal["/api"]
+    steam_country_code: str
+    keyed_catalog_available: bool
 
 
 class QuickImportRequest(BaseModel):
@@ -103,11 +117,17 @@ def create_app(
     settings: Settings | None = None,
     metadata_source: SteamMetadataSource | None = None,
     review_source: ReviewPageSource | None = None,
+    catalog_source: CatalogSource | None = None,
+    fallback_search_source: FallbackSearchSource | None = None,
 ) -> FastAPI:
     """Create an application instance, optionally using test-specific settings."""
 
     resolved_settings = settings or Settings.from_environment()
-    resolved_metadata_source = metadata_source or SteamStoreMetadataAdapter()
+    resolved_metadata_source = metadata_source or SteamStoreMetadataAdapter(
+        country_code=resolved_settings.steam_country_code
+    )
+    resolved_catalog_source = catalog_source or SteamCatalogAdapter()
+    resolved_fallback_source = fallback_search_source or SteamStoreSearchAdapter()
     runner = JobRunner(
         resolved_settings.database_path,
         review_source or SteamReviewIngestionAdapter(),
@@ -137,7 +157,42 @@ def create_app(
         return PublicConfigResponse(
             environment=resolved_settings.environment,
             api_prefix=API_PREFIX,
+            steam_country_code=resolved_settings.steam_country_code,
+            keyed_catalog_available=bool(resolved_settings.steam_web_api_key),
         )
+
+    @app.post(f"{API_PREFIX}/catalog/sync", response_model=CatalogSyncResult)
+    def sync_catalog() -> CatalogSyncResult:
+        if not resolved_settings.steam_web_api_key:
+            raise HTTPException(status_code=409, detail={"code": "steam_key_required"})
+        try:
+            return synchronize_catalog(
+                resolved_settings.database_path,
+                resolved_catalog_source,
+                resolved_settings.steam_web_api_key,
+            )
+        except SteamCatalogUnavailable as error:
+            raise HTTPException(
+                status_code=503, detail={"code": "steam_catalog_unavailable"}
+            ) from error
+
+    @app.get(f"{API_PREFIX}/games/search", response_model=tuple[GameSearchResult, ...])
+    def game_search(q: str) -> tuple[GameSearchResult, ...]:
+        try:
+            return search_games(
+                resolved_settings.database_path,
+                resolved_fallback_source,
+                q,
+                resolved_settings.steam_country_code,
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=422, detail={"code": "invalid_search_query"}
+            ) from error
+        except SteamCatalogUnavailable as error:
+            raise HTTPException(
+                status_code=503, detail={"code": "steam_search_unavailable"}
+            ) from error
 
     @app.get(f"{API_PREFIX}/games/preview", response_model=SteamMetadata)
     def game_preview(appid: str) -> SteamMetadata:
