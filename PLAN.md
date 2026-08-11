@@ -88,7 +88,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** The first complete analysis remains user-mediated so evidence integrity can be proven before provider automation.
 
-**Status:** In progress. The evaluation-only provider contracts and Manual Codex export/import validation were approved ahead of the quality gate. Stability evaluation now extracts exact Opinion Points in bounded batches, then repeats bounded consolidation over the validated points and derives support deterministically; report production remains blocked by baseline approval.
+**Status:** Blocked. The user postponed bulk extraction, repeated consolidation, stability scoring, and threshold calibration after the Codex CLI pilot proved too slow and failed exact-evidence validation. Prepared local packages remain available for a future approved bulk-inference path; report production remains blocked by baseline approval.
 
 ## Slice 5 — Explore an evidence-rich report
 

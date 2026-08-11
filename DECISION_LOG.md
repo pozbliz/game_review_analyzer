@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Bulk calibration postponed
+
+**What changed:**
+
+- Deferred the remaining 59 extraction batches, bounded consolidation runs, stability scoring, and threshold calibration.
+- Retained the local corpus, prepared packages, and rejected pilot output for a future approved bulk-inference path.
+
+**Why:**
+
+- The user chose not to spend further time or provider cost after the Codex CLI pilot exceeded five minutes and failed exact-evidence validation.
+
+**New issues:**
+
+- None beyond the existing unsatisfied analysis-quality gate.
+
+**Needs human judgment:**
+
+- Resume calibration and approve a bulk-inference path before the analysis-quality baseline can be approved.
+
+---
+
 ## 2026-08-11 — Codex CLI rejected for bulk extraction
 
 **What changed:**

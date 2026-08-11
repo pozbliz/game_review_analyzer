@@ -138,11 +138,11 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] [HUMAN] Choose and validate targeted evidence-only repair after three Hades II Luna outputs failed exact-evidence validation.
 - [x] [HUMAN] Stop monolithic 5,000-review discovery runs and approve bounded extraction plus deterministic-support consolidation.
 - [x] Define and validate an Opinion Point-only batch contract and prepare 60 isolated 250-review packages covering the 15,000-review corpus.
-- [ ] [HUMAN] Choose a bulk-inference path after the 250-review Codex CLI pilot exceeded five minutes and failed exact-excerpt validation.
-- [ ] Run and validate the 60 bounded Opinion Point extraction batches using the approved bulk-inference path.
-- [ ] Consolidate the validated Opinion Points through three deterministic bounded passes per game.
-- [ ] Measure whether the latest 5,000 eligible reviews produce stable headline Themes across representative games.
-- [ ] Calibrate provisional absolute support, percentage support, cluster-coherence, and Technical Theme thresholds.
+- [x] [HUMAN] Postpone bulk inference after the 250-review Codex CLI pilot exceeded five minutes and failed exact-excerpt validation.
+- [ ] [DEFERRED] Run and validate the 60 bounded Opinion Point extraction batches using an approved bulk-inference path.
+- [ ] [DEFERRED] Consolidate the validated Opinion Points through three deterministic bounded passes per game.
+- [ ] [DEFERRED] Measure whether the latest 5,000 eligible reviews produce stable headline Themes across representative games.
+- [ ] [DEFERRED] Calibrate provisional absolute support, percentage support, cluster-coherence, and Technical Theme thresholds.
 - [ ] Evaluate exact-excerpt validation and resistance to instructions embedded in review text.
 - [ ] [HUMAN] Approve the evaluation baseline and provisional reliability thresholds.
 - [x] Write failing tests for versioned Analysis Provider request and result schemas.
