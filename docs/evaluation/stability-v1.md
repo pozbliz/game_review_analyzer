@@ -12,6 +12,10 @@ The gitignored `evaluation-data/stability_raw_v1.json` contains the latest 5,000
 
 All 15,000 review identifiers are unique within their game corpus. The local file is 10,951,627 bytes.
 
-## Provider-run status
+## Provider configuration
 
-No provider run has started. The required experiment will transmit public review text to the selected provider and consume provider quota. The local Codex CLI supports non-interactive structured output, but external processing requires explicit human approval and a pinned model identifier before the three-run minimum begins.
+The user approved `gpt-5.6-luna` with medium reasoning through the local Codex CLI. Each game has three privacy-minimized inputs containing only its identity, run metadata, review revision IDs, and review text. The contiguous, interleaved, and SHA-256-hashed strategies each contain all 5,000 reviews in 20 deterministic 250-review batches.
+
+The synthetic conformance run reproduced both expected Themes with exact evidence. The first full Stardew Valley contiguous discovery output failed case-sensitive excerpt validation. A second discovery output fixed exact excerpts but omitted one representative review from its Theme support membership. A narrow third provider attempt repaired that relationship and passed strict validation with 22 Themes. Both rejected outputs remain local for audit.
+
+The remaining eight full-corpus runs have not started. A provider output is never silently repaired or scored after validation failure.

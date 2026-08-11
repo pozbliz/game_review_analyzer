@@ -1,5 +1,31 @@
 # Decision Log
 
+## 2026-08-11 — Luna medium selected for stability evaluation
+
+**What changed:**
+
+- Pinned the approved stability provider to `gpt-5.6-luna` with medium reasoning.
+- Added three deterministic full-corpus partition strategies and privacy-minimized run inputs.
+- Added a strict stability-result schema and validator for run metadata, unique support membership, known Review Revisions, and exact excerpts.
+- Preserved two rejected first-run outputs before accepting the third provider-repaired result.
+
+**Why:**
+
+- Luna reduces repeated-run cost while directly testing whether the cheaper intended option can produce stable evidence-backed Themes.
+- Provider-generated evidence must pass the same exact-source boundary as production analysis; silent local correction would invalidate the experiment.
+
+**New issues:**
+
+- Luna may require a bounded schema-preserving repair pass to satisfy cross-field evidence relationships on 5,000-review results.
+
+The existing provider reliability and malformed-output tasks cover this issue.
+
+**Needs human judgment:**
+
+- None until the repeated-run metrics and provisional thresholds are ready.
+
+---
+
 ## 2026-08-11 — Natural-distribution stability corpus acquired
 
 **What changed:**
