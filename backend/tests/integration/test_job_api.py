@@ -7,8 +7,15 @@ from time import monotonic, sleep
 
 from fastapi.testclient import TestClient
 
+from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
+from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.persistence.game_datasets import save_game_dataset
+from game_review_analyzer.infrastructure.persistence.jobs import (
+    checkpoint_page,
+    create_job,
+    start_job,
+)
 from game_review_analyzer.infrastructure.steam_reviews import (
     ReviewPage,
     SteamReviewsUnavailable,
@@ -40,6 +47,17 @@ class BlockingSource:
     def iter_pages(self, _: int, start_cursor: str = "*") -> Iterator[ReviewPage]:
         self.started.set()
         assert self.release.wait(timeout=2)
+        yield ReviewPage(reviews=(), next_cursor=start_cursor)
+
+
+class ResumeSource:
+    """Record the durable cursor used after application restart."""
+
+    def __init__(self) -> None:
+        self.start_cursors: list[str] = []
+
+    def iter_pages(self, _: int, start_cursor: str = "*") -> Iterator[ReviewPage]:
+        self.start_cursors.append(start_cursor)
         yield ReviewPage(reviews=(), next_cursor=start_cursor)
 
 
@@ -97,6 +115,22 @@ def test_quick_import_can_cancel_queued_work(tmp_path: Path) -> None:
     assert cancelled.json()["state"] == "cancelled"
 
 
+def test_application_restart_resumes_an_interrupted_quick_import(tmp_path: Path) -> None:
+    database_path: Path = tmp_path / "app.sqlite3"
+    initialize_database(database_path)
+    save_dataset(database_path)
+    job = create_job(database_path, app_id=1145350, target_count=2)
+    assert start_job(database_path, job.id) is not None
+    checkpoint_page(database_path, job.id, (steam_review(),), "resume-here")
+    source = ResumeSource()
+
+    with TestClient(create_app(Settings(database_path=database_path), review_source=source)) as client:
+        completed = wait_for_state(client, job.id, "completed")
+
+    assert completed["imported_count"] == 1
+    assert source.start_cursors == ["resume-here"]
+
+
 def wait_for_state(client: TestClient, job_id: str, state: str) -> dict[str, object]:
     deadline: float = monotonic() + 2
     while monotonic() < deadline:
@@ -123,4 +157,23 @@ def save_dataset(database_path: Path) -> None:
                 {"capsule_image_url", "release_date", "release_status", "review_count"}
             ),
         ),
+    )
+
+
+def steam_review() -> SteamReview:
+    return SteamReview(
+        review_id="1001",
+        language="english",
+        text="Good game",
+        source_created_at=100,
+        source_updated_at=100,
+        recommended=True,
+        votes_helpful=0,
+        votes_funny=0,
+        weighted_vote_score=0,
+        steam_purchase=True,
+        received_for_free=False,
+        written_during_early_access=False,
+        playtime_forever_minutes=10,
+        playtime_at_review_minutes=10,
     )

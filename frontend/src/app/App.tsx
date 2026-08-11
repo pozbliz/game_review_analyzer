@@ -38,6 +38,14 @@ export default function App(): JSX.Element {
   }, []);
 
   useEffect(() => {
+    const jobId: string | null = window.localStorage.getItem("active-import-job");
+    if (!jobId) return;
+    getJob(jobId)
+      .then(setJob)
+      .catch(() => window.localStorage.removeItem("active-import-job"));
+  }, []);
+
+  useEffect(() => {
     if (!job || !["queued", "running"].includes(job.state)) return;
     let active = true;
     const refresh = (): void => {
@@ -62,6 +70,7 @@ export default function App(): JSX.Element {
     setPreviewLoading(true);
     setPreviewError("");
     setJob(null);
+    window.localStorage.removeItem("active-import-job");
     getGamePreview(appId)
       .then((metadata) => setPreview(metadata))
       .catch(() => {
@@ -75,7 +84,10 @@ export default function App(): JSX.Element {
     if (!preview) return;
     setJobError("");
     startQuickImport(preview.app_id, targetCount)
-      .then(setJob)
+      .then((startedJob) => {
+        window.localStorage.setItem("active-import-job", startedJob.id);
+        setJob(startedJob);
+      })
       .catch(() => setJobError("Unable to start the Quick import."));
   }
 
@@ -127,7 +139,22 @@ export default function App(): JSX.Element {
         </section>
 
         <aside className="catalog-preview" aria-live="polite">
-          {!preview ? (
+          {job ? (
+            <section className="import-progress" aria-labelledby="import-title">
+              <p className="eyebrow">QUICK IMPORT</p>
+              <h2 id="import-title">{
+                job.state === "completed" ? "Import complete" :
+                job.state === "failed" ? "Import failed" :
+                job.state === "cancelled" ? "Import cancelled" : "Downloading reviews"
+              }</h2>
+              <p>{job.imported_count.toLocaleString()} of {job.target_count.toLocaleString()} reviews</p>
+              <progress value={job.imported_count} max={job.target_count} />
+              {job.state === "failed" && <button type="button" onClick={retryImport}>Retry import</button>}
+              {["queued", "running"].includes(job.state) && (
+                <button type="button" onClick={cancelImport}>Cancel import</button>
+              )}
+            </section>
+          ) : !preview ? (
             <div className="preview-empty">
               <p className="eyebrow">CONFIRM IDENTITY</p>
               <h2>Game details appear here</h2>
@@ -152,41 +179,24 @@ export default function App(): JSX.Element {
               {preview.source_status === "partial" && (
                 <p className="source-note">Some optional Steam metadata is unavailable. You can still continue.</p>
               )}
-              {!job ? (
-                <div className="analysis-setup">
-                  <p><strong>Quick analysis</strong><br />Latest eligible English reviews</p>
-                  <label htmlFor="review-limit">Review limit</label>
-                  <input
-                    id="review-limit"
-                    type="number"
-                    min="1"
-                    required
-                    value={targetCount}
-                    onChange={(event) => setTargetCount(event.target.valueAsNumber)}
-                  />
-                  <button className="create-report" type="button" onClick={beginImport}>
-                    Create report
-                  </button>
-                </div>
-              ) : (
-                <section className="import-progress" aria-labelledby="import-title">
-                  <p className="eyebrow">QUICK IMPORT</p>
-                  <h3 id="import-title">{
-                    job.state === "completed" ? "Import complete" :
-                    job.state === "failed" ? "Import failed" :
-                    job.state === "cancelled" ? "Import cancelled" : "Downloading reviews"
-                  }</h3>
-                  <p>{job.imported_count.toLocaleString()} of {job.target_count.toLocaleString()} reviews</p>
-                  <progress value={job.imported_count} max={job.target_count} />
-                  {job.state === "failed" && <button type="button" onClick={retryImport}>Retry import</button>}
-                  {["queued", "running"].includes(job.state) && (
-                    <button type="button" onClick={cancelImport}>Cancel import</button>
-                  )}
-                </section>
-              )}
-              {jobError && <p className="error" role="alert">{jobError}</p>}
+              <div className="analysis-setup">
+                <p><strong>Quick analysis</strong><br />Latest eligible English reviews</p>
+                <label htmlFor="review-limit">Review limit</label>
+                <input
+                  id="review-limit"
+                  type="number"
+                  min="1"
+                  required
+                  value={targetCount}
+                  onChange={(event) => setTargetCount(event.target.valueAsNumber)}
+                />
+                <button className="create-report" type="button" onClick={beginImport}>
+                  Create report
+                </button>
+              </div>
             </>
           )}
+          {jobError && <p className="error" role="alert">{jobError}</p>}
         </aside>
       </div>
     </main>

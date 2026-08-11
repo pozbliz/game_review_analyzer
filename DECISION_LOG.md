@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-11 — Durable Quick import slice completed
+
+**What changed:**
+
+- Added browser-refresh reattachment through one stored job identifier.
+- Verified application restart resumes an interrupted import from its persisted cursor.
+- Marked Slice 3 complete and advanced the documented implementation frontier to Slice 4.
+
+**Why:**
+
+- The backend remains authoritative for job state while the browser stores only enough identity to reconnect.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Slice 4 still requires explicit approval of the evaluation baseline and provisional reliability thresholds.
+
+---
+
 ## 2026-08-11 — Quick setup and durable progress added to the Catalog
 
 **What changed:**

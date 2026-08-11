@@ -95,7 +95,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Slice 3 — Persist a durable Quick review import
 
-**Blocked by:** Nothing. This is the next execution frontier.
+**Status:** Complete.
 
 - [x] Write migration and integrity tests for reviews, immutable Review Revisions, Analysis Jobs, and checkpoints.
 - [x] Create fixtures and failing tests for pagination, cursor encoding, eligibility, pacing, bounded retries, cursor repetition, and source exhaustion.
@@ -104,11 +104,11 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Write failing Job Runner state-transition tests, then implement checkpoints, cancellation, retry, and restart recovery.
 - [x] Write API tests, then expose import progress, cancellation, and retry behavior.
 - [x] Write component tests, then build the analysis-setup and progress interface.
-- [ ] Verify browser-refresh and backend-restart recovery with an interrupted Quick import.
+- [x] Verify browser-refresh and backend-restart recovery with an interrupted Quick import.
 
 ### Slice 4 — Produce the first immutable report through Manual Codex
 
-**Blocked by:** Slice 3, an initial labeled evaluation set, provisional reliability thresholds, and the analysis-quality approval gate.
+**Blocked by:** An initial labeled evaluation set, provisional reliability thresholds, and the analysis-quality approval gate.
 
 - [ ] Define the labeled evaluation-set format and create representative samples spanning several games and review styles.
 - [ ] Evaluate Opinion Point extraction, Opinion Sentiment, neutral exclusion, paraphrase grouping, categories, summary faithfulness, and exact excerpts.

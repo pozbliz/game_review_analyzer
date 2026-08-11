@@ -4,6 +4,7 @@ import App from "../../src/app/App";
 
 afterEach(() => {
   cleanup();
+  localStorage.clear();
   vi.restoreAllMocks();
 });
 
@@ -139,6 +140,21 @@ describe("application shell", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Retry import" }));
 
     expect(await screen.findByText("Import complete")).toBeVisible();
+  });
+
+  it("reattaches to durable import progress after a browser refresh", async () => {
+    localStorage.setItem("active-import-job", "job-1");
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json({ environment: "test", api_prefix: "/api" });
+      return json(job("running", 200));
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Downloading reviews")).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1");
   });
 });
 

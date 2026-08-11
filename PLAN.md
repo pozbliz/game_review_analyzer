@@ -66,7 +66,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Outcome:** Download and retain the latest 5,000 eligible English reviews with natural recommendation distribution, visible progress, cancellation, retry, and checkpoint resume.
 
-**Blocked by:** None; Slice 2 is complete.
+**Blocked by:** None.
 
 **Scope:** Review Ingestion, append-only Review Revision history, Game Dataset ownership, Job Runner, SQLite persistence, progress API, and setup/progress interface.
 
@@ -74,13 +74,13 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Reviews become locally useful before automated analysis exists.
 
-**Status:** Ready.
+**Status:** Complete.
 
 ## Slice 4 — Produce the first immutable report through Manual Codex
 
 **Outcome:** Export a privacy-minimized Codex package, import valid structured results, compute authoritative Theme metrics, and store a minimal immutable Report Version.
 
-**Blocked by:** Slice 3, an initial labeled evaluation set, provisional reliability thresholds, and explicit human approval of the analysis-quality baseline.
+**Blocked by:** An initial labeled evaluation set, provisional reliability thresholds, and explicit human approval of the analysis-quality baseline.
 
 **Scope:** Analysis Provider contract, versioned schemas, Codex export/import, deterministic Theme Metrics, Report Repository, and minimal report presentation.
 
