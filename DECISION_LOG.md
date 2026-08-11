@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-11 — Slice 4 implementation unblocked from calibration
+
+**What changed:**
+
+- Allowed deterministic metrics, immutable report persistence, and fixture-based end-to-end implementation to proceed with explicit provisional thresholds.
+- Kept real-game baseline approval as a production-quality acceptance gate rather than a prerequisite for writing Slice 4 code.
+
+**Why:**
+
+- Postponing expensive calibration should prevent reliability claims, not prevent implementation whose behavior can be verified with deterministic fixtures.
+
+**New issues:**
+
+- Provisional thresholds must remain visibly identified and must not be presented as calibrated defaults.
+
+The existing deferred threshold-calibration and baseline-approval tasks cover this issue.
+
+**Needs human judgment:**
+
+- Approve calibrated thresholds before production-quality acceptance.
+
+---
+
 ## 2026-08-11 — Bulk calibration postponed
 
 **What changed:**

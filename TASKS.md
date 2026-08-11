@@ -108,7 +108,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Slice 4 — Produce the first immutable report through Manual Codex
 
-**Blocked by:** Completion and human review of the real-game evaluation corpus, then the analysis-quality approval gate.
+**Blocked by:** None for implementation with explicit provisional thresholds. Production-quality acceptance remains blocked by the deferred analysis-quality approval gate.
 
 - [x] [HUMAN] Approve Hades II, Stardew Valley, and Cyberpunk 2077 as the real-game evaluation corpus.
 - [x] Keep raw review text and reviewed annotations local under the gitignored `evaluation-data/` directory.
@@ -144,7 +144,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [ ] [DEFERRED] Measure whether the latest 5,000 eligible reviews produce stable headline Themes across representative games.
 - [ ] [DEFERRED] Calibrate provisional absolute support, percentage support, cluster-coherence, and Technical Theme thresholds.
 - [ ] Evaluate exact-excerpt validation and resistance to instructions embedded in review text.
-- [ ] [HUMAN] Approve the evaluation baseline and provisional reliability thresholds.
+- [ ] [DEFERRED] [HUMAN] Approve the evaluation baseline and provisional reliability thresholds before production-quality acceptance.
 - [x] Write failing tests for versioned Analysis Provider request and result schemas.
 - [x] Write privacy and disclosure tests, then implement privacy-minimized Manual Codex package export.
 - [x] Write import rejection tests for malformed, partial, mismatched, fabricated, non-matching, and prompt-injected results.

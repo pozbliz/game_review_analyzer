@@ -80,7 +80,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Outcome:** Export a privacy-minimized Codex package, import valid structured results, compute authoritative Theme metrics, and store a minimal immutable Report Version.
 
-**Blocked by:** Completion and human review of the real-game evaluation corpus, then explicit approval of the resulting analysis-quality baseline.
+**Blocked by:** None for implementation with explicit provisional thresholds. Production-quality acceptance still requires completion and human approval of the real-game evaluation baseline.
 
 **Scope:** Analysis Provider contract, versioned schemas, Codex export/import, deterministic Theme Metrics, Report Repository, and minimal report presentation.
 
@@ -88,7 +88,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** The first complete analysis remains user-mediated so evidence integrity can be proven before provider automation.
 
-**Status:** Blocked. The user postponed bulk extraction, repeated consolidation, stability scoring, and threshold calibration after the Codex CLI pilot proved too slow and failed exact-evidence validation. Prepared local packages remain available for a future approved bulk-inference path; report production remains blocked by baseline approval.
+**Status:** In progress. Implementation continues with explicit provisional thresholds and fixture-based verification. The user postponed bulk extraction, repeated consolidation, stability scoring, and threshold calibration; real-world reliability approval remains deferred, and prepared local packages remain available for a future approved bulk-inference path.
 
 ## Slice 5 — Explore an evidence-rich report
 
@@ -245,7 +245,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 ## Approval gates
 
 - **Prototype:** satisfied; the Catalog → Split → Timeline → Research direction is approved. Connected-browser verification remains tracked separately.
-- **Analysis quality:** approve evaluation baselines and provisional thresholds before Slice 4.
+- **Analysis quality:** fixture-based Slice 4 implementation may proceed with explicit provisional thresholds; approve the real-game baseline before production-quality acceptance or reliability claims.
 - **Provider:** approve the first automated provider after quality/cost evaluation before Slice 8.
 - **Steam:** resolve retention, attribution, and request-rate obligations before Slices 11 and 13.
 - **Release:** confirm the MIT copyright holder and approve the release candidate before Slice 13 publication.
