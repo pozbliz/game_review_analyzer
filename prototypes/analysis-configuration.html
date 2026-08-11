@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<!-- saved from url=(0121)file:///C:/Users/Dante/Documents/Application%20Development/SteamReviewAnalyzer/prototypes/analysis-configuration.html?v=1 -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Game Review Analyzer — Analysis Configuration Prototypes</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-synthesis: none; --ease-out: cubic-bezier(.16, 1, .3, 1); }
+    * { box-sizing: border-box; }
+    html { min-height: 100%; scrollbar-gutter: stable; }
+    body { min-height: 100%; margin: 0; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #5374ed; outline-offset: 2px; }
+    [hidden] { display: none !important; }
+    .stage { min-height: 100vh; }
+    .eyebrow { color: #718078; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .muted { color: #6f7a73; }
+    .brand { display: flex; align-items: center; gap: 10px; color: #20332a; font-size: 13px; font-weight: 800; }
+    .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: #173c31; color: white; }
+    .prototype-note { color: #718078; font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+    .primary { padding: 11px 15px; border: 0; border-radius: 8px; background: #1f4b3c; color: white; font-weight: 750; transition: transform 150ms ease-out, background 150ms ease-out; }
+    .primary:hover { background: #173c31; }
+    .primary:active { transform: scale(.97); }
+    .secondary { padding: 10px 13px; border: 1px solid #c8d2ca; border-radius: 8px; background: white; color: #304039; font-weight: 650; }
+    .secondary:active { transform: scale(.97); }
+    .status-toast { position: fixed; top: 22px; right: 22px; z-index: 20; padding: 12px 14px; border: 1px solid #bfd0c2; border-radius: 10px; background: #fbfdfb; color: #26382d; box-shadow: 0 12px 34px rgba(27,43,34,.16); animation: toast-in 180ms var(--ease-out) both; font-size: 12px; }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: none; } }
+    .entrance { animation: rise-in 220ms var(--ease-out) both; }
+    @keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 44px; }
+    .shell { width: min(1120px, 100%); margin: auto; }
+    .game-chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 9px; border: 1px solid #d0d9d1; border-radius: 999px; background: rgba(255,255,255,.7); color: #4c5d52; font-size: 10px; font-weight: 750; }
+    .game-dot { width: 7px; height: 7px; border-radius: 50%; background: #d28a43; }
+    .setup-title { max-width: 720px; margin: 0; color: #1c2822; font-size: clamp(34px, 5vw, 58px); letter-spacing: -.055em; line-height: .98; }
+    .setup-deck { max-width: 580px; margin: 16px 0 0; color: #69766d; font-size: 16px; line-height: 1.55; }
+    .section-label { margin-bottom: 10px; color: #526158; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+    .scope-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; }
+    .scope-option { padding: 13px; border: 1px solid #d2dbd3; border-radius: 10px; background: rgba(255,255,255,.65); color: #26362c; text-align: left; }
+    .scope-option:hover, .scope-option[data-selected] { border-color: #7fa38a; background: #f4faf3; }
+    .scope-option strong { display: block; margin-bottom: 4px; font-size: 14px; }
+    .scope-option span { display: block; color: #738077; font-size: 10px; line-height: 1.4; }
+    .scope-option em { display: block; margin-top: 8px; color: #315e4d; font-size: 10px; font-style: normal; font-weight: 750; }
+    .config-row { display: grid; gap: 8px; }
+    .config-row label { color: #627067; font-size: 11px; font-weight: 700; }
+    .config-row select { width: 100%; padding: 10px 11px; border: 1px solid #cad4cc; border-radius: 8px; background: white; color: #24342a; }
+    .disclosure { padding: 12px; border: 1px solid #d7dfd8; border-radius: 9px; background: rgba(255,255,255,.6); }
+    .disclosure strong { display: block; margin: 4px 0; color: #2b4536; font-size: 12px; }
+    .disclosure p { margin: 0; color: #708078; font-size: 10px; line-height: 1.5; }
+    .config-action { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .estimate { color: #65736a; font-size: 10px; line-height: 1.4; }
+    .estimate strong { display: block; color: #294837; font-size: 14px; }
+
+    /* Quiet: compact, calm form */
+    .quiet { min-height: 100vh; padding: 24px 28px 110px; background: #eef2ed; color: #1e2b23; }
+    .quiet-main { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr); gap: 18px; align-items: start; }
+    .quiet-card { padding: 26px; border: 1px solid #ccd6cd; border-radius: 15px; background: #f9fbf8; }
+    .quiet-card h2 { margin: 0 0 22px; font-size: 18px; letter-spacing: -.03em; }
+    .quiet-stack { display: grid; gap: 24px; }
+    .quiet-side { display: grid; gap: 12px; }
+    .quiet-side .disclosure { background: #e8f0e8; }
+    .quiet-action { margin-top: 20px; }
+
+    /* Editorial: a brief with a strong summary */
+    .editorial { min-height: 100vh; padding: 28px 34px 110px; background: #f8f3ea; color: #2a2924; }
+    .editorial .brand-mark { background: #725441; }
+    .editorial-main { display: grid; grid-template-columns: minmax(0, .9fr) minmax(360px, 1.1fr); gap: 56px; align-items: start; margin-top: 74px; }
+    .editorial h1 { max-width: 510px; margin: 9px 0 16px; font-family: Georgia, serif; font-size: clamp(42px, 6vw, 72px); font-weight: 500; letter-spacing: -.06em; line-height: .94; }
+    .editorial .setup-deck { font-family: Georgia, serif; color: #756d62; }
+    .brief-card { padding: 27px; border: 1px solid #ded3c4; border-radius: 15px; background: rgba(255,251,244,.85); box-shadow: 0 16px 34px rgba(96,72,51,.08); }
+    .brief-card h2 { margin: 0 0 20px; font-family: Georgia, serif; font-size: 24px; font-weight: 500; }
+    .brief-section { display: grid; gap: 10px; padding: 17px 0; border-top: 1px solid #e6dccf; }
+    .brief-section:first-of-type { padding-top: 0; border-top: 0; }
+    .editorial .scope-option { border-color: #ded3c4; background: #fffaf1; }
+    .editorial .scope-option:hover, .editorial .scope-option[data-selected] { border-color: #b18b68; background: #fff3df; }
+    .editorial .scope-option em { color: #8a6044; }
+    .editorial .disclosure { border-color: #e0d5c7; background: #f4eadc; }
+    .editorial .disclosure strong { color: #6f4e38; }
+    .editorial .primary { background: #80583d; }
+    .editorial .primary:hover { background: #67452f; }
+
+    /* Split: configuration and disclosure share equal weight */
+    .split { min-height: 100vh; padding: 24px 28px 110px; background: #edf2ee; color: #203129; }
+    .split .brand-mark { background: #173c31; }
+    .split-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(330px, .8fr); gap: 14px; align-items: stretch; }
+    .split-panel { padding: 25px; border: 1px solid #ccd6cd; border-radius: 14px; background: #f9fbf8; }
+    .split-panel h2 { margin: 0 0 22px; font-size: 19px; letter-spacing: -.035em; }
+    .split-side { display: grid; align-content: space-between; gap: 14px; padding: 25px; border: 1px solid #b9cdbd; border-radius: 14px; background: linear-gradient(155deg, #dceade, #f8fbf8 68%); }
+    .split-side h2 { max-width: 300px; margin: 8px 0 0; font-size: 28px; letter-spacing: -.045em; }
+    .split-metric { display: grid; gap: 7px; padding-top: 18px; border-top: 1px solid #c4d5c7; }
+    .split-metric strong { color: #315e4d; font-size: 23px; }
+    .split-metric span { color: #6c7e72; font-size: 10px; }
+    .split .disclosure { border-color: #c2d3c4; background: rgba(255,255,255,.6); }
+    .split .disclosure strong { color: #315e4d; }
+    .split .primary { background: #1f4b3c; }
+    .split .primary:hover { background: #173c31; }
+
+    @media (max-width: 800px) { .quiet-main, .editorial-main, .split-main { grid-template-columns: 1fr; } .editorial-main { margin-top: 46px; gap: 30px; } }
+    @media (max-width: 540px) { .quiet, .split { padding-inline: 16px; } .editorial { padding-inline: 18px; } .topbar { margin-bottom: 30px; } .quiet-card, .brief-card, .split-panel, .split-side { padding: 20px; } .scope-options { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { .entrance, .status-toast { animation: none; transition: none; } }
+
+    .proto-picker { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; background: rgba(10, 10, 10, 0.82); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 8px 24px rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.12); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; line-height: 1; -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none; }
+    .proto-picker-highlight { position: absolute; top: 4px; left: 0; height: 28px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); will-change: transform; }
+    .proto-picker[data-ready] .proto-picker-highlight { transition: transform 250ms cubic-bezier(0.23, 1, 0.32, 1), width 250ms cubic-bezier(0.23, 1, 0.32, 1); }
+    @media (prefers-reduced-motion: reduce) { .proto-picker[data-ready] .proto-picker-highlight { transition: none; } }
+    .proto-picker-item { position: relative; display: flex; align-items: center; height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: rgba(255, 255, 255, 0.55); font: inherit; cursor: pointer; transition: color 150ms ease-out; }
+    .proto-picker-item:hover { color: rgba(255, 255, 255, 0.85); }
+    .proto-picker-item:active { transform: scale(0.97); }
+    .proto-picker-item:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.4); outline-offset: 2px; }
+    .proto-picker-item[data-active] { color: #fff; }
+    .proto-picker-divider { width: 1px; height: 16px; margin: 0 4px; background: rgba(255, 255, 255, 0.12); }
+    .proto-picker-replay { padding: 0 10px; font-size: 14px; }
+    .proto-picker[data-position="top"] { bottom: auto; top: 24px; }
+  </style>
+</head>
+<body>
+  <main id="stage" class="stage"><div class="quiet"><div class="shell entrance"><header class="topbar"><div class="brand"><span class="brand-mark">G</span><span>Game Review Analyzer</span></div><span class="game-chip"><span class="game-dot"></span>Hades II · Confirmed</span></header><main class="quiet-main"><section><div class="eyebrow">Create a report</div><h1 class="setup-title">Choose what to bring into focus.</h1><p class="setup-deck">Select a review scope and provider. You can create another immutable report version later without changing this one.</p><div class="quiet-card quiet-action"><div class="quiet-stack"><div class="section-label">Review scope</div><div class="scope-options"><button class="scope-option" data-scope="quick" data-selected=""><strong>Quick report</strong><span>5,000 eligible reviews</span><em>12–18 min</em></button><button class="scope-option" data-scope="full"><strong>Full report</strong><span>48,239 eligible reviews</span><em>2–4 hr</em></button></div><div class="config-row" style="margin-top:18px"><label for="provider-quiet-stack">Analysis provider</label><select id="provider-quiet-stack" data-provider=""><option value="local" selected="">Ollama · Local</option><option value="openai">OpenAI API · Cloud</option><option value="claude">Anthropic Claude API · Cloud</option><option value="manual">Manual Codex package · External/manual cloud</option></select></div><div style="margin-top:16px"><div class="disclosure"><div class="eyebrow">Processing location</div><strong>Local · Ollama</strong><p>Review text remains on this machine. The application never downloads a model.</p></div></div><div class="config-action" style="margin-top:20px"><div class="estimate"><strong>12–18 min · ≈ $1.80</strong>5,000 eligible reviews</div><button class="primary" data-create="">Create report</button></div></div></div></section><aside class="quiet-side"><div class="quiet-card"><div class="eyebrow">What happens next</div><h2>One clear report, grounded in evidence.</h2><p class="muted" style="font-size:12px;line-height:1.6;margin:0">The app imports matching reviews, extracts opinion points, groups recurring themes, and prepares an evidence-backed report.</p></div><div class="disclosure"><div class="eyebrow">Privacy by default</div><strong>Only the selected processing location receives review text.</strong><p>Provider and model choices are recorded with the report version.</p></div></aside></main></div><div class="status-toast" data-toast="" hidden=""></div></div></main>
+  <nav class="proto-picker" aria-label="Prototype variants" data-ready="">
+    <span class="proto-picker-highlight" aria-hidden="true" style="width: 56px; transform: translateX(4px);"></span>
+    <button class="proto-picker-item" data-active="" aria-current="true">Quiet</button>
+    <button class="proto-picker-item">Editorial</button>
+    <button class="proto-picker-item">Split</button>
+    <span class="proto-picker-divider" aria-hidden="true"></span>
+    <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+  </nav>
+  <script>
+    const scopes = {
+      quick: { label: 'Quick report', reviews: '5,000 eligible reviews', estimate: '12–18 min', cost: '≈ $1.80', note: 'Starts with the latest matching reviews and can be refreshed later.' },
+      full: { label: 'Full report', reviews: '48,239 eligible reviews', estimate: '2–4 hr', cost: '≈ $16.40', note: 'Processes the complete matching corpus and may take substantially longer.' }
+    };
+    let selectedScope = 'quick';
+    let selectedProvider = 'local';
+
+    function scopeOptions() {
+      return Object.entries(scopes).map(([key, scope]) => `<button class="scope-option" data-scope="${key}"${key === selectedScope ? ' data-selected' : ''}><strong>${scope.label}</strong><span>${scope.reviews}</span><em>${scope.estimate}</em></button>`).join('');
+    }
+
+    function providerDisclosure() {
+      const cloud = selectedProvider !== 'local';
+      return `<div class="disclosure"><div class="eyebrow">Processing location</div><strong>${cloud ? 'Cloud · ' + (selectedProvider === 'openai' ? 'OpenAI API' : 'Anthropic Claude API') : 'Local · Ollama'}</strong><p>${cloud ? 'Selected review text is sent to the named provider. Your credential stays in the local credential store.' : 'Review text remains on this machine. The application never downloads a model.'}</p></div>`;
+    }
+
+    function configControls(extraClass = '') {
+      const scope = scopes[selectedScope];
+      return `<div class="${extraClass}"><div class="section-label">Review scope</div><div class="scope-options">${scopeOptions()}</div><div class="config-row" style="margin-top:18px"><label for="provider-${extraClass || 'config'}">Analysis provider</label><select id="provider-${extraClass || 'config'}" data-provider><option value="local"${selectedProvider === 'local' ? ' selected' : ''}>Ollama · Local</option><option value="openai"${selectedProvider === 'openai' ? ' selected' : ''}>OpenAI API · Cloud</option><option value="claude"${selectedProvider === 'claude' ? ' selected' : ''}>Anthropic Claude API · Cloud</option><option value="manual"${selectedProvider === 'manual' ? ' selected' : ''}>Manual Codex package · External/manual cloud</option></select></div><div style="margin-top:16px">${providerDisclosure()}</div><div class="config-action" style="margin-top:20px"><div class="estimate"><strong>${scope.estimate} · ${scope.cost}</strong>${scope.reviews}</div><button class="primary" data-create>Create report</button></div></div>`;
+    }
+
+    function quietVariant() {
+      return `<div class="quiet"><div class="shell entrance"><header class="topbar"><div class="brand"><span class="brand-mark">G</span><span>Game Review Analyzer</span></div><span class="game-chip"><span class="game-dot"></span>Hades II · Confirmed</span></header><main class="quiet-main"><section><div class="eyebrow">Create a report</div><h1 class="setup-title">Choose what to bring into focus.</h1><p class="setup-deck">Select a review scope and provider. You can create another immutable report version later without changing this one.</p><div class="quiet-card quiet-action">${configControls('quiet-stack')}</div></section><aside class="quiet-side"><div class="quiet-card"><div class="eyebrow">What happens next</div><h2>One clear report, grounded in evidence.</h2><p class="muted" style="font-size:12px;line-height:1.6;margin:0">The app imports matching reviews, extracts opinion points, groups recurring themes, and prepares an evidence-backed report.</p></div><div class="disclosure"><div class="eyebrow">Privacy by default</div><strong>Only the selected processing location receives review text.</strong><p>Provider and model choices are recorded with the report version.</p></div></aside></main></div><div class="status-toast" data-toast hidden></div></div>`;
+    }
+
+    function editorialVariant() {
+      return `<div class="editorial"><div class="shell entrance"><header class="topbar"><div class="brand"><span class="brand-mark">G</span><span>Game Review Analyzer</span></div><span class="prototype-note">Analysis brief · Hades II</span></header><main class="editorial-main"><section><div class="eyebrow">A considered starting point</div><h1>Give the report a useful boundary.</h1><p class="setup-deck">A smaller, focused scope is often the fastest way to see what players are saying. You can return for a broader pass later.</p><p class="muted" style="margin-top:28px;font-family:Georgia,serif;font-size:13px;line-height:1.6">Your previous reports remain unchanged. This choice creates a new report version.</p></section><section class="brief-card"><div class="eyebrow">Report brief</div><h2>Hades II · New report</h2><div class="brief-section">${configControls('editorial-stack')}</div></section></main></div><div class="status-toast" data-toast hidden></div></div>`;
+    }
+
+    function splitVariant() {
+      const scope = scopes[selectedScope];
+      return `<div class="split"><div class="shell entrance"><header class="topbar"><div class="brand"><span class="brand-mark">G</span><span>Game Review Analyzer</span></div><span class="game-chip"><span class="game-dot"></span>Hades II · Report setup</span></header><main class="split-main"><section class="split-panel"><div class="eyebrow">01 · Configure</div><h2>Review scope and provider</h2>${configControls('split-stack')}</section><aside class="split-side"><div><div class="eyebrow">02 · Before you start</div><h2>See the work and the boundary.</h2><p class="muted" style="max-width:300px;margin:13px 0 0;font-size:12px;line-height:1.55">This estimate covers review import, opinion extraction, theme consolidation, and report generation.</p></div><div><div class="split-metric"><strong>${scope.reviews}</strong><span>Selected corpus</span></div><div class="split-metric"><strong>${scope.estimate}</strong><span>Expected processing time</span></div><div style="margin-top:18px">${providerDisclosure()}</div></div></aside></main></div><div class="status-toast" data-toast hidden></div></div>`;
+    }
+
+    const variants = [quietVariant, editorialVariant, splitVariant];
+    const stage = document.getElementById('stage');
+    const picker = document.querySelector('.proto-picker');
+    const highlight = picker.querySelector('.proto-picker-highlight');
+    const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+    const replay = picker.querySelector('.proto-picker-replay');
+    let current = 0;
+
+    function moveHighlight() { const el = items[current]; highlight.style.width = el.offsetWidth + 'px'; highlight.style.transform = `translateX(${el.offsetLeft}px)`; }
+    function mount(i) { stage.innerHTML = ''; requestAnimationFrame(() => { stage.innerHTML = variants[i](); }); }
+    function setActive(i) { if (i < 0 || i >= variants.length) return; current = i; items.forEach((el, j) => { el.toggleAttribute('data-active', j === i); if (j === i) el.setAttribute('aria-current', 'true'); else el.removeAttribute('aria-current'); }); moveHighlight(); const url = new URL(location); url.searchParams.set('v', i + 1); history.replaceState(null, '', url); mount(i); }
+    function showToast(message) { const toast = document.querySelector('[data-toast]'); if (!toast) return; toast.textContent = message; toast.removeAttribute('hidden'); window.setTimeout(() => toast.setAttribute('hidden', ''), 2800); }
+
+    document.addEventListener('click', (event) => { const scope = event.target.closest('[data-scope]'); if (scope) { selectedScope = scope.dataset.scope; mount(current); } if (event.target.matches('[data-create]')) showToast(`Creating ${scopes[selectedScope].label.toLowerCase()} with ${selectedProvider === 'local' ? 'local Ollama' : 'the selected provider'}.`); });
+    document.addEventListener('change', (event) => { if (!event.target.matches('[data-provider]')) return; selectedProvider = event.target.value; mount(current); });
+    items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+    replay?.addEventListener('click', () => mount(current));
+    window.addEventListener('resize', moveHighlight);
+    document.addEventListener('keydown', (e) => { if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return; if (e.metaKey || e.ctrlKey || e.altKey) return; const num = parseInt(e.key, 10); if (num >= 1 && num <= variants.length) setActive(num - 1); else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length); else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length); else if (e.key === 'r' || e.key === 'R') mount(current); });
+    setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
+    requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+  </script>
+
+
+</body></html>

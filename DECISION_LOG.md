@@ -1,0 +1,1218 @@
+# Decision Log
+
+## 2026-08-11 — Implementation plan and task frontier synchronized
+
+**What changed:**
+
+- Marked Slice 0 approved and Slice 1 as the current execution frontier.
+- Added the approved two-root structure, typed API contracts, production asset serving, reproducible dependency installation, and framework compatibility to Slice 1 scope and acceptance.
+- Made the analysis-quality and first-provider human approvals explicit blockers in their respective slices.
+- Removed initial frontend-serving responsibility from the packaging slice and marked the prototype approval gate satisfied.
+- Corrected the design status to acknowledge the implemented application shell.
+
+**Why:**
+
+- The strategic plan and live checklist had stale frontier and approval language after prototype approval and shell implementation began.
+- Clean installation is not reproducible until Python dependency resolution and frozen CI installation are defined.
+
+**New issues:**
+
+- Establish reproducible dependency locking and frozen CI installation.
+- Resolve or explicitly constrain the FastAPI/Starlette test-client deprecation warning.
+
+Both issues are tracked in the current `2026-08-11` Slice 1 activity checklist in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None at the current frontier.
+
+---
+
+## 2026-08-11 — Legacy .NET and Rider artifacts removed
+
+**What changed:**
+
+- Removed the empty `GameReviewAnalyzer.sln` placeholder from the abandoned .NET setup.
+- Removed project-local `.idea/` Rider metadata and added `.idea/` to `.gitignore`.
+
+**Why:**
+
+- The approved implementation uses Python/FastAPI and TypeScript/React, so the solution file and IDE metadata no longer describe or support the build.
+- Ignoring IDE-local metadata prevents machine-specific workspace state from returning to source control.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-08-11 — Two-root repository structure approved and applied
+
+**What changed:**
+
+- Retained separate `backend/` and `frontend/` roots for Python and TypeScript tooling.
+- Reorganized backend code into a packaged `src/game_review_analyzer/` layout with domain, application, interface, infrastructure, and shared boundaries.
+- Moved the React shell under `frontend/src/app/`, global styling under `frontend/src/styles/`, and integration coverage under `frontend/tests/`.
+- Normalized maintained specifications under lowercase `docs/specifications/` and documented the structure in `AGENTS.md`.
+
+**Why:**
+
+- This keeps each language ecosystem conventional while preserving the ownership and dependency boundaries recommended by the initialization workflow.
+- Directories are added only when they own real content, avoiding empty structural placeholders.
+
+**New issues:**
+
+- `GameReviewAnalyzer.sln` is a legacy placeholder from before the Python/TypeScript stack was established and no longer represents the build.
+
+The issue is tracked in `TASKS.md` for explicit cleanup approval.
+
+**Needs human judgment:**
+
+- Decide whether the legacy solution file should be removed.
+
+**Verification:**
+
+- Backend characterization suite: 3 passed.
+- Frontend characterization suite: 1 passed.
+- Strict TypeScript checking and Vite production build passed.
+- Editable backend package reinstall succeeded after allowing pip network access for isolated build dependencies.
+
+---
+
+## 2026-08-11 — Slice 1 application shell started
+
+**What changed:**
+
+- Added the initial FastAPI backend with `/api/health` and public `/api/config` endpoints.
+- Added SQLite schema initialization with a versioned migration table and a minimal metadata table.
+- Added the React/Vite frontend shell with backend-health status feedback and the approved neutral/forest-green foundation.
+- Added backend/frontend test and build commands plus a GitHub Actions CI workflow.
+
+**Why:**
+
+- The combined workflow is approved, so the project can now establish a verifiable local delivery path before Steam and analysis features are added.
+- Health, configuration, and migration seams provide a small vertical slice without prematurely coupling the app to Steam or an analysis provider.
+
+**New issues:**
+
+- Typed API contracts, production asset serving, and clean-install verification remain open Slice 1 tasks.
+- Dependencies have since been installed locally. Backend tests pass (3 tests), frontend tests pass (1 test), and the frontend type-check plus production build pass. The first sandboxed frontend run was blocked by esbuild path permissions; the elevated retry succeeded.
+
+These issues remain tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None for the application shell.
+
+---
+
+## 2026-08-10 — Combined workflow approved
+
+**What changed:**
+
+- Approved the combined prototype flow: Catalog → Split configuration → Timeline progress → Research report.
+- Confirmed that this direction is ready to guide implementation, while the individual prototype files remain retained for reference.
+- Confirmed that production code and shared design tokens are still deferred until the user explicitly starts implementation.
+
+**Why:**
+
+- The four approved surfaces now describe one coherent journey from game selection through report reading.
+- Separating approval from implementation preserves the user's quota and keeps the implementation gate explicit.
+
+**New issues:**
+
+- Connected-browser verification for laptop, narrow-width, keyboard, non-color, reduced-motion, and console behavior remains open.
+- Shared production design tokens remain an implementation-foundation task.
+
+Both issues remain tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None for the combined workflow. A later explicit implementation request is required before production code changes.
+
+---
+
+## 2026-08-10 — Approved prototype theme consolidated
+
+**What changed:**
+
+- Aligned the approved Split configuration surface with the Catalog, Timeline, and Research visual language.
+- Replaced Split's blue palette with the shared forest-green brand color, sage disclosure surfaces, warm-neutral page background, and matching border hierarchy.
+- Left unselected Editorial and Canvas explorations unchanged as historical alternatives.
+
+**Why:**
+
+- The approved workflow should feel like one research tool even though each surface has a different interaction model.
+- Preserving unselected variants keeps the original design exploration intact while making the approved path coherent.
+
+**New issues:**
+
+- Production implementation still needs shared design tokens rather than per-prototype CSS values.
+
+The follow-up remains covered by the production scaffolding task in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None for the approved prototype theme.
+
+---
+
+## 2026-08-10 — Combined workflow static audit completed
+
+**What changed:**
+
+- Reviewed the approved flow as Catalog → Split configuration → Timeline progress → Research report.
+- Confirmed that each surface covers its intended handoff and includes responsive and reduced-motion branches in the prototype CSS.
+- Identified shared visual-token consolidation as a production integration task because the exploratory surfaces intentionally use different palettes.
+
+**Why:**
+
+- A single workflow should preserve the approved interaction models without feeling like four unrelated products.
+- Static review can confirm the documented sequence and source-level coverage, while visual laptop/narrow and console verification still needs a connected browser.
+
+**New issues:**
+
+- Connected-browser laptop, narrow-width, keyboard, non-color, reduced-motion, and console verification remains open.
+- Prototype-specific visual tokens need consolidation during production scaffolding.
+
+Both issues remain tracked in `TASKS.md` under Slice 0 and the current implementation foundation work.
+
+**Needs human judgment:**
+
+- Approve the combined workflow after live verification.
+
+---
+
+## 2026-08-10 — Timeline durable progress approved
+
+**What changed:**
+
+- Promoted the Timeline durable-progress variant as the approved direction.
+- Defined durable progress around a stage timeline showing completed, current, and upcoming work, percentage, elapsed time, checkpoint safety, and calm recovery controls.
+- Retained the durable-progress exploration file under the project prototype-retention rule.
+
+**Why:**
+
+- A stage timeline makes long-running work legible without turning normal processing into an operations console.
+- Explicit checkpoint language supports closing and returning later while keeping cancellation and resume discoverable.
+
+**New issues:**
+
+- Connected-browser verification remains open for responsive timeline stacking, cancellation/resume state changes, keyboard behavior, and reduced motion.
+
+The new issue above remains covered by the combined-workflow verification tasks in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None for the durable-progress direction. The next gate is combined-workflow review.
+
+---
+
+## 2026-08-10 — Prototype cleanup rule corrected
+
+**What changed:**
+
+- Added a project-specific rule to retain prototype explorations after selection until production integration is complete and cleanup is explicitly approved.
+- Clarified that promotion during prototype-only work means recording the selected direction in design artifacts, not deleting the exploration file.
+
+**Why:**
+
+- The previous cleanup was applied inconsistently and removed a useful visual reference before production implementation existed.
+- Keeping explorations available supports later review, regression comparison, and implementation handoff.
+
+**New issues:**
+
+- The previously deleted `analysis-configuration.html` exploration remains unavailable and may need recreation if the original picker is still desired.
+
+This issue is recorded for user direction rather than added as an implementation task.
+
+**Needs human judgment:**
+
+- Decide later whether to recreate the retired analysis-configuration exploration.
+
+---
+
+## 2026-08-10 — Split analysis configuration approved
+
+**What changed:**
+
+- Promoted the Split analysis-configuration variant as the approved direction.
+- Defined the configuration surface as side-by-side review-scope/provider controls and a live processing-disclosure panel.
+- Retired the three-way analysis-configuration exploration after selection, per the prototype workflow.
+
+**Why:**
+
+- Keeping configuration and consequences visible together makes review volume, time, cost, and processing location easier to understand before creating a report.
+- The split layout preserves the product's research-tool character without turning setup into a long wizard.
+
+**New issues:**
+
+- Connected-browser verification remains open for the promoted direction's responsive stacking, provider disclosure changes, keyboard behavior, and non-color communication.
+
+The new issue above remains covered by the upcoming combined-workflow review tasks in `TASKS.md`.
+
+**Needs human judgment:**
+
+- The next human gate is durable progress, cancellation, retry, and resume direction selection.
+
+---
+
+## 2026-08-10 — Catalog direction explicitly approved
+
+**What changed:**
+
+- Recorded the user's final approval of the Catalog game-selection direction, including its prominent latest-report tile, report-history dialog, and `Create report` action.
+- Closed the game-selection design choice and moved the prototype frontier to analysis configuration and processing disclosure.
+
+**Why:**
+
+- The Catalog hierarchy now reflects the primary returning-user task while preserving first-time report creation.
+- Recording the approval prevents later prototype work from reopening a settled game-selection decision.
+
+**New issues:**
+
+- None beyond the existing connected-browser verification task.
+
+**Needs human judgment:**
+
+- The next human gate is analysis-configuration direction selection.
+
+---
+
+## 2026-08-10 — Latest report emphasis increased and creation CTA restored
+
+**What changed:**
+
+- Strengthened the latest-report tile with a deeper green gradient, subtle gold accent, larger type, and a larger click target.
+- Restored `Create report` as the primary button while leaving `Show all reports` secondary.
+
+**Why:**
+
+- The latest report is the most important returning-user action and needed clearer visual priority.
+- Creating a report remains a legitimate next step for both first-time and existing-game flows, so demoting it too far made the action harder to discover.
+
+**New issues:**
+
+- Connected-browser visual verification remains open for the stronger contrast, responsive tile size, and reduced-motion behavior.
+
+The new issue above remains covered by the existing game-selection verification task in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None for this visual-priority adjustment.
+
+---
+
+## 2026-08-10 — Latest report prioritized and report creation terminology settled
+
+**What changed:**
+
+- Made the entire latest-report card the prominent Catalog action, using a restrained green-tinted surface that fits the existing neutral palette.
+- Replaced the prominent analysis CTA with a quiet `Create report` action.
+- Added a lightweight report-history dialog scoped to the selected game, with whole-row report selection and Escape/outside-click dismissal.
+- Standardized `Create report` as the operation that generates a first or later immutable Report Version.
+
+**Why:**
+
+- Opening an existing report is the primary returning-user task; creating another report should remain available without competing visually.
+- A focused history dialog supports multiple Quick versions without turning the Catalog preview into a second library.
+- “Update report” implies mutation, while “Compare reports” would promise a feature that is not yet implemented.
+
+**New issues:**
+
+- Connected-browser visual verification remains open for the new card, dialog focus behavior, responsive layout, and reduced-motion state.
+
+The new issue above remains covered by the existing game-selection verification task in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None for this terminology and Catalog interaction revision.
+
+---
+
+## 2026-08-10 — Catalog selected with integrated report access
+
+**What changed:**
+
+- Selected Catalog as the game-selection foundation and integrated Library-style recent-report access into its right preview panel.
+- Replaced Catalog's empty initial prompt with three compact recent reports.
+- Kept AppID, release, status, and review availability visible after game selection.
+- Added a lightweight existing-report summary beneath those identity facts with actions to open the latest report or start a new analysis.
+- Added a direct way to return from game confirmation to recent reports while keeping the panel footprint stable.
+
+**Why:**
+
+- Catalog provides the preferred dense game-discovery workflow, while Library made previous reports substantially easier to find.
+- Existing reports are a continuation path, but they should not replace the identity information needed to prevent selection mistakes.
+- Reusing the preview panel keeps both paths available without adding another navigation surface.
+
+**New issues:**
+
+- Live connected-browser verification remains unavailable and must still cover state changes, responsive behavior, keyboard access, console output, and stable layout.
+
+The new issue above remains covered by the existing game-selection verification task in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None for the game-selection direction. The remaining prototype surfaces and combined-workflow approval retain their existing gates.
+
+---
+
+## 2026-08-10 — Project documentation lifecycle revised
+
+**What changed:**
+
+- Added `AGENTS.md` as the repository's persistent workflow authority.
+- Changed project initialization to create only an interview-based `README.md` project brief.
+- Assigned `CONTEXT.md`, `DESIGN.md`, `PLAN.md`, and `TASKS.md` to their dedicated workflows.
+- Made `DECISION_LOG.md` and `LEARNINGS.md` lazy post-baseline records rather than initial scaffolding.
+- Preserved explicit approval gates between design, planning, task generation, and implementation.
+
+**Why:**
+
+- Empty placeholder documents made it look as though downstream stages had occurred and duplicated information already captured during initial planning.
+- Decision and learning history should describe changes and discoveries relative to an established baseline, not repeat that baseline.
+- One owning workflow per artifact keeps responsibilities and stage transitions clear.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-08-10 — Game-selection prototype directions created
+
+**What changed:**
+
+- Added an isolated game-selection picker with three deliberately different directions: Catalog, Guided, and Library.
+- Made each direction support realistic name or AppID discovery, game identity fields, explicit confirmation, and operation without an official Steam catalog key.
+- Gave Catalog a dense search-and-preview workspace, Guided a progressive find-then-confirm flow, and Library an existing-report-first home with focused new-game discovery.
+- Captured the user's settled Research report preferences and decision-recording request in `LEARNINGS.md`.
+
+**Why:**
+
+- Game selection must prevent AppID mistakes without assuming that every user has configured a Steam Web API key.
+- The three directions test genuinely different answers to first-time discovery, confirmation emphasis, and returning-user report access.
+- Keeping this surface separate prevents analysis setup and provider choices from biasing the discovery decision.
+
+**New issues:**
+
+- Connected-browser interaction, console, responsive, and reduced-motion verification remains open for all three game-selection directions.
+
+The new issue above was added to `TASKS.md` under Slice 0.
+
+**Needs human judgment:**
+
+- Select, combine, or request another riff on the game-selection direction.
+
+---
+
+## 2026-08-10 — Theme details made lightweight and inline
+
+**What changed:**
+
+- Replaced the dark Canvas-style Theme drawer with a light neutral detail region that expands directly beneath the selected Research Theme.
+- Made the entire Theme row the expansion control and added a down-arrow indicator with synchronized expanded state.
+- Limited the overview to one open Theme at a time and allowed the open Theme to collapse when selected again.
+- Kept summary, support metrics, category, two representative excerpts, and complete-evidence access inside the expanded region.
+
+**Why:**
+
+- The drawer's dark color, scale, and overlay behavior gave routine Theme inspection too much visual weight.
+- Inline disclosure keeps the evidence attached to the Theme that owns it and removes an unnecessary navigation layer.
+- A single-open accordion preserves the report's compact research-tool character while keeping detailed evidence available on demand.
+
+**New issues:**
+
+- Inline expansion changes column height and nearby scroll position; responsive and live interaction verification must confirm that this remains comfortable with longer Theme lists.
+
+The new issue above is covered by the existing report-exploration responsive and interaction verification tasks in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None for the inline disclosure behavior. The remaining prototype surfaces and combined workflow retain their existing approval gates.
+
+---
+
+## 2026-08-10 — Research overview combined with Canvas-style Theme details
+
+**What changed:**
+
+- Selected the Research Desk's dense side-by-side positive and negative Theme overview as the report foundation.
+- Replaced its compact always-visible Theme inspector with a wide Canvas-style evidence drawer opened by selecting any Theme.
+- Made the drawer full-screen on narrow viewports and required it to show polarity, summary, support metrics, category, representative excerpts, and the complete-evidence action.
+- Updated all eight prototype Themes so selection changes the drawer's metrics and evidence rather than leaving unrelated placeholder content visible.
+
+**Why:**
+
+- The Research overview supports fast comparison across positive and negative findings.
+- Theme evidence needs more space and focus than the original compact inspector provided.
+- A drawer preserves the overview as context on wider screens while a full-screen presentation keeps details usable on narrow screens.
+
+**New issues:**
+
+- None beyond the existing connected-browser interaction, console, responsive, and reduced-motion verification tasks.
+
+**Needs human judgment:**
+
+- None for the report-exploration direction. The remaining prototype surfaces and combined workflow still require their existing approval gates.
+
+---
+
+## 2026-08-09 — Slice 0 report-exploration prototypes started
+
+**What changed:**
+
+- Added an isolated standalone report-exploration prototype with three deliberately different directions: Research Desk, Editorial Brief, and Evidence Canvas.
+- Included realistic synthetic Themes, Technical Themes, mixed reception, filters, evidence drill-down, report history, responsive layouts, keyboard picker controls, and reduced-motion handling.
+- Split the broad Slice 0 prototype checklist into separate single-surface explorations for report reading, game selection, analysis configuration, and durable progress.
+- Kept the prototype outside production application code and left every design-selection gate open.
+
+**Why:**
+
+- Report exploration is the highest-leverage surface because it establishes how users compare findings, inspect evidence, understand metrics, filter a report, and revisit history.
+- Exploring one high-leverage surface at a time produces more meaningful variation than attempting three complete applications in one comparison.
+- Production scaffolding remains blocked until the separate surfaces form one approved workflow.
+
+**New issues:**
+
+- The in-app browser was unavailable, so visual rendering, live interaction, console, laptop-width, and narrow-width verification remain open.
+- Game selection, analysis configuration, and durable progress still require their own prototype rounds.
+
+All new issues above were added to `TASKS.md` under Slice 0.
+
+**Needs human judgment:**
+
+- Select, combine, or request another riff on the report-exploration direction after visual review.
+
+---
+
+## 2026-08-09 — Approved plan expanded into executable tasks
+
+**What changed:**
+
+- Expanded every approved implementation slice from Slice 0 through Slice 14 into concrete, dependency-ordered actions in `TASKS.md`.
+- Added test-first behavior, contract, integration, accessibility, security, clean-install, and release verification at the slice where each capability enters the product.
+- Preserved completed requirements decisions and mapped every existing open task into its owning slice without changing plan order or product scope.
+- Added explicit human gates for prototype selection, analysis thresholds, first-provider selection, copyright ownership, source release, uninstall data retention, and packaged release.
+- Kept deferred features as blocked one-line tasks that require later design and implementation planning before execution.
+
+**Why:**
+
+- `PLAN.md` defines strategic outcomes and dependencies but was not granular enough to execute one focused, verifiable change at a time.
+- Locating tests and verification beside the behavior they introduce supports green atomic changes and makes blockers visible before implementation starts.
+- A single ordered task tracker prevents quality, privacy, security, packaging, and human approval work from becoming detached from feature delivery.
+
+**New issues:**
+
+- The expected retention or removal of application data during Windows uninstall needs human judgment before packaged-release validation.
+
+The new issue above was added to `TASKS.md` under Slice 14.
+
+**Needs human judgment:**
+
+- Select the prototype direction at Slice 0.
+- Approve the labeled evaluation baseline and provisional thresholds at Slice 4.
+- Approve the first automated cloud provider at Slice 8.
+- Confirm the MIT copyright holder and approve the source release at Slice 13.
+- Confirm uninstall data retention and approve the packaged release at Slice 14.
+
+---
+
+## 2026-08-09 — Historical evidence, filtering, export, and trust contracts clarified
+
+**What changed:**
+
+- Made Steam review history append-only through immutable Review Revisions and bound every Report Version to exact revisions.
+- Defined Theme polarity, support denominators, exact source excerpts, and Technical Themes outside the design taxonomy and headline rankings.
+- Defined Evidence Filter reranking, threshold markers, zero-support hiding, and filtered evidence behavior without new discovery.
+- Classified manual Codex as external/manual cloud processing with an explicit disclosure.
+- Limited default JSON re-import to installations containing the matching Game Dataset and Review Revisions; deferred a self-contained Portable Report Archive.
+- Corrected the credential boundary to acknowledge the dedicated local submission request while prohibiting persistence, logging, and backend disclosure.
+- Added untrusted-content, prompt-injection, sanitization, safe-link, and pipeline-wide cost-estimation requirements.
+- Defined eligible Quick/Full reviews as English reviews matching the configured review scope without recommendation balancing.
+
+**Why:**
+
+- A report cannot be immutable if a refresh can overwrite the source review text it cites.
+- Deterministic metrics and exact excerpts require explicit denominators, polarity, and evidence references.
+- Privacy and credential claims must describe the actual local-browser data path rather than promise an impossible absence from all frontend requests.
+- A default privacy-minimized JSON export cannot also be a self-contained backup without carrying the omitted source evidence.
+- User-controlled filtering should remain predictable and visibly distinct from new theme discovery.
+
+**New issues:**
+
+- Review Revision persistence and exact report membership require implementation and fixture coverage.
+- Portable cross-installation restore requires a separate privacy-warned archive format.
+- Untrusted content and embedded prompt instructions require explicit security tests.
+- Pipeline-wide cost estimates require provider-specific validation.
+
+All new issues above were added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- None. The user approved the recommended behavior.
+
+---
+
+## 2026-08-09 — Implementation plan reorganized into vertical slices
+
+**What changed:**
+
+- Replaced layer-oriented phases with 15 dependency-ordered vertical slices.
+- Set prototype approval as the current execution frontier.
+- Kept strategic outcomes, blockers, stable subsystem scope, acceptance evidence, tradeoffs, and status in `PLAN.md`.
+- Deferred concrete test-first action expansion to `create-implementation-tasks` and `TASKS.md`.
+
+**Why:**
+
+- Vertical slices deliver independently observable behavior and carry verification with the behavior they introduce.
+- Separating strategic planning from operational tasks keeps `PLAN.md` durable while allowing `TASKS.md` to evolve during implementation.
+- The prototype gate prevents production UI contracts from being built around an unvalidated visual direction.
+
+**New issues:**
+
+- None beyond the existing quality, Steam-policy, prototype, and copyright blockers already tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- Approve the prototype direction before production scaffolding.
+- Approve the eventual concrete task expansion before implementation.
+
+---
+
+## 2026-08-09 — Requirements interview consolidated into the authoritative design
+
+**What changed:**
+
+- Replaced the earlier provisional design with the resolved single-game, local-web MVP.
+- Made AI analysis provider-neutral across Ollama, OpenAI API, Anthropic Claude API, Google Gemini API, and manual Codex packages.
+- Removed mandatory embeddings, automatic model downloads, manual Theme editing, and MVP comparison work.
+- Added secure credential boundaries, explicit local/cloud disclosure, approximate paid-provider cost estimates, durable jobs, immutable Report Versions, incremental refresh, and privacy-safe exports.
+- Defined comprehensive best-effort Steam metadata snapshots, grouped feature states, regional pricing, and opt-in Steam-hosted media behavior.
+- Confirmed MIT licensing and Windows as the first packaged-release target.
+- Deferred detailed interface choices to a visual prototype guided by the approved product hierarchy.
+
+**Why:**
+
+- The earlier documents were written incrementally and retained assumptions that the completed interview later rejected.
+- A single coherent specification keeps evidence rules, provider behavior, security, lifecycle, and Steam limitations consistent before prototyping or implementation.
+- Keeping embeddings optional and models user-managed supports local distribution without imposing downloads or a central AI budget.
+
+**New issues:**
+
+- No-embedding paraphrase grouping must be evaluated across the initial providers.
+- The Steam storefront adapters need explicit reliability and retention validation.
+- The copyright holder must be confirmed before adding the MIT license text.
+
+All new issues above were added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- Review and approve a visual prototype direction.
+- Confirm the copyright holder for the MIT license file.
+
+---
+
+Newest entries at the top. Record meaningful decisions—not every small change, only choices with non-obvious reasoning.
+
+---
+
+## 2026-08-09 — Temporary evidence filters and saved cohort analyses
+
+**What changed:**
+
+- Kept evidence-filter changes as resettable, temporary view state.
+- Required intentionally run cohort analyses to be saved as separate results with visible scope.
+- Sharpened the `Cohort Analysis` glossary definition accordingly.
+
+**Why:**
+
+- Automatically saving every filter adjustment would clutter analysis history.
+- Saving cohort analyses preserves deliberately generated discoveries for later inspection and comparison.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+## 2026-08-09 — Steam recommendation filter separated from opinion sentiment
+
+**What changed:**
+
+- Added a filter for all, `Recommended`, or `Not Recommended` Steam reviews.
+- Defined `Steam Recommendation` and `Opinion Sentiment` as separate canonical terms in the domain glossary.
+
+**Why:**
+
+- Steam's recommendation is a whole-review verdict, while one review may express several positive and negative opinions.
+- Explicit labels prevent users from interpreting the filter as an AI sentiment classification.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+## 2026-08-09 — Review-date filters confirmed
+
+**What changed:**
+
+- Added review-date presets for the last 30 days, 90 days, and one year.
+- Added a custom review-date range.
+
+**Why:**
+
+- Date cohorts make changes in player feedback easier to inspect, including periods around known updates.
+
+**New issues:**
+
+- Steam review dates do not reliably identify the exact game version a reviewer played.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- None.
+
+## 2026-08-09 — Acquisition and Early Access filters confirmed
+
+**What changed:**
+
+- Added evidence filters for Steam purchase, received-for-free status, and reviews written during Early Access.
+- Kept all reviews selected by default.
+
+**Why:**
+
+- These cohorts may reveal different feedback patterns.
+- Default inclusion keeps the primary report comprehensive and avoids implying that one acquisition path is inherently more credible.
+
+**New issues:**
+
+- None beyond the existing minimum cohort-size calibration task.
+
+**Needs human judgment:**
+
+- None.
+
+## 2026-08-09 — Evidence filters separated from cohort analysis
+
+**What changed:**
+
+- Defined evidence filters as instant recalculation of metrics for already discovered themes.
+- Added optional cohort analysis to discover themes within a selected review subset.
+- Added the resolved terminology to `Docs/DOMAIN_GLOSSARY.md`.
+
+**Why:**
+
+- Recalculating known themes supports fast exploration.
+- Cohort-specific discovery can expose themes that are uncommon in the overall dataset but important within a playtime group.
+- Separate terms prevent users and contributors from mistaking a filtered view for a new analysis.
+
+**New issues:**
+
+- Cohort analyses need clear scope labels and minimum sample requirements.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- None until minimum cohort-size evidence is available.
+
+## 2026-08-09 — Playtime filter fields confirmed
+
+**What changed:**
+
+- Selected playtime at review as the default playtime-filter field.
+- Kept current total playtime available as an alternative.
+
+**Why:**
+
+- Playtime at review reflects the experience accumulated when the opinion was written.
+- Current total playtime adds context about subsequent engagement.
+
+**New issues:**
+
+- None beyond the unresolved playtime-filter analysis behavior.
+
+**Needs human judgment:**
+
+- Decide whether filters recalculate known themes or trigger cohort-specific discovery.
+
+## 2026-08-09 — All reviews included with playtime filtering
+
+**What changed:**
+
+- Included reviews from all Steam purchase sources by default.
+- Required playtime filtering to inspect differences between lower- and higher-playtime feedback.
+
+**Why:**
+
+- Default inclusion avoids silently excluding part of the available player evidence.
+- Playtime cohorts may discuss different design strengths and weaknesses even though every review retains equal weight within its selected scope.
+
+**New issues:**
+
+- It remains undecided whether playtime filtering recalculates known themes or performs cohort-specific theme discovery.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- Choose the playtime field and filtering-analysis behavior.
+
+## 2026-08-09 — Reviews receive equal weight
+
+**What changed:**
+
+- Gave every distinct review equal weight in theme-support calculations.
+- Required playtime and helpfulness to remain visible as evidence context.
+- Prohibited both fields from acting as hidden ranking or frequency multipliers.
+
+**Why:**
+
+- Frequency should represent how many players expressed an opinion, not how many helpful votes or hours a subset accumulated.
+- The metadata can still help users interpret individual excerpts and reviews.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+## 2026-08-09 — Neutral mentions excluded from opinion metrics
+
+**What changed:**
+
+- Excluded neutral and purely factual mentions from theme support, sentiment splits, and prevalence.
+
+**Why:**
+
+- Naming a mechanic does not demonstrate approval, criticism, or mixed reception.
+- Counting neutral mentions would overstate the amount of actionable player opinion.
+
+**New issues:**
+
+- Neutral-versus-opinion classification must be included in the labeled analysis evaluation.
+
+The existing human-labeled evaluation task in `TASKS.md` covers this issue.
+
+**Needs human judgment:**
+
+- None.
+
+## 2026-08-09 — Mixed reception shown with sentiment and prevalence
+
+**What changed:**
+
+- Linked opposing positive and negative themes about the same mechanic.
+- Added positive, negative, and mixed percentages among distinct reviews mentioning the mechanic.
+- Added the mechanic's percentage and count among all analyzed distinct reviews.
+- Kept the counts visible inline using the agreed compact presentation.
+
+**Why:**
+
+- Sentiment split shows whether players who discuss a mechanic tend to like it.
+- Overall prevalence prevents a strong split from appearing broadly important when few reviews mention it.
+
+**New issues:**
+
+- Opposing-theme linkage and review-level mixed classification need evaluation.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- None.
+
+## 2026-08-09 — Theme caps apply across the report
+
+**What changed:**
+
+- Confirmed up to 10 positive and 10 negative themes across all categories in a report.
+- Rejected separate top-10 quotas for every category.
+
+**Why:**
+
+- Per-category quotas would produce long reports and encourage unreliable filler themes.
+- Categories are intended for organization, filtering, and comparison rather than guaranteeing equal representation.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+## 2026-08-09 — Theme category overlap defined
+
+**What changed:**
+
+- Required exactly one primary category per theme.
+- Allowed optional related-category labels for genuine overlap.
+- Prohibited category overlap from duplicating the theme or its support count.
+
+**Why:**
+
+- A single primary category keeps report organization and comparisons unambiguous.
+- Related labels preserve nuances such as onboarding feedback that also affects perceived difficulty.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+## 2026-08-09 — Initial shared theme taxonomy confirmed
+
+**What changed:**
+
+- Confirmed the initial shared categories: gameplay and mechanics; progression and rewards; difficulty and balance; content, variety, and replayability; controls, interface, and onboarding; narrative, characters, and world; multiplayer and social experience; visuals and audio; accessibility; and monetization and value.
+- Retained `Game-specific` for unmatched design themes and the separate secondary technical category.
+
+**Why:**
+
+- The categories cover common areas of player experience while remaining broad enough for cross-game comparison.
+
+**New issues:**
+
+- How later taxonomy changes affect historical reports and comparisons remains undecided.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- None.
+
+## 2026-08-09 — Hybrid category taxonomy confirmed
+
+**What changed:**
+
+- Required a shared set of game-design categories for consistent report organization and cross-game comparison.
+- Added a `Game-specific` category for recurring themes that do not accurately fit the shared taxonomy.
+- Kept theme discovery evidence-driven before category assignment.
+
+**Why:**
+
+- A shared taxonomy makes differences between game reports easier to understand.
+- Game-specific mechanics and experiences should not be distorted merely to fit generic categories.
+
+**New issues:**
+
+- Category-assignment quality and overuse of the `Game-specific` fallback need evaluation.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- Select the initial shared category set.
+
+## 2026-08-09 — Frequent technical feedback retained as secondary evidence
+
+**What changed:**
+
+- Reserved the headline positive and negative rankings for game-design themes.
+- Kept genuinely frequent technical themes visible in a secondary report category.
+
+**Why:**
+
+- Technical feedback should not displace the transferable design evidence the user primarily wants.
+- Completely suppressing a dominant technical complaint would make the report an incomplete account of player feedback.
+
+**New issues:**
+
+- The display threshold for the secondary technical category needs calibration.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- None until threshold evidence is available.
+
+## 2026-08-09 — Reports focused on transferable game-design evidence
+
+**What changed:**
+
+- Prioritized recurring themes that can inform game-design understanding.
+- Rejected a separate low-frequency technical-risk section for crashes, save corruption, performance problems, and similar defects.
+
+**Why:**
+
+- The report's purpose is to expose evidence the user can learn from when making game-design decisions.
+- Basic stability expectations are already understood, and rare technical reports would distract from that purpose.
+
+**New issues:**
+
+- Theme classification needs a transparent, evaluated taxonomy so useful design evidence is not silently discarded.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- None until taxonomy options are proposed and evaluated.
+
+## 2026-08-09 — Standard theme count confirmed
+
+**What changed:**
+
+- Set the standard report to show up to 10 positive and 10 negative themes.
+- Ranked themes by distinct-review support and allowed fewer than 10 when reliability thresholds are not met.
+
+**Why:**
+
+- Ten themes provide useful breadth while remaining scannable.
+- Padding the report with weak clusters would make the output look more certain than the evidence supports.
+
+**New issues:**
+
+- The minimum support and cluster-coherence thresholds must be calibrated during the analysis spike.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- None until evaluation results are available.
+
+---
+
+## 2026-08-09 — Point-level sentiment confirmed
+
+**What changed:**
+
+- Required praise and criticism to be classified from individual opinion points rather than the review's overall Steam recommendation.
+- Required separate positive and negative evidence when the same aspect receives both.
+
+**Why:**
+
+- Recommended reviews often contain criticism, and not-recommended reviews can still contain praise.
+- Collapsing mixed reception into one verdict would discard useful disagreement in the source reviews.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-08-09 — Theme evidence requirements confirmed
+
+**What changed:**
+
+- Required every theme to include a specific title, short descriptive summary, distinct-review count and percentage, three to five representative excerpts, and analysis scope.
+- Required drill-down to every matched opinion point and its complete original review.
+- Limited each source review to one count per theme regardless of repeated wording.
+
+**Why:**
+
+- Users need both a fast overview and enough provenance to verify a generated theme.
+- Distinct-review counting prevents repetitive writing from inflating apparent frequency.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-08-09 — Evidence-only reports confirmed
+
+**What changed:**
+
+- Limited reports to descriptive findings and supporting evidence.
+- Excluded design recommendations, opportunity scores, and prescriptive advice from report output.
+
+**Why:**
+
+- The tool should faithfully organize what players said while leaving game-design judgment to the user.
+- Separating evidence from advice reduces unsupported inference and keeps reports auditable.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-08-09 — English-only MVP confirmed
+
+**What changed:**
+
+- Confirmed that the first usable version analyzes English reviews only.
+- Tracked automated translation and multilingual analysis as later-phase work.
+- Required future translations to preserve original text, source language, and translation provenance.
+
+**Why:**
+
+- English-only scope lets the first version validate point extraction, clustering, and summary quality without mixing translation errors into the results.
+- Preserving originals and provenance will keep later translated analysis auditable.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-08-09 — Unapproved interface draft removed
+
+**What changed:**
+
+- Removed `UI_DESIGN.md` and every reference, task, and plan item derived from it.
+- Returned the interface to an undefined state so requirements can be established collaboratively.
+
+**Why:**
+
+- The draft contained workflow and presentation assumptions that had not been agreed with the user.
+- No interface design should be treated as a project decision until its requirements are discussed and approved.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Define the interface requirements collaboratively.
+
+---
+
+## 2026-08-09 — Repository, name, and stack confirmed
+
+**What changed:**
+
+- Selected **Game Review Analyzer** as the project name.
+- Connected the local project to `https://github.com/pozbliz/game_review_analyzer.git`.
+- Confirmed React/TypeScript/Vite for the frontend and FastAPI/Python for the backend and analysis pipeline.
+- Deferred additional statistical dashboards and application-usage telemetry from the MVP.
+- Kept Steam as the only confirmed MVP review source despite the broader project name.
+
+**Why:**
+
+- The selected name makes the tool's purpose immediately understandable and leaves room for future review sources.
+- The hybrid stack balances a rich interactive interface with mature Python analysis tooling.
+- The core risk is trustworthy theme extraction and summarization, so unrelated analytics would dilute the MVP.
+
+**New issues:**
+
+- The broader name may imply support for review platforms that are currently out of scope.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- Decide later whether the product should actually expand beyond Steam.
+
+---
+
+## 2026-08-09 — Self-hosted public distribution confirmed
+
+**What changed:**
+
+- Confirmed that the project will be published in a public GitHub repository for users to run on their own machines.
+- Revised the recommended interface from Jinja/HTMX to React/TypeScript while retaining FastAPI/Python for ingestion and analysis.
+- Added a staged distribution plan: source installation, optional Docker Compose, then prebuilt releases.
+
+**Why:**
+
+- Local execution lets each user supply their own compute and avoids a central inference bill.
+- React is well suited to progress views, filtering, cluster exploration, evidence drill-down, and future comparison screens.
+- Python preserves access to mature NLP, clustering, evaluation, and data-processing tooling.
+- Building React in CI lets release users run static assets through FastAPI without installing Node.js.
+
+**New issues:**
+
+- The initial supported operating systems and open-source license need human decisions.
+- Docker GPU integration must be tested per operating system.
+- Prebuilt releases need a packaging design that hides the Python and Node.js development toolchains.
+
+All new issues above were added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- Approve the recommended hybrid stack or choose a single-language alternative.
+- Choose initial operating systems and an open-source license.
+
+---
+
+## 2026-08-09 — Initial analysis architecture proposed
+
+**What changed:**
+
+- Proposed a Python/FastAPI local web application with server-rendered Jinja/HTMX views and SQLite.
+- Separated embeddings and summary generation behind provider interfaces.
+- Defined opinion points, rather than whole reviews, as the unit of sentiment and semantic clustering.
+- Proposed quick, full, and refresh import modes with explicit coverage labels.
+- Made distinct-review support the primary theme-frequency metric.
+
+**Why:**
+
+- Python matches the user's existing experience and has strong local NLP tooling.
+- A provider boundary supports local Ollama now, manual Codex analysis when useful, and hosted inference later.
+- Whole-review embeddings mix multiple topics and recommendation-level sentiment misses praise/criticism inside mixed reviews.
+- Always downloading and analyzing every review is unnecessarily slow for exploration and can be infeasible for very popular games.
+- Counting source reviews once per theme prevents repetitive reviews from inflating frequency.
+
+**New issues:**
+
+- Exact laptop hardware is unknown because the automated Windows hardware query was denied access.
+- The proposed 5,000-review quick cap needs a topic-stability experiment.
+- Steam retention, attribution, and request-rate expectations need review before public deployment.
+- The project needs a human-labeled evaluation set before model quality can be claimed.
+- Codex exports need an explicit redaction and retention design.
+
+All new issues above were added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- Approve or revise the proposed application stack.
+- Confirm the target hardware and MVP language.
+- Define whether eventual hosting is a private demo or public multi-user service.
+
+---
+
+## 2026-08-09 — Project initialized
+
+**What changed:**
+
+- Created `README.md`, `DESIGN.md`, `PLAN.md`, `TASKS.md`, `DECISION_LOG.md`, and `LEARNINGS.md`.
+
+**Why:**
+
+- Establish the required documentation and decision workflow before implementation.
+
+**New issues:**
+
+- None beyond those recorded in the newer entry above.
+
+**Needs human judgment:**
+
+- None beyond those recorded in the newer entry above.

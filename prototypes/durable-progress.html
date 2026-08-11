@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Game Review Analyzer — Durable Progress Prototypes</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-synthesis: none; --ease-out: cubic-bezier(.16, 1, .3, 1); }
+    * { box-sizing: border-box; }
+    html { min-height: 100%; scrollbar-gutter: stable; }
+    body { min-height: 100%; margin: 0; }
+    button { font: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid #5374ed; outline-offset: 2px; }
+    [hidden] { display: none !important; }
+    .stage { min-height: 100vh; }
+    .shell { width: min(1120px, 100%); margin: auto; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 44px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 800; }
+    .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: #173c31; color: white; }
+    .eyebrow { color: #718078; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .muted { color: #718078; }
+    .job-chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid #cfd9d1; border-radius: 999px; background: rgba(255,255,255,.72); color: #526258; font-size: 10px; font-weight: 750; }
+    .job-dot { width: 7px; height: 7px; border-radius: 50%; background: #d28a43; }
+    .job-dot[data-state="paused"] { background: #a28a63; }
+    .job-dot[data-state="failed"] { background: #b95e4c; }
+    .primary { padding: 10px 14px; border: 0; border-radius: 8px; background: #1f4b3c; color: white; font-weight: 750; }
+    .secondary { padding: 9px 13px; border: 1px solid #c9d3ca; border-radius: 8px; background: white; color: #35463b; font-weight: 650; }
+    .danger { color: #92513f; }
+    .primary:active, .secondary:active { transform: scale(.97); }
+    .status-toast { position: fixed; right: 22px; top: 22px; z-index: 20; padding: 12px 14px; border: 1px solid #bfd0c2; border-radius: 10px; background: #fbfdfb; color: #26382d; box-shadow: 0 12px 34px rgba(27,43,34,.16); animation: toast-in 180ms var(--ease-out) both; font-size: 12px; }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: none; } }
+    .entrance { animation: rise-in 220ms var(--ease-out) both; }
+    @keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .progress-track { overflow: hidden; height: 8px; border-radius: 999px; background: #dfe7e0; }
+    .progress-bar { height: 100%; border-radius: inherit; background: #3f8061; transition: width 220ms var(--ease-out); }
+    .job-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    .job-title { margin: 8px 0 0; color: #203129; font-size: clamp(32px, 5vw, 54px); letter-spacing: -.055em; line-height: .98; }
+
+    /* Timeline: reassuring stage-by-stage progress */
+    .timeline { min-height: 100vh; padding: 24px 28px 110px; background: #edf2ed; color: #203129; }
+    .timeline-main { display: grid; grid-template-columns: minmax(0, .85fr) minmax(370px, 1.15fr); gap: 52px; align-items: start; margin-top: 62px; }
+    .timeline-intro { max-width: 410px; }
+    .timeline-intro p { max-width: 360px; margin: 18px 0 0; color: #718078; font-size: 14px; line-height: 1.6; }
+    .timeline-card { padding: 24px; border: 1px solid #cbd7cd; border-radius: 14px; background: #f9fbf8; }
+    .timeline-head { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 16px; }
+    .timeline-head strong { color: #315e4d; font-size: 25px; }
+    .timeline-head span { color: #718078; font-size: 10px; }
+    .stages { display: grid; gap: 0; }
+    .stage-row { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 11px; align-items: start; min-height: 58px; }
+    .stage-row:not(:last-child)::before { position: absolute; top: 22px; left: 10px; width: 1px; height: 48px; background: #d5dfd6; content: ""; }
+    .stage-marker { position: relative; z-index: 1; display: grid; place-items: center; width: 21px; height: 21px; border: 1px solid #b8c8ba; border-radius: 50%; background: #f9fbf8; color: #809086; font-size: 10px; }
+    .stage-row[data-done] .stage-marker { border-color: #5d9770; background: #5d9770; color: white; }
+    .stage-row[data-current] .stage-marker { border: 3px solid #5d9770; background: #e9f3e9; }
+    .stage-row strong { display: block; margin: 2px 0 4px; font-size: 12px; }
+    .stage-row span { color: #77847a; font-size: 10px; }
+    .stage-row em { color: #4e7c60; font-size: 10px; font-style: normal; font-weight: 750; }
+
+    /* Command center: operational control and recovery */
+    .command { min-height: 100vh; padding: 24px 28px 110px; background: #202a32; color: #eff5f0; }
+    .command .brand { color: #eff5f0; }
+    .command .brand-mark { background: #527961; }
+    .command .job-chip { border-color: #46545a; background: #29353d; color: #b8c8be; }
+    .command .eyebrow { color: #91aa99; }
+    .command .muted { color: #a0b0aa; }
+    .command-main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: stretch; }
+    .command-card { padding: 24px; border: 1px solid #425158; border-radius: 13px; background: #29353d; }
+    .command-card h1 { margin: 8px 0 10px; color: white; font-size: 27px; letter-spacing: -.04em; }
+    .command-meta { display: flex; justify-content: space-between; gap: 12px; color: #a5b8ad; font-size: 10px; }
+    .command .progress-track { background: #3a474b; }
+    .command .progress-bar { background: #8ab66d; }
+    .checkpoint-list { display: grid; gap: 9px; margin-top: 24px; }
+    .checkpoint { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 11px; border: 1px solid #3d4b51; border-radius: 8px; background: #253138; }
+    .checkpoint strong { font-size: 11px; }
+    .checkpoint span { color: #8fa49a; font-size: 10px; }
+    .checkpoint[data-active] { border-color: #759b78; background: #2c4038; }
+    .command-side { display: grid; gap: 10px; }
+    .command-stat { padding: 16px; border: 1px solid #425158; border-radius: 12px; background: #29353d; }
+    .command-stat strong { display: block; margin-top: 6px; color: white; font-size: 22px; }
+    .command-stat span { color: #91a49a; font-size: 10px; }
+    .command .secondary { border-color: #526168; background: transparent; color: #dbe7de; }
+    .command .primary { background: #709a65; color: #142219; }
+
+    /* Activity log: calm, transparent checkpoint stream */
+    .log { min-height: 100vh; padding: 28px 34px 110px; background: #f8f3ea; color: #2c2b27; }
+    .log .brand-mark { background: #725441; }
+    .log-main { max-width: 800px; margin: 66px auto 0; }
+    .log-main h1 { margin: 8px 0 12px; font-family: Georgia, serif; font-size: clamp(42px, 6vw, 70px); font-weight: 500; letter-spacing: -.06em; line-height: .94; }
+    .log-deck { max-width: 530px; color: #766e63; font-family: Georgia, serif; font-size: 16px; line-height: 1.55; }
+    .log-card { margin-top: 36px; padding: 23px 26px; border: 1px solid #ded4c7; border-radius: 14px; background: rgba(255,251,244,.8); }
+    .log-progress { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 10px; }
+    .log-progress strong { color: #80583d; font-size: 22px; }
+    .log .progress-track { background: #eadfd2; }
+    .log .progress-bar { background: #aa7753; }
+    .log-entries { display: grid; gap: 0; margin-top: 22px; }
+    .log-entry { display: grid; grid-template-columns: 82px 1fr; gap: 16px; padding: 14px 0; border-top: 1px solid #e7ddd0; }
+    .log-entry time { color: #9a8978; font-size: 10px; }
+    .log-entry strong { display: block; margin-bottom: 3px; font-family: Georgia, serif; font-size: 15px; font-weight: 500; }
+    .log-entry span { color: #82786d; font-size: 10px; }
+    .log .primary { background: #80583d; }
+    .log .secondary { border-color: #d9cdbf; background: transparent; color: #72503b; }
+
+    @media (max-width: 800px) { .timeline-main, .command-main { grid-template-columns: 1fr; } .timeline-main, .log-main { margin-top: 42px; } }
+    @media (max-width: 540px) { .timeline, .command { padding-inline: 16px; } .log { padding-inline: 18px; } .topbar { margin-bottom: 30px; } .timeline-card, .command-card, .command-stat, .log-card { padding: 19px; } }
+    @media (prefers-reduced-motion: reduce) { .entrance, .status-toast, .progress-bar { animation: none; transition: none; } }
+
+    .proto-picker { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; background: rgba(10, 10, 10, 0.82); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 8px 24px rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.12); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; line-height: 1; -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none; }
+    .proto-picker-highlight { position: absolute; top: 4px; left: 0; height: 28px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); will-change: transform; }
+    .proto-picker[data-ready] .proto-picker-highlight { transition: transform 250ms cubic-bezier(0.23, 1, 0.32, 1), width 250ms cubic-bezier(0.23, 1, 0.32, 1); }
+    @media (prefers-reduced-motion: reduce) { .proto-picker[data-ready] .proto-picker-highlight { transition: none; } }
+    .proto-picker-item { position: relative; display: flex; align-items: center; height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: rgba(255, 255, 255, 0.55); font: inherit; cursor: pointer; transition: color 150ms ease-out; }
+    .proto-picker-item:hover { color: rgba(255, 255, 255, 0.85); }
+    .proto-picker-item:active { transform: scale(0.97); }
+    .proto-picker-item:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.4); outline-offset: 2px; }
+    .proto-picker-item[data-active] { color: #fff; }
+    .proto-picker-divider { width: 1px; height: 16px; margin: 0 4px; background: rgba(255, 255, 255, 0.12); }
+    .proto-picker-replay { padding: 0 10px; font-size: 14px; }
+    .proto-picker[data-position="top"] { bottom: auto; top: 24px; }
+  </style>
+</head>
+<body>
+  <main id="stage" class="stage"></main>
+  <nav class="proto-picker" aria-label="Prototype variants">
+    <span class="proto-picker-highlight" aria-hidden="true"></span>
+    <button class="proto-picker-item" data-active aria-current="true">Timeline</button>
+    <button class="proto-picker-item">Command Center</button>
+    <button class="proto-picker-item">Activity Log</button>
+    <span class="proto-picker-divider" aria-hidden="true"></span>
+    <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+  </nav>
+  <script>
+    let jobState = 'running';
+    let progress = 62;
+    const stages = [
+      ['Fetching game metadata', 'Complete', 'done'],
+      ['Downloading reviews', '48,239 of 48,239', 'done'],
+      ['Extracting opinions', 'Complete', 'done'],
+      ['Building themes', '12 of 20 batches', 'current'],
+      ['Generating the report', 'Waiting', 'waiting']
+    ];
+
+    function jobChip() { const stateLabel = jobState === 'paused' ? 'Paused' : jobState === 'failed' ? 'Needs attention' : 'Processing'; return `<span class="job-chip"><span class="job-dot" data-state="${jobState}"></span>${stateLabel} · Hades II</span>`; }
+    function stageRows() { return stages.map((stage, index) => `<div class="stage-row"${stage[2] === 'done' ? ' data-done' : ''}${stage[2] === 'current' ? ' data-current' : ''}><span class="stage-marker">${stage[2] === 'done' ? '✓' : index + 1}</span><span><strong>${stage[0]}</strong><span>${stage[1]}</span></span><em>${stage[2] === 'done' ? 'Done' : stage[2] === 'current' ? 'Now' : 'Next'}</em></div>`).join(''); }
+    function actionButtons() { if (jobState === 'failed') return '<button class="secondary" data-action="resume">Resume from checkpoint</button><button class="primary" data-action="retry">Retry step</button>'; if (jobState === 'paused') return '<button class="primary" data-action="resume">Resume processing</button>'; if (jobState === 'running') return '<button class="secondary danger" data-action="cancel">Cancel job</button>'; return '<button class="primary" data-action="resume">Resume processing</button>'; }
+    function timelineVariant() { return `<div class="timeline"><div class="shell entrance"><header class="topbar"><div class="brand"><span class="brand-mark">G</span><span>Game Review Analyzer</span></div>${jobChip()}</header><main class="timeline-main"><section class="timeline-intro"><div class="eyebrow">Durable progress</div><h1 class="job-title">Your report is taking shape.</h1><p>Close the browser or come back later. Completed work is checkpointed locally and will resume from here.</p><div class="job-actions">${actionButtons()}</div></section><section class="timeline-card"><div class="timeline-head"><div><div class="eyebrow">Hades II · Quick report</div><strong>${progress}%</strong></div><span>Running for 8 min</span></div><div class="progress-track"><div class="progress-bar" style="width:${progress}%"></div></div><div class="stages" style="margin-top:23px">${stageRows()}</div></section></main></div><div class="status-toast" data-toast hidden></div></div>`; }
+    function commandVariant() { return `<div class="command"><div class="shell entrance"><header class="topbar"><div class="brand"><span class="brand-mark">G</span><span>Game Review Analyzer</span></div>${jobChip()}</header><main class="command-main"><section class="command-card"><div class="eyebrow">Job J-2048 · Durable run</div><h1>Building themes</h1><div class="command-meta"><span>Batch 12 of 20</span><span>${progress}% complete</span></div><div class="progress-track" style="margin-top:10px"><div class="progress-bar" style="width:${progress}%"></div></div><div class="checkpoint-list"><div class="checkpoint"><span><strong>Review import</strong><br>Checkpoint saved</span><span>48,239 reviews</span></div><div class="checkpoint" data-active><span><strong>Theme consolidation</strong><br>Checkpoint every batch</span><span>12 / 20</span></div><div class="checkpoint"><span><strong>Report assembly</strong><br>Waiting on themes</span><span>Queued</span></div></div><div class="job-actions">${actionButtons()}</div></section><aside class="command-side"><div class="command-stat"><div class="eyebrow">Elapsed</div><strong>08:14</strong><span>Last checkpoint 24 sec ago</span></div><div class="command-stat"><div class="eyebrow">Safe to close</div><strong>Yes</strong><span>Processing continues locally</span></div></aside></main></div><div class="status-toast" data-toast hidden></div></div>`; }
+    function logVariant() { return `<div class="log"><div class="shell entrance"><header class="topbar"><div class="brand"><span class="brand-mark">G</span><span>Game Review Analyzer</span></div>${jobChip()}</header><main class="log-main"><div class="eyebrow">A quiet record of the work</div><h1>We’ll keep going from here.</h1><p class="log-deck">Every completed stage is recorded. If the run stops, the next attempt picks up from the latest safe checkpoint.</p><section class="log-card"><div class="log-progress"><div><div class="eyebrow">Hades II · Quick report</div><strong>${progress}% complete</strong></div><span class="muted" style="font-size:10px">Batch 12 of 20</span></div><div class="progress-track"><div class="progress-bar" style="width:${progress}%"></div></div><div class="log-entries"><div class="log-entry"><time>08:02</time><span><strong>Review import complete</strong><span>48,239 eligible reviews checkpointed locally.</span></span></div><div class="log-entry"><time>08:06</time><span><strong>Opinion extraction complete</strong><span>1,824 opinion points validated against source reviews.</span></span></div><div class="log-entry"><time>08:14</time><span><strong>Theme building in progress</strong><span>Batch 12 is being consolidated now.</span></span></div></div><div class="job-actions">${actionButtons()}</div></section></main></div><div class="status-toast" data-toast hidden></div></div>`; }
+
+    const variants = [timelineVariant, commandVariant, logVariant];
+    const stage = document.getElementById('stage');
+    const picker = document.querySelector('.proto-picker');
+    const highlight = picker.querySelector('.proto-picker-highlight');
+    const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+    const replay = picker.querySelector('.proto-picker-replay');
+    let current = 0;
+    function moveHighlight() { const el = items[current]; highlight.style.width = el.offsetWidth + 'px'; highlight.style.transform = `translateX(${el.offsetLeft}px)`; }
+    function mount(i) { stage.innerHTML = ''; requestAnimationFrame(() => { stage.innerHTML = variants[i](); }); }
+    function setActive(i) { if (i < 0 || i >= variants.length) return; current = i; items.forEach((el, j) => { el.toggleAttribute('data-active', j === i); if (j === i) el.setAttribute('aria-current', 'true'); else el.removeAttribute('aria-current'); }); moveHighlight(); const url = new URL(location); url.searchParams.set('v', i + 1); history.replaceState(null, '', url); mount(i); }
+    function showToast(message) { const toast = document.querySelector('[data-toast]'); if (!toast) return; toast.textContent = message; toast.removeAttribute('hidden'); window.setTimeout(() => toast.setAttribute('hidden', ''), 2800); }
+    document.addEventListener('click', (event) => { const action = event.target.closest('[data-action]')?.dataset.action; if (!action) return; if (action === 'cancel') { jobState = 'paused'; showToast('Cancellation requested. The latest checkpoint is safe.'); } if (action === 'retry') { jobState = 'running'; progress = 48; showToast('Retrying from the latest safe checkpoint.'); } if (action === 'resume') { jobState = 'running'; showToast('Processing resumed.'); } mount(current); });
+    items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+    replay?.addEventListener('click', () => mount(current));
+    window.addEventListener('resize', moveHighlight);
+    document.addEventListener('keydown', (e) => { if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return; if (e.metaKey || e.ctrlKey || e.altKey) return; const num = parseInt(e.key, 10); if (num >= 1 && num <= variants.length) setActive(num - 1); else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length); else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length); else if (e.key === 'r' || e.key === 'R') mount(current); });
+    setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
+    requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+  </script>
+</body>
+</html>

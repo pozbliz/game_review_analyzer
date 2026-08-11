@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Game Review Analyzer — Game Selection Prototypes</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      --ease-out: cubic-bezier(.16, 1, .3, 1);
+    }
+    * { box-sizing: border-box; }
+    html { min-height: 100%; scrollbar-gutter: stable; }
+    body { min-height: 100%; margin: 0; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 2px solid #5374ed; outline-offset: 2px; }
+    [hidden] { display: none !important; }
+    .stage { min-height: 100vh; }
+    .eyebrow { color: #6c756f; font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+    .muted { color: #737b77; }
+    .prototype-note { display: inline-flex; align-items: center; gap: 7px; color: #717a75; font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+    .prototype-note::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #7c8781; }
+    .cover { display: grid; align-content: end; min-height: 88px; padding: 10px; border-radius: 9px; color: white; font-family: Georgia, serif; font-size: 14px; letter-spacing: .02em; }
+    .cover-hades2 { background: radial-gradient(circle at 74% 22%, #f4c467 0 5%, transparent 6%), linear-gradient(145deg, #202944 0 48%, #815238 100%); }
+    .cover-hades { background: radial-gradient(circle at 30% 20%, #f6c34d 0 4%, transparent 5%), linear-gradient(145deg, #311c2a, #a13e32); }
+    .cover-hollow { background: radial-gradient(circle at 50% 28%, #ecf4ff 0 7%, transparent 8%), linear-gradient(145deg, #17304b, #557591); }
+    .cover-dead { background: linear-gradient(145deg, #5c2530, #d16b3f 58%, #2c3442); }
+    .cover-noita { background: radial-gradient(circle at 40% 35%, #d4f4aa 0 3%, transparent 4%), linear-gradient(145deg, #233b42, #797143); }
+    .status-toast { position: fixed; right: 22px; top: 22px; z-index: 90; max-width: 360px; padding: 12px 15px; border: 1px solid #bfc9c1; border-radius: 10px; background: #fbfdfb; color: #26332c; box-shadow: 0 12px 34px rgba(27,43,34,.16); font-size: 12px; animation: toast-in 180ms var(--ease-out) both; }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: none; } }
+    .primary { padding: 10px 14px; border: 0; border-radius: 8px; background: #1f4b3c; color: white; font-weight: 700; }
+    .secondary { padding: 9px 13px; border: 1px solid #c9d1ca; border-radius: 8px; background: #fff; color: #35413b; }
+    .search-field { display: flex; align-items: center; gap: 9px; border: 1px solid #c8d0ca; border-radius: 10px; background: white; }
+    .search-field:focus-within { border-color: #668374; box-shadow: 0 0 0 3px rgba(57,95,76,.09); }
+    .search-field span { padding-left: 13px; color: #78817c; }
+    .search-field input { width: 100%; padding: 12px 13px 12px 0; border: 0; outline: 0; background: transparent; color: #23302a; }
+    .source-note { display: flex; align-items: center; gap: 8px; color: #6e7873; font-size: 11px; }
+    .source-note::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #d28a43; }
+    .entrance { animation: rise-in 220ms var(--ease-out) both; }
+    @keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    /* Catalog */
+    .catalog { min-height: 100vh; padding: 20px 24px 92px; background: #edf0eb; color: #17201d; }
+    .catalog-shell { max-width: 1420px; margin: auto; }
+    .catalog-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 800; }
+    .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: #173c31; color: white; }
+    .catalog-grid { display: grid; grid-template-columns: minmax(420px, 1.15fr) minmax(340px, .85fr); gap: 14px; align-items: start; }
+    .catalog-panel { overflow: hidden; border: 1px solid #ccd3cc; border-radius: 14px; background: #f9faf7; }
+    .catalog-head { padding: 20px; border-bottom: 1px solid #d8ddd7; }
+    .catalog-head h1 { margin: 8px 0 6px; font-size: 27px; letter-spacing: -.035em; }
+    .catalog-search-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 16px; }
+    .appid-row { display: flex; gap: 8px; margin-top: 10px; }
+    .appid-row input { min-width: 0; flex: 1; padding: 9px 11px; border: 1px solid #c9d1ca; border-radius: 8px; background: white; color: #26332c; }
+    .catalog-results { padding: 8px; }
+    .catalog-result { width: 100%; display: grid; grid-template-columns: 112px minmax(0,1fr) auto; gap: 14px; align-items: center; padding: 10px; border: 0; border-radius: 10px; background: transparent; color: inherit; text-align: left; }
+    .catalog-result:hover, .catalog-result[data-selected] { background: #edf3ee; }
+    .catalog-result h2 { margin: 0 0 5px; font-size: 14px; }
+    .result-meta { display: flex; flex-wrap: wrap; gap: 5px 12px; color: #727c77; font-size: 10px; }
+    .result-id { color: #67716c; font-size: 10px; font-variant-numeric: tabular-nums; }
+    .catalog-preview { position: sticky; top: 20px; min-height: 520px; padding: 20px; border: 1px solid #ccd3cc; border-radius: 14px; background: #f9faf7; }
+    .recent-reports { min-height: 470px; }
+    .recent-reports-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+    .recent-reports-head h2 { margin: 7px 0 0; font-size: 24px; letter-spacing: -.035em; }
+    .recent-reports-list { display: grid; gap: 7px; }
+    .recent-report { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 11px; align-items: center; width: 100%; padding: 8px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: inherit; text-align: left; }
+    .recent-report:hover { border-color: #d9dfda; background: #fff; }
+    .recent-report .cover { min-height: 58px; padding: 7px; font-size: 8px; }
+    .recent-report strong { display: block; margin-bottom: 3px; font-size: 12px; }
+    .recent-report-meta { color: #77817b; font-size: 9px; }
+    .recent-report-arrow { color: #68736d; font-size: 16px; }
+    .recent-reports-hint { margin: 18px 4px 0; color: #77817b; font-size: 11px; line-height: 1.5; }
+    .preview-cover { min-height: 170px; margin-bottom: 18px; font-size: 25px; }
+    .preview-head { display: flex; justify-content: space-between; gap: 18px; }
+    .preview-head h2 { margin: 0 0 6px; font-size: 28px; letter-spacing: -.04em; }
+    .preview-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 22px 0; }
+    .preview-fact { padding: 10px; border: 1px solid #dde2dd; border-radius: 8px; background: white; }
+    .preview-fact span { display: block; margin-bottom: 4px; color: #7a837e; font-size: 9px; text-transform: uppercase; }
+    .latest-report { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 128px; margin: -7px 0 18px; padding: 20px; border: 1px solid #315e4d; border-radius: 13px; background: radial-gradient(circle at 88% 18%, rgba(220, 183, 97, .32), transparent 24%), linear-gradient(115deg, #214e3d, #4f785f 72%, #78936f); color: white; text-align: left; box-shadow: 0 12px 28px rgba(35, 64, 47, .2); transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out), border-color 160ms ease-out; }
+    .latest-report:hover { border-color: #214e3d; box-shadow: 0 16px 34px rgba(35, 64, 47, .26); transform: translateY(-2px); }
+    .latest-report:active { transform: scale(.985); }
+    .latest-report .eyebrow { color: rgba(255, 255, 255, .72); }
+    .latest-report strong { display: block; margin: 5px 0 7px; font-size: 17px; letter-spacing: -.02em; }
+    .existing-report-meta { color: rgba(255, 255, 255, .78); font-size: 10px; }
+    .latest-report-arrow { flex: none; color: white; font-size: 25px; }
+    .preview-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+    .report-history-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: rgba(23, 32, 29, .18); }
+    .report-history { width: min(520px, 100%); max-height: min(620px, calc(100vh - 48px)); overflow: auto; padding: 20px; border: 1px solid #cbd6cd; border-radius: 14px; background: #fbfcf8; color: #17201d; box-shadow: 0 22px 60px rgba(27, 47, 34, .2); animation: history-in 180ms var(--ease-out) both; }
+    @keyframes history-in { from { opacity: 0; transform: translateY(5px) scale(.985); } to { opacity: 1; transform: none; } }
+    .report-history-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+    .report-history-head h2 { margin: 6px 0 0; font-size: 23px; letter-spacing: -.035em; }
+    .report-history-close { width: 30px; height: 30px; border: 0; border-radius: 7px; background: #edf1ec; color: #4b5a50; font-size: 18px; }
+    .report-history-list { display: grid; gap: 6px; }
+    .report-history-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; padding: 11px 10px; border: 1px solid #e0e6df; border-radius: 9px; background: white; color: inherit; text-align: left; }
+    .report-history-row:hover { border-color: #a9c1ad; background: #f5faf4; }
+    .report-history-row strong { display: block; margin-bottom: 3px; font-size: 12px; }
+    .report-history-row span { color: #727e75; font-size: 10px; }
+    .report-history-row em { flex: none; color: #315e4d; font-size: 10px; font-style: normal; font-weight: 750; }
+    @media (prefers-reduced-motion: reduce) { .latest-report, .report-history { animation: none; transition: none; } }
+
+    /* Guided */
+    .guided { min-height: 100vh; padding: 24px 24px 96px; background: #f8f4ec; color: #24231f; }
+    .guided-shell { max-width: 960px; margin: auto; }
+    .guided-nav { display: flex; justify-content: space-between; align-items: center; }
+    .stepper { display: flex; align-items: center; gap: 8px; color: #7f786c; font-size: 11px; }
+    .step-dot { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid #cfc5b7; border-radius: 50%; }
+    .step-dot[data-active] { border-color: #805b3f; background: #805b3f; color: white; }
+    .step-line { width: 34px; height: 1px; background: #d5ccbf; }
+    .guided-main { max-width: 760px; margin: 90px auto 0; }
+    .guided-main h1 { max-width: 650px; margin: 12px 0; font-family: Georgia, serif; font-size: clamp(40px, 7vw, 70px); font-weight: 500; letter-spacing: -.05em; line-height: .98; }
+    .guided-deck { max-width: 590px; margin-bottom: 28px; color: #726a60; font-family: Georgia, serif; font-size: 17px; line-height: 1.5; }
+    .guided-results { display: grid; gap: 8px; margin-top: 18px; }
+    .guided-result { width: 100%; display: grid; grid-template-columns: 92px minmax(0,1fr) auto; gap: 14px; align-items: center; padding: 10px; border: 1px solid #ddd4c7; border-radius: 11px; background: rgba(255,255,255,.55); color: inherit; text-align: left; }
+    .guided-result:hover { border-color: #aa9179; background: #fffaf1; }
+    .guided-result h2 { margin: 0 0 4px; font-family: Georgia, serif; font-size: 17px; font-weight: 500; }
+    .guided-arrow { color: #8d7f71; }
+    .guided-confirm { max-width: 760px; margin: 58px auto 0; }
+    .guided-back { margin-bottom: 24px; padding: 0; border: 0; background: transparent; color: #71675d; }
+    .guided-card { display: grid; grid-template-columns: minmax(250px,.8fr) minmax(0,1.2fr); overflow: hidden; border: 1px solid #d8cebf; border-radius: 16px; background: #fffaf1; }
+    .guided-art { display: grid; align-content: end; min-height: 430px; padding: 28px; border-radius: 0; font-size: 32px; }
+    .guided-copy { padding: 36px; }
+    .guided-copy h1 { margin: 9px 0; font-family: Georgia, serif; font-size: 42px; font-weight: 500; letter-spacing: -.045em; }
+    .identity-check { display: grid; gap: 10px; margin: 24px 0; }
+    .identity-row { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 9px; border-bottom: 1px solid #e3dace; font-size: 12px; }
+    .identity-row span:first-child { color: #82796e; }
+    .guided-actions { display: flex; gap: 8px; margin-top: 24px; }
+
+    /* Library */
+    .library { min-height: 100vh; padding: 20px 28px 96px; background: #f3f5f7; color: #20252d; }
+    .library-shell { max-width: 1280px; margin: auto; }
+    .library-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 56px; }
+    .library-nav .brand-mark { background: #25334d; }
+    .library-new { padding: 9px 13px; border: 0; border-radius: 8px; background: #344c79; color: white; font-weight: 700; }
+    .library-hero { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 20px; }
+    .library-hero h1 { margin: 8px 0 0; font-size: clamp(34px, 5vw, 54px); letter-spacing: -.05em; }
+    .library-hero p { max-width: 440px; margin: 0; color: #737b87; line-height: 1.5; }
+    .report-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .report-card { overflow: hidden; padding: 0; border: 1px solid #d4d9df; border-radius: 13px; background: white; color: inherit; text-align: left; transition: transform 160ms ease-out, box-shadow 160ms ease-out; }
+    .report-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(36,48,65,.1); }
+    .report-cover { min-height: 140px; border-radius: 0; font-size: 20px; }
+    .report-copy { padding: 16px; }
+    .report-copy h2 { margin: 0 0 5px; font-size: 17px; }
+    .report-line { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; color: #747d89; font-size: 10px; }
+    .library-all { margin-top: 34px; }
+    .library-row { display: flex; align-items: center; justify-content: space-between; padding: 13px 4px; border-top: 1px solid #d7dce1; }
+    .library-row button { border: 0; background: transparent; color: #344c79; }
+    .finder-overlay { position: fixed; inset: 0; z-index: 70; display: grid; place-items: start center; padding: 10vh 20px 90px; background: rgba(20,27,39,.48); backdrop-filter: blur(5px); }
+    .finder { width: min(720px, 100%); max-height: 78vh; overflow-y: auto; padding: 12px; border-radius: 16px; background: #fbfcfd; color: #222833; box-shadow: 0 24px 80px rgba(15,23,34,.28); animation: finder-in 190ms var(--ease-out) both; }
+    @keyframes finder-in { from { opacity: 0; transform: translateY(8px) scale(.99); } to { opacity: 1; transform: none; } }
+    .finder-head { display: flex; align-items: center; gap: 8px; }
+    .finder-head .search-field { flex: 1; }
+    .finder-close { width: 38px; height: 38px; border: 0; border-radius: 9px; background: #edf0f4; color: #4b5564; }
+    .finder-note { margin: 10px 4px; }
+    .finder-results { display: grid; gap: 5px; }
+    .finder-result { width: 100%; display: grid; grid-template-columns: 76px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 8px; border: 0; border-radius: 9px; background: transparent; color: inherit; text-align: left; }
+    .finder-result:hover { background: #edf1f6; }
+    .finder-result h2 { margin: 0 0 3px; font-size: 13px; }
+    .finder-confirm { padding: 8px; }
+    .finder-confirm-card { display: grid; grid-template-columns: 210px minmax(0,1fr); overflow: hidden; border: 1px solid #d9dee5; border-radius: 12px; }
+    .finder-confirm-art { min-height: 270px; border-radius: 0; font-size: 22px; }
+    .finder-confirm-copy { padding: 24px; }
+    .finder-confirm-copy h2 { margin: 7px 0; font-size: 29px; letter-spacing: -.04em; }
+
+    @media (max-width: 800px) {
+      .catalog { padding-inline: 14px; }
+      .catalog-grid { grid-template-columns: 1fr; }
+      .catalog-preview { position: static; min-height: 0; }
+      .catalog-result { grid-template-columns: 88px minmax(0,1fr); }
+      .result-id { display: none; }
+      .guided-main { margin-top: 60px; }
+      .guided-card { grid-template-columns: 1fr; }
+      .guided-art { min-height: 220px; }
+      .report-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 540px) {
+      .catalog-nav .prototype-note, .guided-nav .prototype-note { display: none; }
+      .catalog-search-row { grid-template-columns: 1fr; }
+      .catalog-result { grid-template-columns: 76px minmax(0,1fr); }
+      .preview-facts { grid-template-columns: 1fr; }
+      .guided { padding-inline: 16px; }
+      .guided-main { margin-top: 46px; }
+      .guided-result { grid-template-columns: 72px minmax(0,1fr); }
+      .guided-arrow { display: none; }
+      .guided-copy { padding: 24px; }
+      .library { padding-inline: 16px; }
+      .library-nav { margin-bottom: 38px; }
+      .library-hero { align-items: start; flex-direction: column; }
+      .finder-overlay { padding: 12px 12px 80px; }
+      .finder { max-height: calc(100vh - 92px); }
+      .finder-confirm-card { grid-template-columns: 1fr; }
+      .finder-confirm-art { min-height: 150px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .entrance, .status-toast, .finder, .report-card { animation: none; transition: none; }
+    }
+
+    .proto-picker {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2147483647;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(10, 10, 10, 0.82);
+      -webkit-backdrop-filter: blur(12px) saturate(1.4);
+      backdrop-filter: blur(12px) saturate(1.4);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+        0 8px 24px rgba(0, 0, 0, 0.24),
+        0 2px 6px rgba(0, 0, 0, 0.12);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      line-height: 1;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .proto-picker-highlight {
+      position: absolute;
+      top: 4px;
+      left: 0;
+      height: 28px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      will-change: transform;
+    }
+    .proto-picker[data-ready] .proto-picker-highlight {
+      transition:
+        transform 250ms cubic-bezier(0.23, 1, 0.32, 1),
+        width 250ms cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .proto-picker[data-ready] .proto-picker-highlight { transition: none; }
+    }
+    .proto-picker-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      height: 28px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.55);
+      font: inherit;
+      cursor: pointer;
+      transition: color 150ms ease-out;
+    }
+    .proto-picker-item:hover { color: rgba(255, 255, 255, 0.85); }
+    .proto-picker-item:active { transform: scale(0.97); }
+    .proto-picker-item:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.4); outline-offset: 2px; }
+    .proto-picker-item[data-active] { color: #fff; }
+    .proto-picker-divider { width: 1px; height: 16px; margin: 0 4px; background: rgba(255, 255, 255, 0.12); }
+    .proto-picker-replay { padding: 0 10px; font-size: 14px; }
+    .proto-picker[data-position="top"] { bottom: auto; top: 24px; }
+  </style>
+</head>
+<body>
+  <main id="stage" class="stage"></main>
+  <nav class="proto-picker" aria-label="Prototype variants">
+    <span class="proto-picker-highlight" aria-hidden="true"></span>
+    <button class="proto-picker-item" data-active aria-current="true">Catalog</button>
+    <button class="proto-picker-item">Guided</button>
+    <button class="proto-picker-item">Library</button>
+    <span class="proto-picker-divider" aria-hidden="true"></span>
+    <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+  </nav>
+  <script>
+    const games = {
+      hades2: { name: 'Hades II', appid: '1145350', developer: 'Supergiant Games', release: 'May 6, 2024', status: 'Early Access', cover: 'cover-hades2', reviews: '48,239 English reviews', report: { type: 'Quick report', version: 4, sample: '5,000 reviews', updated: 'Updated today' }, history: [{ type: 'Quick report', version: 4, sample: '5,000 reviews', updated: 'Updated today' }, { type: 'Quick report', version: 3, sample: '5,000 reviews', updated: 'Updated Jul 12' }, { type: 'Quick report', version: 2, sample: '5,000 reviews', updated: 'Updated Jun 18' }, { type: 'Quick report', version: 1, sample: '5,000 reviews', updated: 'Created May 20' }] },
+      hades: { name: 'Hades', appid: '1145360', developer: 'Supergiant Games', release: 'Sep 17, 2020', status: 'Released', cover: 'cover-hades', reviews: '126,814 English reviews', report: { type: 'Full report', version: 2, sample: '18,240 reviews', updated: 'Updated Jun 19' } },
+      hollow: { name: 'Hollow Knight', appid: '367520', developer: 'Team Cherry', release: 'Feb 24, 2017', status: 'Released', cover: 'cover-hollow', reviews: '318,705 English reviews', report: { type: 'Full report', version: 2, sample: '318,705 reviews', updated: 'Updated Jul 28' } },
+      deadcells: { name: 'Dead Cells', appid: '588650', developer: 'Motion Twin', release: 'Aug 6, 2018', status: 'Released', cover: 'cover-dead', reviews: '104,391 English reviews', report: { type: 'Quick report', version: 1, sample: '5,000 reviews', updated: 'Updated Jul 11' } },
+      noita: { name: 'Noita', appid: '881100', developer: 'Nolla Games', release: 'Oct 15, 2020', status: 'Released', cover: 'cover-noita', reviews: '56,172 English reviews', report: { type: 'Full report', version: 3, sample: '5,421 reviews', updated: 'Updated May 3' } }
+    };
+
+    const recentReportKeys = ['hades2', 'hollow', 'deadcells'];
+
+    function recentReports() {
+      return recentReportKeys.map((key) => {
+        const game = games[key];
+        return `<button class="recent-report" data-open-report="${game.name}"><span class="cover ${game.cover}">${game.name.toUpperCase()}</span><span><strong>${game.name}</strong><span class="recent-report-meta">${game.report.type} · Version ${game.report.version} · ${game.report.updated}</span></span><span class="recent-report-arrow">→</span></button>`;
+      }).join('');
+    }
+
+    function reportHistory(game) {
+      return game.history || (game.report ? [game.report] : []);
+    }
+
+    function reportHistoryMarkup(game) {
+      return reportHistory(game).map((report, index) => `<button class="report-history-row" data-open-report="${game.name}" data-report-version-choice="${report.version}"><span><strong>${report.type} · Version ${report.version}${index === 0 ? ' · Latest' : ''}</strong><span>${report.sample} · ${report.updated}</span></span><em>Open →</em></button>`).join('');
+    }
+
+    function gameResults(className) {
+      return Object.entries(games).map(([key, game]) => `
+        <button class="${className}" data-game="${key}" data-game-card data-search-text="${game.name.toLowerCase()} ${game.appid}">
+          <span class="cover ${game.cover}">${game.name.toUpperCase()}</span>
+          <span><span style="display:block;font-weight:750">${game.name}</span><span class="result-meta"><span>${game.developer}</span><span>${game.release}</span></span></span>
+          <span class="${className === 'guided-result' ? 'guided-arrow' : 'result-id'}">${className === 'guided-result' ? 'Continue →' : `AppID ${game.appid}`}</span>
+        </button>`).join('');
+    }
+
+    function catalogVariant() {
+      return `<div class="catalog"><div class="catalog-shell entrance">
+        <nav class="catalog-nav"><div class="brand"><span class="brand-mark">G</span><span>Game Review Analyzer</span></div><span class="prototype-note">Synthetic prototype data</span></nav>
+        <div class="catalog-grid">
+          <section class="catalog-panel">
+            <header class="catalog-head"><div class="eyebrow">Game catalog</div><h1>Select the game to analyze</h1><div class="source-note">Official catalog key not configured · public search and AppID remain available</div>
+              <div class="catalog-search-row"><label class="search-field"><span>⌕</span><input data-search placeholder="Search by game name" aria-label="Search games"></label><button class="secondary" data-direct>Use AppID</button></div>
+              <div class="appid-row" data-appid-row hidden><input data-appid-input inputmode="numeric" placeholder="Enter Steam AppID" aria-label="Steam AppID"><button class="primary" data-use-appid>Find game</button></div>
+            </header>
+            <div class="catalog-results" data-results>${gameResults('catalog-result')}</div>
+          </section>
+          <aside class="catalog-preview" data-preview><section class="recent-reports" data-recent-reports><div class="recent-reports-head"><div><div class="eyebrow">Continue your research</div><h2>Recent reports</h2></div><span class="source-note">Stored locally</span></div><div class="recent-reports-list">${recentReports()}</div><p class="recent-reports-hint">Select a catalog result to verify its identity and start another analysis.</p></section><div data-preview-content hidden>
+            <div class="cover preview-cover cover-hades2" data-preview-cover>HADES II</div><div class="preview-head"><div><div class="eyebrow">Confirm identity</div><h2 data-preview-name>Hades II</h2><span class="muted" data-preview-dev>Supergiant Games</span></div><span class="source-note">Steam metadata</span></div>
+            <div class="preview-facts"><div class="preview-fact"><span>AppID</span><strong data-preview-appid>1145350</strong></div><div class="preview-fact"><span>Release</span><strong data-preview-release>May 6, 2024</strong></div><div class="preview-fact"><span>Status</span><strong data-preview-status>Early Access</strong></div><div class="preview-fact"><span>Review availability</span><strong data-preview-reviews>48,239 English reviews</strong></div></div>
+            <button class="latest-report" data-existing-report data-open-selected-report aria-label="Open latest report"><span><span class="eyebrow">Latest report</span><strong><span data-report-type>Quick report</span> · Version <span data-report-version>4</span></strong><span class="existing-report-meta"><span data-report-sample>5,000 reviews</span> · <span data-report-updated>Updated today</span></span></span><span class="latest-report-arrow" aria-hidden="true">→</span></button>
+            <div class="preview-actions"><button class="secondary" data-show-reports>Show all reports</button><button class="primary" data-confirm>Create report</button></div>
+          </div></aside>
+          <section class="report-history-overlay" data-report-history hidden role="dialog" aria-modal="true" aria-labelledby="report-history-title"><div class="report-history"><header class="report-history-head"><div><div class="eyebrow">Report history</div><h2 id="report-history-title" data-report-history-title>Hades II</h2></div><button class="report-history-close" data-close-report-history aria-label="Close report history">×</button></header><div class="report-history-list" data-report-history-list></div></div></section>
+        </div>
+      </div><div class="status-toast" data-toast hidden></div></div>`;
+    }
+
+    function guidedVariant() {
+      return `<div class="guided"><div class="guided-shell entrance">
+        <nav class="guided-nav"><div class="brand"><span class="brand-mark">G</span><span>Game Review Analyzer</span></div><span class="prototype-note">Synthetic prototype data</span></nav>
+        <section class="guided-main" data-guided-search><div class="stepper"><span class="step-dot" data-active>1</span><span>Find</span><span class="step-line"></span><span class="step-dot">2</span><span>Confirm</span></div><div class="eyebrow" style="margin-top:34px">Start a new analysis</div><h1>Which game do you want to understand?</h1><p class="guided-deck">Search by name, or enter the exact Steam AppID. You will confirm the game's identity before any reviews are downloaded.</p>
+          <label class="search-field"><span>⌕</span><input data-search placeholder="Try “Hades II” or “1145350”" aria-label="Search games or AppID"></label><div class="source-note" style="margin-top:10px">Name matching uses best-effort public search until a catalog key is configured</div><div class="guided-results" data-results>${gameResults('guided-result')}</div>
+        </section>
+        <section class="guided-confirm" data-guided-confirm hidden><button class="guided-back" data-guided-back>← Back to results</button><div class="stepper"><span class="step-dot">1</span><span>Find</span><span class="step-line"></span><span class="step-dot" data-active>2</span><span>Confirm</span></div><article class="guided-card"><div class="cover guided-art cover-hades2" data-preview-cover>HADES II</div><div class="guided-copy"><div class="eyebrow">Confirm this is the right game</div><h1 data-preview-name>Hades II</h1><p class="muted">Review these Steam identity fields before continuing.</p><div class="identity-check"><div class="identity-row"><span>Developer</span><strong data-preview-dev>Supergiant Games</strong></div><div class="identity-row"><span>AppID</span><strong data-preview-appid>1145350</strong></div><div class="identity-row"><span>Release</span><strong data-preview-release>May 6, 2024</strong></div><div class="identity-row"><span>Status</span><strong data-preview-status>Early Access</strong></div><div class="identity-row"><span>Reviews found</span><strong data-preview-reviews>48,239 English reviews</strong></div></div><div class="guided-actions"><button class="secondary" data-guided-back>Not this game</button><button class="primary" data-confirm>Yes, continue</button></div></div></article></section>
+      </div><div class="status-toast" data-toast hidden></div></div>`;
+    }
+
+    function libraryVariant() {
+      return `<div class="library"><div class="library-shell entrance">
+        <nav class="library-nav"><div class="brand"><span class="brand-mark">G</span><span>Game Review Analyzer</span></div><button class="library-new" data-open-finder>＋ New game</button></nav>
+        <header class="library-hero"><div><span class="prototype-note">Synthetic prototype data</span><h1>Your research library</h1></div><p>Return to an existing report or begin with another Steam game. Reports remain on this machine.</p></header>
+        <section class="report-grid" aria-label="Recent reports"><button class="report-card" data-open-report="Hades II"><span class="cover report-cover cover-hades2">HADES II</span><span class="report-copy"><h2>Hades II</h2><span class="muted">Quick report · Version 4</span><span class="report-line"><span>5,000 reviews</span><span>Updated today</span></span></span></button><button class="report-card" data-open-report="Hollow Knight"><span class="cover report-cover cover-hollow">HOLLOW KNIGHT</span><span class="report-copy"><h2>Hollow Knight</h2><span class="muted">Full report · Version 2</span><span class="report-line"><span>318,705 reviews</span><span>Updated Jul 28</span></span></span></button><button class="report-card" data-open-report="Dead Cells"><span class="cover report-cover cover-dead">DEAD CELLS</span><span class="report-copy"><h2>Dead Cells</h2><span class="muted">Quick report · Version 1</span><span class="report-line"><span>5,000 reviews</span><span>Updated Jul 11</span></span></span></button></section>
+        <section class="library-all"><div class="eyebrow">Complete report library</div><div class="library-row"><span><strong>Noita</strong><br><span class="muted">Version 3 · 5,421 reviews</span></span><button data-open-report="Noita">Open report →</button></div><div class="library-row"><span><strong>Hades</strong><br><span class="muted">Version 2 · 18,240 reviews</span></span><button data-open-report="Hades">Open report →</button></div></section>
+      </div>
+      <section class="finder-overlay" data-finder hidden role="dialog" aria-modal="true" aria-label="Find a Steam game"><div class="finder"><div data-finder-search><div class="finder-head"><label class="search-field"><span>⌕</span><input data-search placeholder="Search Steam games or enter AppID" aria-label="Search Steam games"></label><button class="finder-close" data-close-finder aria-label="Close finder">×</button></div><div class="source-note finder-note">Public search · direct AppID always available</div><div class="finder-results" data-results>${gameResults('finder-result')}</div></div><div class="finder-confirm" data-finder-confirm hidden><button class="guided-back" data-finder-back>← Back to search</button><article class="finder-confirm-card"><div class="cover finder-confirm-art cover-hades2" data-preview-cover>HADES II</div><div class="finder-confirm-copy"><div class="eyebrow">Confirm identity</div><h2 data-preview-name>Hades II</h2><p class="muted" data-preview-dev>Supergiant Games</p><div class="identity-check"><div class="identity-row"><span>AppID</span><strong data-preview-appid>1145350</strong></div><div class="identity-row"><span>Release</span><strong data-preview-release>May 6, 2024</strong></div><div class="identity-row"><span>Reviews</span><strong data-preview-reviews>48,239 English reviews</strong></div></div><button class="primary" data-confirm>Confirm and continue</button></div></article></div></div></section><div class="status-toast" data-toast hidden></div></div>`;
+    }
+
+    const variants = [catalogVariant, guidedVariant, libraryVariant];
+    let selectedGame = null;
+
+    function updateGame(gameKey) {
+      const game = games[gameKey];
+      if (!game) return;
+      selectedGame = game;
+      document.querySelectorAll('[data-game]').forEach((el) => el.toggleAttribute('data-selected', el.dataset.game === gameKey));
+      document.querySelectorAll('[data-preview-name]').forEach((el) => { el.textContent = game.name; });
+      document.querySelectorAll('[data-preview-dev]').forEach((el) => { el.textContent = game.developer; });
+      document.querySelectorAll('[data-preview-appid]').forEach((el) => { el.textContent = game.appid; });
+      document.querySelectorAll('[data-preview-release]').forEach((el) => { el.textContent = game.release; });
+      document.querySelectorAll('[data-preview-status]').forEach((el) => { el.textContent = game.status; });
+      document.querySelectorAll('[data-preview-reviews]').forEach((el) => { el.textContent = game.reviews; });
+      document.querySelectorAll('[data-preview-cover]').forEach((el) => { el.className = el.className.replace(/cover-[a-z0-9]+/g, '').trim() + ` ${game.cover}`; el.textContent = game.name.toUpperCase(); });
+      document.querySelectorAll('[data-confirm]').forEach((el) => { el.textContent = el.closest('.catalog-preview') ? 'Create report' : 'Yes, continue'; });
+      document.querySelector('[data-recent-reports]')?.setAttribute('hidden', '');
+      document.querySelector('[data-preview-content]')?.removeAttribute('hidden');
+      const existingReport = document.querySelector('[data-existing-report]');
+      existingReport?.toggleAttribute('hidden', !game.report);
+      if (existingReport && game.report) {
+        existingReport.querySelector('[data-report-type]').textContent = game.report.type;
+        existingReport.querySelector('[data-report-version]').textContent = game.report.version;
+        existingReport.querySelector('[data-report-sample]').textContent = game.report.sample;
+        existingReport.querySelector('[data-report-updated]').textContent = game.report.updated;
+      }
+      const reportHistoryButton = document.querySelector('[data-show-reports]');
+      reportHistoryButton?.toggleAttribute('hidden', reportHistory(game).length < 2);
+      if (reportHistoryButton && reportHistory(game).length > 1) reportHistoryButton.textContent = `Show all reports (${reportHistory(game).length})`;
+    }
+
+    function showToast(message) {
+      const toast = document.querySelector('[data-toast]');
+      if (!toast) return;
+      toast.textContent = message;
+      toast.removeAttribute('hidden');
+      window.setTimeout(() => toast.setAttribute('hidden', ''), 2800);
+    }
+
+    document.addEventListener('input', (event) => {
+      if (!event.target.matches('[data-search]')) return;
+      const query = event.target.value.trim().toLowerCase();
+      document.querySelectorAll('[data-game-card]').forEach((card) => { card.hidden = query && !card.dataset.searchText.includes(query); });
+    });
+
+    document.addEventListener('click', (event) => {
+      const gameButton = event.target.closest('[data-game]');
+      if (gameButton) {
+        updateGame(gameButton.dataset.game);
+        if (gameButton.closest('.guided')) { document.querySelector('[data-guided-search]')?.setAttribute('hidden', ''); document.querySelector('[data-guided-confirm]')?.removeAttribute('hidden'); }
+        if (gameButton.closest('.finder')) { document.querySelector('[data-finder-search]')?.setAttribute('hidden', ''); document.querySelector('[data-finder-confirm]')?.removeAttribute('hidden'); }
+      }
+      if (event.target.closest('[data-direct]')) { const row = document.querySelector('[data-appid-row]'); row?.toggleAttribute('hidden'); row?.querySelector('input')?.focus(); }
+      if (event.target.closest('[data-use-appid]')) { const value = document.querySelector('[data-appid-input]')?.value.trim(); const match = Object.entries(games).find(([, game]) => game.appid === value); if (match) updateGame(match[0]); else showToast('No matching game found. Check the AppID and try again.'); }
+      if (event.target.closest('[data-show-reports]')) { const history = document.querySelector('[data-report-history]'); if (selectedGame && history) { history.querySelector('[data-report-history-title]').textContent = selectedGame.name; history.querySelector('[data-report-history-list]').innerHTML = reportHistoryMarkup(selectedGame); history.removeAttribute('hidden'); history.querySelector('[data-close-report-history]')?.focus(); } }
+      if (event.target.closest('[data-guided-back]')) { document.querySelector('[data-guided-confirm]')?.setAttribute('hidden', ''); document.querySelector('[data-guided-search]')?.removeAttribute('hidden'); }
+      if (event.target.closest('[data-open-finder]')) { document.querySelector('[data-finder-search]')?.removeAttribute('hidden'); document.querySelector('[data-finder-confirm]')?.setAttribute('hidden', ''); document.querySelector('[data-finder]')?.removeAttribute('hidden'); document.querySelector('[data-finder] input')?.focus(); }
+      if (event.target.closest('[data-close-finder]') || event.target.matches('[data-finder]')) document.querySelector('[data-finder]')?.setAttribute('hidden', '');
+      if (event.target.closest('[data-finder-back]')) { document.querySelector('[data-finder-confirm]')?.setAttribute('hidden', ''); document.querySelector('[data-finder-search]')?.removeAttribute('hidden'); }
+      if (event.target.closest('[data-close-report-history]') || event.target.matches('[data-report-history]')) document.querySelector('[data-report-history]')?.setAttribute('hidden', '');
+      if (event.target.closest('[data-confirm]')) showToast(`${selectedGame?.name || 'Game'} selected. Report creation is next.`);
+      if (event.target.closest('[data-open-selected-report]')) showToast(`Opening the newest ${selectedGame?.name || 'game'} report.`);
+      const report = event.target.closest('[data-open-report]');
+      if (report) { document.querySelector('[data-report-history]')?.setAttribute('hidden', ''); showToast(`Opening ${report.dataset.openReport} report${report.dataset.reportVersionChoice ? ` version ${report.dataset.reportVersionChoice}` : ''}.`); }
+    });
+
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { document.querySelector('[data-finder]')?.setAttribute('hidden', ''); document.querySelector('[data-report-history]')?.setAttribute('hidden', ''); } });
+
+    // `variants` is an array of render functions, one per variant, in picker order.
+    const stage = document.getElementById('stage');
+    const picker = document.querySelector('.proto-picker');
+    const highlight = picker.querySelector('.proto-picker-highlight');
+    const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+    const replay = picker.querySelector('.proto-picker-replay');
+    let current = 0;
+
+    function moveHighlight() {
+      const el = items[current];
+      highlight.style.width = el.offsetWidth + 'px';
+      highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+    }
+
+    function mount(i) {
+      stage.innerHTML = '';
+      // Clear first, render next frame, so entrance animations re-run.
+      requestAnimationFrame(() => { stage.innerHTML = variants[i](); });
+    }
+
+    function setActive(i) {
+      if (i < 0 || i >= variants.length) return;
+      current = i;
+      items.forEach((el, j) => {
+        el.toggleAttribute('data-active', j === i);
+        if (j === i) el.setAttribute('aria-current', 'true');
+        else el.removeAttribute('aria-current');
+      });
+      moveHighlight();
+      const url = new URL(location);
+      url.searchParams.set('v', i + 1);
+      history.replaceState(null, '', url);
+      mount(i);
+    }
+
+    items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+    replay?.addEventListener('click', () => mount(current));
+    window.addEventListener('resize', moveHighlight);
+
+    document.addEventListener('keydown', (e) => {
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const num = parseInt(e.key, 10);
+      if (num >= 1 && num <= variants.length) setActive(num - 1);
+      else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length);
+      else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length);
+      else if (e.key === 'r' || e.key === 'R') mount(current);
+    });
+
+    setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
+    // Enable the slide only after first paint, so load doesn't animate.
+    requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+  </script>
+</body>
+</html>
