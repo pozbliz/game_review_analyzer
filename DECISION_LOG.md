@@ -1,5 +1,31 @@
 # Decision Log
 
+## 2026-08-11 — Direct-AppID preview slice completed
+
+**What changed:**
+
+- Marked Slice 2 complete and advanced durable Quick review import to the next execution frontier.
+
+**Why:**
+
+- Valid, invalid, missing, malformed, and partial fixtures now prove normalization, persistence, API behavior, and the confirmation interface without optional-source failures blocking a valid preview.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+**Verification:**
+
+- Backend: 22 tests passed.
+- Frontend: 3 tests passed; strict type checking and production build passed.
+- Connected-browser automation was unavailable in this environment; the existing Slice 0 browser checks remain open.
+
+---
+
 ## 2026-08-11 — Steam capsule sources restricted
 
 **What changed:**

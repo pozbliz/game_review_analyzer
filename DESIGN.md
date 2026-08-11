@@ -2,7 +2,7 @@
 
 ## Status
 
-This document describes the approved target behavior. The initial local application shell is implemented, while product functionality remains under construction. The Catalog, Split, Timeline, and Research prototype directions are approved for implementation; production token values and live browser verification remain open.
+This document describes the approved target behavior. The local application shell and direct-AppID metadata preview are implemented, while review acquisition and report functionality remain under construction. The Catalog, Split, Timeline, and Research prototype directions are approved for implementation; live browser verification remains open.
 
 ## Purpose and scope
 

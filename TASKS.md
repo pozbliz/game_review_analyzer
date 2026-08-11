@@ -82,7 +82,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Slice 2 — Preview a game from its AppID
 
-**Blocked by:** Nothing. This is the next execution frontier.
+**Status:** Complete.
 
 - [x] Create valid, invalid, missing, malformed, and partially available Steam metadata fixtures.
 - [x] Write normalized Steam Metadata contract and explicit unknown-state tests.
@@ -90,11 +90,11 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Write persistence tests, then store the initial Game Dataset and metadata preview.
 - [x] Write API tests, then expose AppID validation and preview behavior.
 - [x] Write component tests, then build the game-confirmation interface.
-- [ ] Verify that optional metadata failures do not block a valid preview.
+- [x] Verify that optional metadata failures do not block a valid preview.
 
 ### Slice 3 — Persist a durable Quick review import
 
-**Blocked by:** Slice 2.
+**Blocked by:** Nothing. This is the next execution frontier.
 
 - [ ] Write migration and integrity tests for reviews, immutable Review Revisions, Analysis Jobs, and checkpoints.
 - [ ] Create fixtures and failing tests for pagination, cursor encoding, eligibility, pacing, bounded retries, cursor repetition, and source exhaustion.

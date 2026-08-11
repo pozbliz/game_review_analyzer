@@ -2,7 +2,7 @@
 
 ## Status
 
-The product design and this strategic plan are approved. Slice 1 is complete and Slice 2 is the next execution frontier; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
+The product design and this strategic plan are approved. Slices 1 and 2 are complete and Slice 3 is the next execution frontier; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
 
 ## Durable verification seams
 
@@ -52,7 +52,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Outcome:** Enter a Steam AppID and see enough normalized identity and basic metadata to confirm the correct game, including explicit unknown states.
 
-**Blocked by:** None; Slice 1 is complete.
+**Blocked by:** Slice 1, which is complete.
 
 **Scope:** Steam Metadata adapter, normalized metadata contract, initial Game Dataset persistence, API, and game-confirmation interface.
 
@@ -60,13 +60,13 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Name search and comprehensive storefront fields remain later slices.
 
-**Status:** Ready.
+**Status:** Complete.
 
 ## Slice 3 — Persist a durable Quick review import
 
 **Outcome:** Download and retain the latest 5,000 eligible English reviews with natural recommendation distribution, visible progress, cancellation, retry, and checkpoint resume.
 
-**Blocked by:** Slice 2.
+**Blocked by:** None; Slice 2 is complete.
 
 **Scope:** Review Ingestion, append-only Review Revision history, Game Dataset ownership, Job Runner, SQLite persistence, progress API, and setup/progress interface.
 
@@ -74,7 +74,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Reviews become locally useful before automated analysis exists.
 
-**Status:** Blocked.
+**Status:** Ready.
 
 ## Slice 4 — Produce the first immutable report through Manual Codex
 
