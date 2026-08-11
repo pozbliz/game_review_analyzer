@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Durable import schema established
+
+**What changed:**
+
+- Added schema migration 3 for Game Dataset-owned reviews, immutable Review Revisions, Analysis Jobs, and ordered checkpoints.
+- Added SQLite constraints for ownership, valid scopes/states, counters, and cancellation flags.
+
+**Why:**
+
+- Durable import correctness belongs in the database so every runner and recovery path shares the same invariants.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Direct-AppID preview slice completed
 
 **What changed:**
