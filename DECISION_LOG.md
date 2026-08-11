@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Quick setup and durable progress added to the Catalog
+
+**What changed:**
+
+- Added a configurable Quick review limit and in-place queued, running, failed, cancelled, and completed states.
+- Added polling plus cancellation and retry controls against the durable job API.
+
+**Why:**
+
+- Extending the confirmed-game panel delivers the current slice without creating a separate setup route before provider configuration exists.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Quick import API made asynchronous and recoverable
 
 **What changed:**

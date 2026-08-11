@@ -29,6 +29,20 @@ export interface SteamMetadata {
   missing_fields: MissingMetadataField[];
 }
 
+export type JobState = "queued" | "running" | "completed" | "failed" | "cancelled";
+
+export interface AnalysisJob {
+  id: string;
+  app_id: number;
+  scope: "quick";
+  state: JobState;
+  target_count: number;
+  imported_count: number;
+  cursor: string;
+  cancel_requested: boolean;
+  error_code: string | null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -43,10 +57,50 @@ function isMissingMetadataField(value: unknown): value is MissingMetadataField {
   ].includes(value);
 }
 
-async function requestJson(path: string): Promise<unknown> {
-  const response: Response = await fetch(path);
+async function requestJson(path: string, options?: RequestInit): Promise<unknown> {
+  const response: Response = options ? await fetch(path, options) : await fetch(path);
   if (!response.ok) throw new Error(`Request failed: ${path}`);
   return response.json() as Promise<unknown>;
+}
+
+function parseJob(payload: unknown): AnalysisJob {
+  if (
+    !isRecord(payload) ||
+    typeof payload.id !== "string" ||
+    typeof payload.app_id !== "number" ||
+    payload.scope !== "quick" ||
+    !["queued", "running", "completed", "failed", "cancelled"].includes(
+      String(payload.state),
+    ) ||
+    typeof payload.target_count !== "number" ||
+    typeof payload.imported_count !== "number" ||
+    typeof payload.cursor !== "string" ||
+    typeof payload.cancel_requested !== "boolean" ||
+    !(payload.error_code === null || typeof payload.error_code === "string")
+  ) {
+    throw new Error("Invalid analysis job response");
+  }
+  return payload as unknown as AnalysisJob;
+}
+
+export async function startQuickImport(appId: number, targetCount: number): Promise<AnalysisJob> {
+  return parseJob(await requestJson(`/api/games/${appId}/imports/quick`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ target_count: targetCount }),
+  }));
+}
+
+export async function getJob(jobId: string): Promise<AnalysisJob> {
+  return parseJob(await requestJson(`/api/jobs/${jobId}`));
+}
+
+export async function cancelJob(jobId: string): Promise<AnalysisJob> {
+  return parseJob(await requestJson(`/api/jobs/${jobId}/cancel`, { method: "POST" }));
+}
+
+export async function retryJob(jobId: string): Promise<AnalysisJob> {
+  return parseJob(await requestJson(`/api/jobs/${jobId}/retry`, { method: "POST" }));
 }
 
 export async function getHealth(): Promise<HealthResponse> {

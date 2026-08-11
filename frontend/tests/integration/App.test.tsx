@@ -96,4 +96,89 @@ describe("application shell", () => {
     expect(screen.getAllByText("Unknown / unavailable")).toHaveLength(3);
     expect(screen.getByRole("button", { name: "Create report" })).toBeEnabled();
   });
+
+  it("starts a Quick import and exposes durable progress and cancellation", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
+      const url = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json({ environment: "test", api_prefix: "/api" });
+      if (url.startsWith("/api/games/preview")) return json(metadata());
+      if (url === "/api/games/1145350/imports/quick") {
+        expect(options).toMatchObject({ method: "POST", body: JSON.stringify({ target_count: 5000 }) });
+        return json(job("queued", 0));
+      }
+      if (url === "/api/jobs/job-1/cancel") return json(job("cancelled", 200));
+      return json(job("running", 200));
+    });
+
+    render(<App />);
+    await previewGame();
+    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+
+    expect(await screen.findByText("200 of 5,000 reviews")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel import" }));
+    expect(await screen.findByText("Import cancelled")).toBeVisible();
+  });
+
+  it("retries a failed Quick import", async () => {
+    let progressRequests = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json({ environment: "test", api_prefix: "/api" });
+      if (url.startsWith("/api/games/preview")) return json(metadata());
+      if (url === "/api/games/1145350/imports/quick") return json(job("queued", 0));
+      if (url === "/api/jobs/job-1/retry") return json(job("queued", 0));
+      progressRequests += 1;
+      return json(progressRequests === 1 ? job("failed", 0) : job("completed", 5000));
+    });
+
+    render(<App />);
+    await previewGame();
+    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Retry import" }));
+
+    expect(await screen.findByText("Import complete")).toBeVisible();
+  });
 });
+
+async function previewGame(): Promise<void> {
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("connected"));
+  fireEvent.change(screen.getByRole("textbox", { name: /steam appid/i }), {
+    target: { value: "1145350" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /preview game/i }));
+  await screen.findByRole("heading", { name: "Hades II" });
+}
+
+function json(payload: object): Response {
+  return new Response(JSON.stringify(payload), { status: 200 });
+}
+
+function metadata(): object {
+  return {
+    app_id: 1145350,
+    title: "Hades II",
+    developers: ["Supergiant Games"],
+    capsule_image_url: null,
+    release_date: null,
+    release_status: "unknown",
+    review_count: null,
+    source_status: "partial",
+    missing_fields: ["capsule_image_url", "release_date", "release_status", "review_count"],
+  };
+}
+
+function job(state: string, importedCount: number): object {
+  return {
+    id: "job-1",
+    app_id: 1145350,
+    scope: "quick",
+    state,
+    target_count: 5000,
+    imported_count: importedCount,
+    cursor: "*",
+    cancel_requested: false,
+    error_code: state === "failed" ? "steam_unavailable" : null,
+  };
+}
