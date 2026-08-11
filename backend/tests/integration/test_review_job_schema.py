@@ -22,8 +22,7 @@ def test_review_import_schema_enforces_ownership_and_valid_states(tmp_path: Path
     database_path = tmp_path / "app.sqlite3"
     initialize_database(database_path)
 
-    assert CURRENT_SCHEMA_VERSION == 3
-    assert schema_version(database_path) == 3
+    assert schema_version(database_path) == CURRENT_SCHEMA_VERSION
 
     with connect(database_path) as connection:
         with pytest.raises(sqlite3.IntegrityError):

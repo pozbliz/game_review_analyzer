@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-08-11 — Typed immutable Report Versions persisted
+
+**What changed:**
+
+- Added frozen domain contracts for metric values and complete Report Version snapshots.
+- Added schema migration 4 with foreign-key bindings to exact Review Revisions and a repository that only inserts or loads snapshots.
+- Added transactional ownership and analysis-scope checks, plus load-time binding verification.
+- Rejected duplicate Report Version identifiers instead of replacing historical snapshots.
+
+**Why:**
+
+- Historical reports must preserve the validated analysis, calculated metrics, explicit threshold policy, calibration status, provider provenance, and exact evidence scope as one reproducible value.
+
+**New issues:**
+
+- Whole-snapshot JSON retrieval is intentionally not optimized for cross-report analytics.
+
+No task was added because cross-report analytics is outside the approved single-game MVP scope.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Deterministic Theme metrics implemented
 
 **What changed:**

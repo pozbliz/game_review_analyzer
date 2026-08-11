@@ -1,78 +1,19 @@
 """Calculate deterministic report metrics from validated Theme memberships."""
 
 from collections.abc import Iterable
-from dataclasses import dataclass
 
 from game_review_analyzer.domain.analysis import (
     OpinionPoint,
     OpinionSentiment,
     Theme,
-    ThemeCategory,
     ThemePolarity,
 )
-
-
-@dataclass(frozen=True)
-class ThemeMetricPolicy:
-    """Supply explicit thresholds and headline caps for one calculation."""
-
-    minimum_support_count: int
-    minimum_support_percentage: float
-    technical_minimum_support_count: int
-    technical_minimum_support_percentage: float
-    maximum_headlines_per_polarity: int = 10
-
-    def __post_init__(self) -> None:
-        if self.minimum_support_count < 1 or self.technical_minimum_support_count < 1:
-            raise ValueError("support counts must be positive")
-        if not 0 <= self.minimum_support_percentage <= 100:
-            raise ValueError("support percentage must be between 0 and 100")
-        if not 0 <= self.technical_minimum_support_percentage <= 100:
-            raise ValueError("technical support percentage must be between 0 and 100")
-        if self.maximum_headlines_per_polarity < 1:
-            raise ValueError("headline cap must be positive")
-
-
-@dataclass(frozen=True)
-class ThemeMetric:
-    """Expose one Theme's deterministic support and taxonomy fields."""
-
-    theme_id: str
-    polarity: ThemePolarity
-    primary_category: ThemeCategory
-    related_categories: tuple[ThemeCategory, ...]
-    technical: bool
-    support_count: int
-    support_percentage: float
-
-
-@dataclass(frozen=True)
-class MixedReceptionMetric:
-    """Describe review-level reception for one opposing Theme pair."""
-
-    positive_theme_id: str
-    negative_theme_id: str
-    liked_count: int
-    disliked_count: int
-    mixed_count: int
-    opinionated_review_count: int
-    mentioned_review_count: int
-    scope_review_count: int
-    liked_percentage: float
-    disliked_percentage: float
-    mixed_percentage: float
-    mentioned_percentage: float
-
-
-@dataclass(frozen=True)
-class ThemeMetrics:
-    """Return all metrics plus filtered report presentation groups."""
-
-    all_themes: tuple[ThemeMetric, ...]
-    positive_headlines: tuple[ThemeMetric, ...]
-    negative_headlines: tuple[ThemeMetric, ...]
-    technical_themes: tuple[ThemeMetric, ...]
-    mixed_reception: tuple[MixedReceptionMetric, ...]
+from game_review_analyzer.domain.reports import (
+    MixedReceptionMetric,
+    ThemeMetric,
+    ThemeMetricPolicy,
+    ThemeMetrics,
+)
 
 
 def calculate_theme_metrics(
