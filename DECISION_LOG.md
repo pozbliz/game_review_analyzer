@@ -1,5 +1,33 @@
 # Decision Log
 
+## 2026-08-11 — Application-shell slice completed
+
+**What changed:**
+
+- Marked Slice 1 complete and advanced Slice 2 to the next execution frontier.
+- Documented the frozen local development and production-serving workflow.
+
+**Why:**
+
+- Fresh locked installs, all suites, the production build, advisory checks, and real-server frontend/API requests now satisfy the shell delivery gates.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+**Verification:**
+
+- Backend: 5 tests passed with no warnings.
+- Frontend: 2 tests passed; strict type checking and production build passed.
+- Dependency audit: 0 frontend vulnerabilities; both lockfiles verified through frozen installs.
+- Runtime: the locked FastAPI process returned `200` for the compiled frontend and `ok` from `/api/health`.
+
+---
+
 ## 2026-08-11 — Shell API prefix made stable
 
 **What changed:**

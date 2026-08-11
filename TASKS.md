@@ -18,7 +18,7 @@
 - [x] Establish typed frontend/backend API communication and contract verification.
 - [x] Write a failing production-serving test, then serve compiled frontend assets through FastAPI.
 - [x] Add backend tests, frontend tests, type checking, production builds, and migration checks to CI.
-- [ ] Verify a clean local installation and document the development workflow.
+- [x] Verify a clean local installation and document the development workflow.
 
 Active implementation checklist derived from the approved `PLAN.md`. Tasks remain in plan-slice order. Mark decisions or editor work requiring user input with `[HUMAN]`.
 
@@ -67,7 +67,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Slice 1 — Run the local application shell
 
-**Blocked by:** Nothing. This is the current execution frontier.
+**Status:** Complete.
 
 - [x] Establish frontend/backend directories, supported runtime versions, dependency manifests, and development commands.
 - [x] Write failing backend health and configuration tests, then implement the minimal FastAPI application shell.
@@ -78,11 +78,11 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Add backend tests, frontend tests, type checking, production builds, and migration checks to CI.
 - [x] Establish reproducible dependency installation using committed lock data and frozen CI installs.
 - [x] Resolve or explicitly constrain the FastAPI/Starlette test-client deprecation warning.
-- [ ] Verify a clean local installation and document the development workflow.
+- [x] Verify a clean local installation and document the development workflow.
 
 ### Slice 2 — Preview a game from its AppID
 
-**Blocked by:** Slice 1.
+**Blocked by:** Nothing. This is the next execution frontier.
 
 - [ ] Create valid, invalid, missing, malformed, and partially available Steam metadata fixtures.
 - [ ] Write normalized Steam Metadata contract and explicit unknown-state tests.

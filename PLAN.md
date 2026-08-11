@@ -2,7 +2,7 @@
 
 ## Status
 
-The product design and this strategic plan are approved. Slice 1 application-shell implementation is in progress; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
+The product design and this strategic plan are approved. Slice 1 is complete and Slice 2 is the next execution frontier; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
 
 ## Durable verification seams
 
@@ -46,13 +46,13 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** This slice establishes the delivery path but does not yet retrieve Steam data.
 
-**Status:** In progress.
+**Status:** Complete.
 
 ## Slice 2 — Preview a game from its AppID
 
 **Outcome:** Enter a Steam AppID and see enough normalized identity and basic metadata to confirm the correct game, including explicit unknown states.
 
-**Blocked by:** Slice 1.
+**Blocked by:** None; Slice 1 is complete.
 
 **Scope:** Steam Metadata adapter, normalized metadata contract, initial Game Dataset persistence, API, and game-confirmation interface.
 
@@ -60,7 +60,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Name search and comprehensive storefront fields remain later slices.
 
-**Status:** Blocked.
+**Status:** Ready.
 
 ## Slice 3 — Persist a durable Quick review import
 
