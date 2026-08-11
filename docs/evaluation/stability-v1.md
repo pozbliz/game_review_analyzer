@@ -18,4 +18,6 @@ The user approved `gpt-5.6-luna` with medium reasoning through the local Codex C
 
 The synthetic conformance run reproduced both expected Themes with exact evidence. The first full Stardew Valley contiguous discovery output failed case-sensitive excerpt validation. A second discovery output fixed exact excerpts but omitted one representative review from its Theme support membership. A narrow third provider attempt repaired that relationship and passed strict validation with 22 Themes. Both rejected outputs remain local for audit.
 
-The remaining eight full-corpus runs have not started. A provider output is never silently repaired or scored after validation failure.
+Three independent Stardew Valley outputs are valid: contiguous produced 22 Themes, interleaved 17, and hashed 13. An earlier interleaved output was rejected from stability scoring because its workspace could see the contiguous result; subsequent runs use separate filesystem roots containing only their own input and schema.
+
+Hades II contiguous exhausted the three-attempt limit. Discovery contained two case-normalized excerpts; repair attempt two left one unchanged; the final repair fixed that excerpt but regenerated unrelated evidence and introduced a new non-exact excerpt. No Hades result was accepted, and the remaining Hades and Cyberpunk runs were stopped. A provider output is never silently repaired or scored after validation failure.

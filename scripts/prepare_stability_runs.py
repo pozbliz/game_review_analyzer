@@ -32,16 +32,13 @@ def main() -> None:
     parser.add_argument(
         "--output-directory",
         type=Path,
-        default=Path("evaluation-data/stability-v1"),
+        default=Path("evaluation-data/stability-v1-runs"),
     )
     parser.add_argument("--batch-size", type=int, default=250)
     arguments = parser.parse_args()
     corpus: dict[str, Any] = json.loads(arguments.corpus.read_text(encoding="utf-8"))
     arguments.output_directory.mkdir(parents=True, exist_ok=True)
-    schema_path: Path = arguments.output_directory / "result-schema.json"
-    schema_path.write_text(
-        json.dumps(stability_result_json_schema(), indent=2), encoding="utf-8"
-    )
+    result_schema: dict[str, Any] = stability_result_json_schema()
 
     written: int = 0
     for game in corpus["games"]:
@@ -50,6 +47,11 @@ def main() -> None:
         )
         for strategy in STRATEGIES:
             run_id: str = f"{game['case_id']}-{strategy}"
+            run_directory: Path = arguments.output_directory / run_id
+            run_directory.mkdir(parents=True, exist_ok=True)
+            (run_directory / "result-schema.json").write_text(
+                json.dumps(result_schema, indent=2), encoding="utf-8"
+            )
             batches: tuple[tuple[SteamReview, ...], ...] = (
                 partition_reviews_for_evaluation(
                     reviews,
@@ -81,12 +83,12 @@ def main() -> None:
                     for index, batch in enumerate(batches, start=1)
                 ],
             }
-            output_path: Path = arguments.output_directory / f"{run_id}-input.json"
+            output_path: Path = run_directory / "input.json"
             output_path.write_text(
                 json.dumps(run_input, ensure_ascii=False, indent=2), encoding="utf-8"
             )
             written += 1
-    print(f"Wrote {written} run inputs and {schema_path}")
+    print(f"Wrote {written} isolated run directories to {arguments.output_directory}")
 
 
 if __name__ == "__main__":

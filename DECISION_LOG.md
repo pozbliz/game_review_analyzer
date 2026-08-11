@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-08-11 — Luna stability run stopped after three evidence failures
+
+**What changed:**
+
+- Isolated each repeated stability run in a filesystem root containing only its input and schema after detecting that a run could see prior outputs.
+- Completed three valid independent Stardew Valley partitions.
+- Stopped the Hades II contiguous run after three strict-validation failures and did not start the remaining five runs.
+
+**Why:**
+
+- Repeated runs must be independent, and invalid evidence cannot be silently corrected or included in stability metrics.
+- The final full-result repair changed unrelated evidence, showing that whole-result regeneration is too broad for a one-excerpt correction.
+
+**New issues:**
+
+- Luna needs either a targeted evidence-only repair contract that cannot alter unrelated Themes or replacement by a stronger model for this experiment.
+
+The new issue above was added to `TASKS.md` as a human decision.
+
+**Needs human judgment:**
+
+- Approve the targeted repair contract or select a stronger model and rerun strategy.
+
+---
+
 ## 2026-08-11 — Luna medium selected for stability evaluation
 
 **What changed:**
