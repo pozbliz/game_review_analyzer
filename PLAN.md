@@ -144,7 +144,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Provider breadth waits until one adapter has hardened the shared seam.
 
-**Status:** Blocked.
+**Status:** Awaiting human approval of the provisional OpenAI `gpt-5.6-luna` medium recommendation. Capability, price, schema reliability, model identification, and existing project evidence are compared in `docs/evaluation/cloud-provider-selection.md`; direct API quality remains an implementation acceptance gate.
 
 ## Slice 9 — Add the remaining provider choices
 

@@ -192,7 +192,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 **Blocked by:** Slice 4 and the provider-quality approval gate.
 
-- [ ] Evaluate candidate cloud providers for quality, cost, schema reliability, model identification, and no-embedding behavior.
+- [x] Evaluate candidate cloud providers for quality, cost, schema reliability, model identification, and no-embedding behavior.
 - [ ] [HUMAN] Approve the first automated cloud provider.
 - [ ] Create a shared provider conformance suite with success, malformed-output, retry, cancellation, and no-fallback cases.
 - [ ] Write Credential Store contract tests, then implement session, environment, and operating-system-vault adapters.

@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-11 — First cloud provider evaluated
+
+**What changed:**
+
+- Compared OpenAI GPT-5.6 Luna, Google Gemini 3.5 Flash-Lite, and Anthropic Claude Haiku 4.5 using current official capability, model-versioning, structured-output, and pricing documentation.
+- Recommended OpenAI `gpt-5.6-luna` with medium reasoning as the first automated adapter, subject to explicit human approval and direct-API conformance testing.
+- Kept quality claims provisional: only Luna has project-specific evidence, and that evidence came through Codex CLI rather than the direct Responses API.
+
+**Why:**
+
+- Luna has the lowest listed standard input and output prices of the compared candidates and is the only candidate whose failure modes have already been exercised against this project's corpus.
+- Existing exact-evidence validation rejected Luna's fabricated or incomplete evidence, so provider automation can reuse the proven trust boundary without embeddings or silent fallback.
+
+**New issues:**
+
+- None beyond the existing cross-provider evaluation and production-quality calibration tasks.
+
+**Needs human judgment:**
+
+- Approve OpenAI `gpt-5.6-luna` with medium reasoning as the first automated provider, or select a different evaluated candidate.
+
+---
+
 ## 2026-08-11 — Steam discovery and regional storefront snapshots completed
 
 **What changed:**
