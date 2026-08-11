@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncIterator, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -13,6 +13,13 @@ from game_review_analyzer.application.game_preview import (
     SteamMetadataSource,
     parse_app_id,
 )
+from game_review_analyzer.application.report_exports import (
+    export_report_csv,
+    export_report_html,
+    export_report_json,
+    import_report_json,
+)
+from game_review_analyzer.domain.reports import ReportVersion
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.job_runner import JobRunner, ReviewPageSource
@@ -187,6 +194,68 @@ def create_app(
         if response is None:
             raise HTTPException(status_code=404, detail={"code": "theme_not_found"})
         return response
+
+    @app.get(f"{API_PREFIX}/reports/{{report_version_id}}/export")
+    def download_report(
+        report_version_id: str,
+        format: Literal["html", "json", "csv"],
+        include_full_review_text: bool = False,
+    ) -> Response:
+        exporters = {
+            "html": (export_report_html, "text/html", "html"),
+            "json": (export_report_json, "application/json", "json"),
+            "csv": (export_report_csv, "text/csv", "csv"),
+        }
+        exporter, media_type, extension = exporters[format]
+        try:
+            if format == "html":
+                content: str = exporter(
+                    resolved_settings.database_path, report_version_id
+                )
+            else:
+                content = exporter(
+                    resolved_settings.database_path,
+                    report_version_id,
+                    include_full_review_text=include_full_review_text,
+                )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=404, detail={"code": "report_not_found"}
+            ) from error
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="report-export.{extension}"'
+            },
+        )
+
+    @app.post(
+        f"{API_PREFIX}/reports/import",
+        response_model=ReportResponse,
+        status_code=201,
+    )
+    async def import_report(request: Request) -> ReportResponse:
+        try:
+            payload: str = (await request.body()).decode("utf-8")
+            report: ReportVersion = import_report_json(
+                resolved_settings.database_path, payload
+            )
+        except UnicodeDecodeError as error:
+            raise HTTPException(
+                status_code=422, detail={"code": "invalid_report_export"}
+            ) from error
+        except ValueError as error:
+            code: str = (
+                "invalid_report_export"
+                if str(error) == "Invalid report export"
+                else "report_import_conflict"
+            )
+            raise HTTPException(
+                status_code=422 if code == "invalid_report_export" else 409,
+                detail={"code": code, "message": str(error)},
+            ) from error
+        return build_report_response(resolved_settings.database_path, report)
 
     @app.get(f"{API_PREFIX}/jobs/{{job_id}}", response_model=AnalysisJob)
     def job_progress(job_id: str) -> AnalysisJob:

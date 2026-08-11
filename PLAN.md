@@ -116,13 +116,13 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** PDF remains deferred.
 
-**Status:** Ready for fixture-backed contract implementation.
+**Status:** Complete with versioned HTTP downloads, strict local-evidence JSON re-import, privacy-safe defaults, and content-injection coverage.
 
 ## Slice 7 — Refresh into immutable report history
 
 **Outcome:** Add new and updated reviews to an existing Game Dataset and create a new Report Version while older reports remain unchanged.
 
-**Blocked by:** Slices 3 and 4.
+**Blocked by:** None for fixture-backed implementation. Real-world analysis calibration remains an acceptance gate.
 
 **Scope:** incremental Review Ingestion, durable analysis checkpoints, relevant-corpus reanalysis, Report Repository history, and refresh/history interface.
 
@@ -130,7 +130,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Normal refresh cannot detect deleted Steam reviews; explicit reconciliation remains later.
 
-**Status:** Blocked.
+**Status:** Ready for fixture-backed implementation.
 
 ## Slice 8 — Run one automated cloud provider securely
 

@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-08-11 — Safe report export and local-evidence re-import completed
+
+**What changed:**
+
+- Added versioned JSON, relationship-preserving CSV, and escaped standalone HTML report exports through HTTP download endpoints.
+- Added strict JSON re-import that fingerprints normalized evidence and resolves every exact matching local Review Revision before appending a Report Version.
+- Kept full review text opt-in for JSON and CSV with an explicit privacy warning; default artifacts omit full text and reviewer identity.
+- Added unsafe markup, unsafe media URL, undeclared secret/identity field, and spreadsheet-formula injection coverage.
+- Allowed fixture-backed refresh implementation to proceed while real-world analysis calibration remains an acceptance gate.
+
+**Why:**
+
+- Known versioned contracts and exact local evidence matching provide useful portability without misrepresenting default JSON as a self-contained backup.
+- Standard-library JSON, CSV, HTML escaping, and URL parsing cover the approved formats without a new export dependency.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Fixture-backed report exploration completed
 
 **What changed:**

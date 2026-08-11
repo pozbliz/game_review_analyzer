@@ -169,17 +169,17 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 **Blocked by:** None for contract implementation. Slice 5 connected-browser acceptance remains open.
 
-- [ ] Define versioned single-file HTML, JSON, and CSV contracts and write failing contract tests.
-- [ ] Write missing/mismatched-evidence tests, then implement JSON re-import against matching local Game Datasets and Review Revisions.
-- [ ] Write relationship-preservation tests, then implement Theme/evidence CSV export.
-- [ ] Write rendering tests, then implement sanitized single-file HTML with explicit external-media behavior.
-- [ ] Add explicit full-review-text options with identity and privacy warnings.
-- [ ] Add secret, reviewer-identity, unsafe-markup, unsafe-link, and spreadsheet-formula injection tests.
-- [ ] Complete export and JSON re-import integration verification.
+- [x] Define versioned single-file HTML, JSON, and CSV contracts and write failing contract tests.
+- [x] Write missing/mismatched-evidence tests, then implement JSON re-import against matching local Game Datasets and Review Revisions.
+- [x] Write relationship-preservation tests, then implement Theme/evidence CSV export.
+- [x] Write rendering tests, then implement sanitized single-file HTML with explicit external-media behavior.
+- [x] Add explicit full-review-text options with identity and privacy warnings.
+- [x] Add secret, reviewer-identity, unsafe-markup, unsafe-link, and spreadsheet-formula injection tests.
+- [x] Complete export and JSON re-import integration verification.
 
 ### Slice 7 — Refresh into immutable report history
 
-**Blocked by:** Slices 3 and 4.
+**Blocked by:** None for fixture-backed implementation. Real-world analysis calibration remains an acceptance gate.
 
 - [ ] Write delta-ingestion tests for new, unchanged, and edited Steam reviews.
 - [ ] Implement append-only refresh while preserving exact historical Review Revisions.
