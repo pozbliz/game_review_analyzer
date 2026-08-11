@@ -1,5 +1,25 @@
 # Decision Log
 
+## 2026-08-11 — Steam preview unknowns made explicit
+
+**What changed:**
+
+- Added a normalized Steam Metadata contract with nullable optional values, an exact `missing_fields` set, and complete/partial source status.
+
+**Why:**
+
+- Consumers can distinguish unavailable source data from unsupported features without a wrapper type around every field.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Application-shell slice completed
 
 **What changed:**

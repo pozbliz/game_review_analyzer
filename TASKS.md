@@ -85,7 +85,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 **Blocked by:** Nothing. This is the next execution frontier.
 
 - [x] Create valid, invalid, missing, malformed, and partially available Steam metadata fixtures.
-- [ ] Write normalized Steam Metadata contract and explicit unknown-state tests.
+- [x] Write normalized Steam Metadata contract and explicit unknown-state tests.
 - [ ] Implement the replaceable Steam Metadata adapter against the tested contract.
 - [ ] Write persistence tests, then store the initial Game Dataset and metadata preview.
 - [ ] Write API tests, then expose AppID validation and preview behavior.
