@@ -1,8 +1,12 @@
 # Game Review Analyzer
 
-Game Review Analyzer is a planned local web application that turns large sets of Steam reviews into evidence-backed positive and negative game-design themes. It also captures a comprehensive Steam store snapshot so a developer can understand the game, its features, and the review evidence in one report.
+Game Review Analyzer is a local web application under active development that turns large sets of Steam reviews into evidence-backed positive and negative game-design themes. It also captures a comprehensive Steam store snapshot so a developer can understand the game, its features, and the review evidence in one report.
 
 The local application shell, keyed Steam catalog synchronization, local-first name search with a replaceable public fallback, direct-AppID preview, rich regional storefront snapshots, durable Quick and Full review imports, delta refresh, explicit reconciliation, fixture-backed report exploration, immutable history, and safe report export/re-import are complete. Imports retain append-only review revisions, survive backend or browser restarts, and expose progress, cancellation, retry, and checkpoints. Reconciliation records reviews absent from a complete scan without deleting historical evidence. Versioned analysis contracts, bounded Opinion Point extraction, privacy-minimized Manual Codex package validation, deterministic Theme metrics, and Report Version 2.0 persistence with owned metadata snapshots are available. Reports show ranked design and Technical Themes, linked mixed reception, exact scope and provenance, representative evidence, full local review context, grouped Steam facts and media, newest-first history, and refresh recovery. Versioned JSON, CSV, and standalone HTML downloads omit reviewer identity and full review text by default; JSON re-import requires every exact local evidence revision. Storage diagnostics and exact-confirmation deletion controls cover reports, inactive incomplete jobs, and complete Game Datasets. Connected-browser acceptance and real-world reliability calibration remain deferred.
+
+## Current implementation status
+
+Slices 1–7, 11, and 12 are implemented. Slice 8 is the next active slice and awaits explicit approval of OpenAI `gpt-5.6-luna` with medium reasoning as the first automated cloud provider. Slice 9 follows Slice 8; Slice 10 remains blocked by deferred cohort-size calibration. Source and packaged release work remains in Slices 13 and 14. The exact continuation checkpoint and every open action are maintained in `TASKS.md`.
 
 ## Product goals
 
@@ -33,6 +37,8 @@ Embeddings are not required in the MVP. They remain a future enhancement for sem
 
 ## Documentation
 
+- `docs/evaluation/cloud-provider-selection.md` — provisional first-provider recommendation, evidence, and current prices
+- `docs/evaluation/stability-v1.md` — deferred full-corpus stability experiment and retained restart point
 - `DESIGN.md` — authoritative product behavior and architecture
 - `docs/specifications/DOMAIN_GLOSSARY.md` — canonical domain terminology
 - `docs/specifications/ANALYSIS_EVALUATION.md` — analysis-quality corpus format and scoring rules

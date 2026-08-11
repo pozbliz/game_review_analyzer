@@ -23,6 +23,15 @@
 
 Active implementation checklist derived from the approved `PLAN.md`. Tasks remain in plan-slice order. Mark decisions or editor work requiring user input with `[HUMAN]`.
 
+### Continuation checkpoint — 2026-08-11
+
+- Last production implementation commit: `5526223 feat(steam): add catalog and storefront overview`. The provider evaluation was committed as `df4ce31 docs(provider): evaluate first cloud adapter` before this documentation checkpoint.
+- Last complete code gate: 83 backend tests passed, 16 frontend tests passed, and the frontend production build passed after Slices 11 and 12.
+- Next required action: `[HUMAN]` approve OpenAI `gpt-5.6-luna` with medium reasoning as the first automated provider. The comparison and limitations are in `docs/evaluation/cloud-provider-selection.md`.
+- After approval, implement Slice 8 tasks below in order using the existing provider-neutral request/result contracts and exact-evidence validator. Do not send credentials or review data until the user supplies and explicitly uses a provider key.
+- Then implement Slice 9. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
+- Remaining human gates are connected-browser accessibility/responsive verification, the deferred production-quality baseline, MIT copyright-holder confirmation, and source/package release approval.
+
 ## 2026-08-09
 
 ### Completed requirements and design decisions
@@ -143,7 +152,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [ ] [DEFERRED] Consolidate the validated Opinion Points through three deterministic bounded passes per game.
 - [ ] [DEFERRED] Measure whether the latest 5,000 eligible reviews produce stable headline Themes across representative games.
 - [ ] [DEFERRED] Calibrate provisional absolute support, percentage support, cluster-coherence, and Technical Theme thresholds.
-- [ ] Evaluate exact-excerpt validation and resistance to instructions embedded in review text.
+- [x] Evaluate exact-excerpt validation and resistance to instructions embedded in review text.
 - [ ] [DEFERRED] [HUMAN] Approve the evaluation baseline and provisional reliability thresholds before production-quality acceptance.
 - [x] Write failing tests for versioned Analysis Provider request and result schemas.
 - [x] Write privacy and disclosure tests, then implement privacy-minimized Manual Codex package export.
@@ -190,7 +199,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Slice 8 — Run one automated cloud provider securely
 
-**Blocked by:** Slice 4 and the provider-quality approval gate.
+**Blocked by:** Explicit human approval of the first automated provider. Deferred Slice 4 calibration limits quality claims but does not block implementation.
 
 - [x] Evaluate candidate cloud providers for quality, cost, schema reliability, model identification, and no-embedding behavior.
 - [ ] [HUMAN] Approve the first automated cloud provider.
@@ -232,6 +241,8 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 **Blocked by:** Slice 2 plus validated Steam storefront reliability and obligations.
 
+**Status:** Complete.
+
 - [x] Validate and document Steam retention, attribution, and request-rate expectations before release.
 - [x] Create fixtures for catalog search, fallback search, tags, descriptions, regional prices, features, DLC, editions, packages, and media.
 - [x] Write synchronization tests, then implement the keyed Steam Game Catalog.
@@ -244,6 +255,8 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 ### Slice 12 — Support Full import, reconciliation, and local data control
 
 **Blocked by:** Slices 3 and 7.
+
+**Status:** Complete.
 
 - [x] Write large-corpus Full import tests covering bounded pagination, checkpoints, cancellation, retry, and resume.
 - [x] Implement resumable Full review acquisition.

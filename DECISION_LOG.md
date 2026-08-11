@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-08-11 — Implementation continuation checkpoint recorded
+
+**What changed:**
+
+- Reconciled the README, plan, and task tracker with completed Slices 1–7, 11, and 12.
+- Clarified that Slice 4 implementation is complete while its production-quality calibration remains explicitly deferred.
+- Recorded the latest verification gate, exact next approval, implementation order, deferred work, and remaining human gates in `TASKS.md`.
+- Closed the exact-evidence and embedded-instruction evaluation task based on the completed synthetic conformance run and rejection tests.
+
+**Why:**
+
+- A new session can now resume from the task tracker without reconstructing state from conversation history.
+- Deferred reliability claims should not be mistaken for an implementation blocker to the first cloud adapter.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Approve OpenAI `gpt-5.6-luna` with medium reasoning as the first automated provider.
+- Complete the already tracked browser, calibration, copyright, and release gates when their slices are reached.
+
+---
+
 ## 2026-08-11 — First cloud provider evaluated
 
 **What changed:**

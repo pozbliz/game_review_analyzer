@@ -2,7 +2,7 @@
 
 ## Status
 
-The product design and this strategic plan are approved. Slices 1–3, 5–7, 11, and 12 are complete, while Slice 4 is implemented with deferred real-world calibration. Human approval and calibration gates block Slices 8–10; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
+The product design and this strategic plan are approved. Slices 1–7, 11, and 12 are implemented, while Slice 4 retains a deferred production-quality calibration gate. Human provider approval blocks Slice 8, Slice 9 depends on Slice 8, and calibration blocks Slice 10; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
 
 ## Durable verification seams
 
@@ -88,7 +88,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** The first complete analysis remains user-mediated so evidence integrity can be proven before provider automation.
 
-**Status:** In progress. Implementation continues with explicit provisional thresholds and fixture-based verification. The user postponed bulk extraction, repeated consolidation, stability scoring, and threshold calibration; real-world reliability approval remains deferred, and prepared local packages remain available for a future approved bulk-inference path.
+**Status:** Implementation complete with explicit provisional thresholds and fixture-based verification. The user postponed bulk extraction, repeated consolidation, stability scoring, and threshold calibration; production-quality acceptance remains deferred, and prepared local packages remain available for a future approved bulk-inference path.
 
 ## Slice 5 — Explore an evidence-rich report
 
@@ -136,7 +136,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Outcome:** Configure and explicitly select one evaluated cloud provider, see cloud-processing disclosure and an approximate cost, and complete a report without exposing credentials.
 
-**Blocked by:** Slice 4, provider-quality evaluation, and explicit human approval of the first automated cloud provider.
+**Blocked by:** Explicit human approval of the first automated cloud provider. Slice 4's deferred production-quality gate limits reliability claims but does not block Slice 8 implementation.
 
 **Scope:** one Analysis Provider adapter, session/environment/OS-vault Credential Store, cost estimation, provider settings, diagnostics redaction, and no-fallback behavior.
 
