@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-11 — Deterministic Theme metrics implemented
+
+**What changed:**
+
+- Derived Theme support from distinct Review Revision memberships and the complete report scope.
+- Added global positive and negative headline caps, separate Technical Theme thresholds, taxonomy retention, and deterministic ranking.
+- Derived liked, disliked, mixed, and mentioned denominators directly from opposing Theme memberships.
+- Required callers to supply all currently provisional thresholds explicitly.
+
+**Why:**
+
+- Generated counts cannot be authoritative. Keeping threshold policy outside the calculation prevents deferred calibration values from becoming hidden defaults.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Calibrate and approve threshold inputs before production-quality acceptance.
+
+---
+
 ## 2026-08-11 — Slice 4 implementation unblocked from calibration
 
 **What changed:**

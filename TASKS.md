@@ -149,7 +149,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Write privacy and disclosure tests, then implement privacy-minimized Manual Codex package export.
 - [x] Write import rejection tests for malformed, partial, mismatched, fabricated, non-matching, and prompt-injected results.
 - [x] Implement strict Manual Codex result validation against exact Review Revisions and source spans.
-- [ ] Write failing deterministic Theme Metrics tests, then implement polarity, denominators, caps, categories, Technical Themes, and mixed reception.
+- [x] Write failing deterministic Theme Metrics tests, then implement polarity, denominators, caps, categories, Technical Themes, and mixed reception.
 - [ ] Write repository tests, then implement immutable Report Versions bound to exact Review Revisions and provenance.
 - [ ] Complete a fixture-driven Codex export, import, metrics, and minimal-report scenario.
 
