@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Steam Review Revisions made append-only
+
+**What changed:**
+
+- Added duplicate-safe review ownership and content-hashed immutable revision insertion.
+- Same-timestamp content edits append a distinct revision instead of mutating prior evidence.
+
+**Why:**
+
+- A canonical JSON hash gives exact change detection with less code than comparing every review field.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Paginated Steam review adapter added
 
 **What changed:**
