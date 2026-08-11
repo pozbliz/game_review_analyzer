@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-11 — Analysis-quality gate ordering cycle identified
+
+**What changed:**
+
+- Recorded that the 5,000-review stability requirement cannot run in the current Slice 4 order.
+- Made no change to the approved gate or implementation order.
+
+**Why:**
+
+- The evaluation specification requires at least three provider runs, but the Analysis Provider schema and Manual Codex workflow are currently blocked until that evaluation baseline is approved.
+
+**New issues:**
+
+- The Slice 4 gate must permit a minimal evaluation-only provider path before stability and threshold calibration can be completed.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- Approve moving the versioned provider schema and Manual Codex export/import validation ahead of the stability experiment, or revise the experiment requirement.
+
+---
+
 ## 2026-08-11 — Pilot extraction recall established
 
 **What changed:**
