@@ -1,5 +1,25 @@
 # Decision Log
 
+## 2026-08-11 — Shell API prefix made stable
+
+**What changed:**
+
+- Removed the backend-only API-prefix environment override and made `/api` a literal backend/frontend contract.
+
+**Why:**
+
+- A compiled frontend must know the prefix before it can request configuration, so a runtime override could only make the shell unreachable.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Dependency installation frozen and warnings resolved
 
 **What changed:**

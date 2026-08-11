@@ -5,7 +5,7 @@ export interface HealthResponse {
 
 export interface PublicConfigResponse {
   environment: string;
-  api_prefix: string;
+  api_prefix: "/api";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -35,7 +35,7 @@ export async function getPublicConfig(): Promise<PublicConfigResponse> {
   if (
     !isRecord(payload) ||
     typeof payload.environment !== "string" ||
-    typeof payload.api_prefix !== "string"
+    payload.api_prefix !== "/api"
   ) {
     throw new Error("Invalid public configuration response");
   }

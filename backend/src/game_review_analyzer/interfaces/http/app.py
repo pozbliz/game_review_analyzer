@@ -10,6 +10,8 @@ from pydantic import BaseModel
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.shared.config import Settings
 
+API_PREFIX = "/api"
+
 
 class HealthResponse(BaseModel):
     """Describe the stable backend health payload returned to API clients."""
@@ -22,7 +24,7 @@ class PublicConfigResponse(BaseModel):
     """Expose non-secret runtime configuration needed by the frontend."""
 
     environment: str
-    api_prefix: str
+    api_prefix: Literal["/api"]
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -37,15 +39,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="Game Review Analyzer", lifespan=lifespan)
 
-    @app.get(f"{resolved_settings.api_prefix}/health", response_model=HealthResponse)
+    @app.get(f"{API_PREFIX}/health", response_model=HealthResponse)
     def health() -> HealthResponse:
         return HealthResponse(status="ok", service="game-review-analyzer")
 
-    @app.get(f"{resolved_settings.api_prefix}/config", response_model=PublicConfigResponse)
+    @app.get(f"{API_PREFIX}/config", response_model=PublicConfigResponse)
     def public_config() -> PublicConfigResponse:
         return PublicConfigResponse(
             environment=resolved_settings.environment,
-            api_prefix=resolved_settings.api_prefix,
+            api_prefix=API_PREFIX,
         )
 
     if resolved_settings.frontend_dist_path.is_dir():

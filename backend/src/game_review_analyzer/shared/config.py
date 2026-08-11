@@ -12,7 +12,6 @@ class Settings:
     environment: str = "development"
     database_path: Path = Path("data/game-review-analyzer.sqlite3")
     frontend_dist_path: Path = Path("../frontend/dist")
-    api_prefix: str = "/api"
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -28,5 +27,4 @@ class Settings:
                     str(cls.frontend_dist_path),
                 )
             ),
-            api_prefix=os.getenv("GAME_REVIEW_ANALYZER_API_PREFIX", cls.api_prefix),
         )
