@@ -1,5 +1,31 @@
 # Decision Log
 
+## 2026-08-11 — Full acquisition and local data lifecycle completed
+
+**What changed:**
+
+- Added resumable Full acquisition and explicit reconciliation jobs to the existing durable runner.
+- Recorded reconciliation presence and missing review identifiers without deleting Review Revisions or changing historical reports.
+- Added local storage diagnostics, database-integrity checks, and exact-confirmation deletion for Report Versions, inactive incomplete jobs, and complete Game Datasets.
+- Added UI controls for maintenance, recovery guidance, storage inspection, and destructive confirmation.
+- Retained Steam's `recent` cursor mode for complete scans because its official API documentation identifies `recent` or `updated` as the modes that eventually return an empty page; `all` is limited to a 365-day window and continually returns results.
+
+**Why:**
+
+- Reusing the durable job runner provides checkpoints, cancellation, retry, and restart recovery without a second ingestion pipeline.
+- SQLite ownership cascades and a write-locked active-job check make deletion small, explicit, and orphan-safe.
+- Historical evidence remains immutable even when Steam no longer returns a previously retained review.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Append-only refresh and immutable report history completed
 
 **What changed:**

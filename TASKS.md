@@ -245,14 +245,14 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 **Blocked by:** Slices 3 and 7.
 
-- [ ] Write large-corpus Full import tests covering bounded pagination, checkpoints, cancellation, retry, and resume.
-- [ ] Implement resumable Full review acquisition.
-- [ ] Write reconciliation tests, then implement explicit deletion detection without mutating historical evidence.
-- [ ] Write storage diagnostics tests, then expose storage use and the current application-data location.
-- [ ] Write deletion-cascade tests for Report Versions, incomplete jobs, and complete Game Datasets.
-- [ ] Build explicit destructive confirmations and recovery guidance.
-- [ ] Run database-integrity and orphan-detection verification after interruption and deletion scenarios.
-- [ ] Document data-directory relocation as unavailable until the deferred operation is designed.
+- [x] Write large-corpus Full import tests covering bounded pagination, checkpoints, cancellation, retry, and resume.
+- [x] Implement resumable Full review acquisition.
+- [x] Write reconciliation tests, then implement explicit deletion detection without mutating historical evidence.
+- [x] Write storage diagnostics tests, then expose storage use and the current application-data location.
+- [x] Write deletion-cascade tests for Report Versions, incomplete jobs, and complete Game Datasets.
+- [x] Build explicit destructive confirmations and recovery guidance.
+- [x] Run database-integrity and orphan-detection verification after interruption and deletion scenarios.
+- [x] Document data-directory relocation as unavailable until the deferred operation is designed.
 
 ### Slice 13 — Publish the source-based MVP
 

@@ -108,6 +108,36 @@ describe("report exploration", () => {
       { method: "POST" },
     );
   });
+
+  it("starts explicit Full import and reconciliation maintenance jobs", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      async (request) => {
+        const url: string = request.toString();
+        if (url.endsWith("/imports/full")) return json(jobPayload("completed", "full"));
+        if (url.endsWith("/reconciliations")) {
+          return json(jobPayload("completed", "reconciliation"));
+        }
+        return reportFetch(request);
+      },
+    );
+    render(<ReportView reportId="report-1" />);
+    await screen.findByRole("heading", { name: "Hades II" });
+
+    fireEvent.click(screen.getByText("Dataset maintenance"));
+    fireEvent.click(screen.getByRole("button", { name: "Start Full import" }));
+    expect(await screen.findByText(/Full import complete/i)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Reconcile deleted reviews" }));
+    expect(await screen.findByText(/Reconciliation complete/i)).toBeVisible();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/games/1145350/imports/full",
+      { method: "POST" },
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/games/1145350/reconciliations",
+      { method: "POST" },
+    );
+  });
 });
 
 function json(payload: object): Response {
@@ -136,11 +166,12 @@ function historyPayload(): object[] {
 
 function jobPayload(
   state: "queued" | "running" | "completed" | "failed" | "cancelled",
+  scope: "refresh" | "full" | "reconciliation" = "refresh",
 ): object {
   return {
     id: "refresh-job",
     app_id: 1145350,
-    scope: "refresh",
+    scope,
     state,
     target_count: 5000,
     imported_count: 0,

@@ -2,7 +2,7 @@
 
 ## Status
 
-The product design and this strategic plan are approved. Slices 1 and 2 are complete and Slice 3 is the next execution frontier; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
+The product design and this strategic plan are approved. Slices 1–3 and 5–7 are complete, Slice 4 is implemented with deferred real-world calibration, and Slice 12 is complete. Human approval and calibration gates block Slices 8–11; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
 
 ## Durable verification seams
 
@@ -200,7 +200,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Full-history operations remain expensive despite checkpointing and reuse.
 
-**Status:** Blocked.
+**Status:** Complete with resumable terminating-cursor acquisition, non-destructive reconciliation, storage diagnostics, integrity checks, and exact-confirmation deletion controls. Data-directory relocation remains explicitly unavailable.
 
 ## Slice 13 — Publish the source-based MVP
 

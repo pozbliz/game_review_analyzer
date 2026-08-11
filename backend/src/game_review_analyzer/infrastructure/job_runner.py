@@ -1,4 +1,4 @@
-"""Durable Quick review import state machine."""
+"""Durable review import state machine."""
 
 from collections.abc import Iterator
 from pathlib import Path
@@ -26,7 +26,7 @@ class ReviewPageSource(Protocol):
 
 
 class JobRunner:
-    """Run one durable Quick import synchronously for a background worker."""
+    """Run one durable import synchronously for a background worker."""
 
     def __init__(self, database_path: Path, source: ReviewPageSource) -> None:
         self._database_path = database_path
@@ -46,15 +46,16 @@ class JobRunner:
                 if not page.reviews:
                     finish_job(self._database_path, job_id, "completed")
                     return
+                bounded: bool = job.scope in ("quick", "refresh")
                 remaining: int = job.target_count - job.imported_count
-                selected_reviews = page.reviews[:remaining]
+                selected_reviews = page.reviews[:remaining] if bounded else page.reviews
                 job = checkpoint_page(
                     self._database_path,
                     job_id,
                     selected_reviews,
                     page.next_cursor,
                 )
-                if job.imported_count >= job.target_count:
+                if bounded and job.imported_count >= job.target_count:
                     finish_job(self._database_path, job_id, "completed")
                     return
             finish_job(self._database_path, job_id, "completed")

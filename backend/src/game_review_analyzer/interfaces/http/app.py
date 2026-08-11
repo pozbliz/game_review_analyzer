@@ -19,6 +19,15 @@ from game_review_analyzer.application.report_exports import (
     export_report_json,
     import_report_json,
 )
+from game_review_analyzer.application.storage_lifecycle import (
+    DatabaseIntegrity,
+    StorageDiagnostics,
+    delete_game_dataset,
+    delete_incomplete_job,
+    delete_report_version,
+    get_storage_diagnostics,
+    verify_database_integrity,
+)
 from game_review_analyzer.domain.reports import ReportVersion
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
@@ -30,9 +39,13 @@ from game_review_analyzer.infrastructure.persistence.game_datasets import (
 from game_review_analyzer.infrastructure.persistence.jobs import (
     AnalysisJob,
     JobNotFound,
+    ReconciliationResult,
+    create_full_job,
     create_job,
+    create_reconciliation_job,
     create_refresh_job,
     get_job,
+    load_reconciliation_result,
     recoverable_job_ids,
     request_cancellation,
     retry_job,
@@ -78,6 +91,12 @@ class QuickImportRequest(BaseModel):
     """Validate the user-selected review cap for one Quick import."""
 
     target_count: int = Field(default=5000, ge=1)
+
+
+class DeletionRequest(BaseModel):
+    """Require an explicit typed confirmation for one destructive operation."""
+
+    confirmation: str = Field(min_length=1)
 
 
 def create_app(
@@ -172,6 +191,49 @@ def create_app(
         )
         submit(job.id)
         return job
+
+    @app.post(
+        f"{API_PREFIX}/games/{{app_id}}/imports/full",
+        response_model=AnalysisJob,
+        status_code=202,
+    )
+    def start_full_import(app_id: int) -> AnalysisJob:
+        if load_game_dataset(resolved_settings.database_path, app_id) is None:
+            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
+        job: AnalysisJob = create_full_job(resolved_settings.database_path, app_id)
+        submit(job.id)
+        return job
+
+    @app.post(
+        f"{API_PREFIX}/games/{{app_id}}/reconciliations",
+        response_model=AnalysisJob,
+        status_code=202,
+    )
+    def start_reconciliation(app_id: int) -> AnalysisJob:
+        if load_game_dataset(resolved_settings.database_path, app_id) is None:
+            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
+        try:
+            job: AnalysisJob = create_reconciliation_job(
+                resolved_settings.database_path, app_id
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "reconciliation_requires_reviews"}
+            ) from error
+        submit(job.id)
+        return job
+
+    @app.get(
+        f"{API_PREFIX}/reconciliations/{{job_id}}",
+        response_model=ReconciliationResult,
+    )
+    def reconciliation_result(job_id: str) -> ReconciliationResult:
+        try:
+            return load_reconciliation_result(resolved_settings.database_path, job_id)
+        except ValueError as error:
+            raise HTTPException(
+                status_code=404, detail={"code": "reconciliation_not_found"}
+            ) from error
 
     @app.post(
         f"{API_PREFIX}/games/{{app_id}}/refreshes",
@@ -287,6 +349,55 @@ def create_app(
                 detail={"code": code, "message": str(error)},
             ) from error
         return build_report_response(resolved_settings.database_path, report)
+
+    @app.get(f"{API_PREFIX}/storage", response_model=StorageDiagnostics)
+    def storage_diagnostics() -> StorageDiagnostics:
+        return get_storage_diagnostics(resolved_settings.database_path)
+
+    @app.get(f"{API_PREFIX}/storage/integrity", response_model=DatabaseIntegrity)
+    def storage_integrity() -> DatabaseIntegrity:
+        return verify_database_integrity(resolved_settings.database_path)
+
+    @app.post(
+        f"{API_PREFIX}/reports/{{report_version_id}}/delete",
+        status_code=204,
+    )
+    def delete_report(report_version_id: str, request: DeletionRequest) -> Response:
+        try:
+            delete_report_version(
+                resolved_settings.database_path,
+                report_version_id,
+                request.confirmation,
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "deletion_rejected", "message": str(error)}
+            ) from error
+        return Response(status_code=204)
+
+    @app.post(f"{API_PREFIX}/jobs/{{job_id}}/delete", status_code=204)
+    def delete_job(job_id: str, request: DeletionRequest) -> Response:
+        try:
+            delete_incomplete_job(
+                resolved_settings.database_path, job_id, request.confirmation
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "deletion_rejected", "message": str(error)}
+            ) from error
+        return Response(status_code=204)
+
+    @app.post(f"{API_PREFIX}/games/{{app_id}}/delete", status_code=204)
+    def delete_game(app_id: int, request: DeletionRequest) -> Response:
+        try:
+            delete_game_dataset(
+                resolved_settings.database_path, app_id, request.confirmation
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "deletion_rejected", "message": str(error)}
+            ) from error
+        return Response(status_code=204)
 
     @app.get(f"{API_PREFIX}/jobs/{{job_id}}", response_model=AnalysisJob)
     def job_progress(job_id: str) -> AnalysisJob:

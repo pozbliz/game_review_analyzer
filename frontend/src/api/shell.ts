@@ -34,7 +34,7 @@ export type JobState = "queued" | "running" | "completed" | "failed" | "cancelle
 export interface AnalysisJob {
   id: string;
   app_id: number;
-  scope: "quick" | "refresh";
+  scope: "quick" | "full" | "refresh" | "reconciliation";
   state: JobState;
   target_count: number;
   imported_count: number;
@@ -68,7 +68,7 @@ function parseJob(payload: unknown): AnalysisJob {
     !isRecord(payload) ||
     typeof payload.id !== "string" ||
     typeof payload.app_id !== "number" ||
-    !(payload.scope === "quick" || payload.scope === "refresh") ||
+    !["quick", "full", "refresh", "reconciliation"].includes(String(payload.scope)) ||
     !["queued", "running", "completed", "failed", "cancelled"].includes(
       String(payload.state),
     ) ||
@@ -97,6 +97,14 @@ export async function startRefresh(appId: number, targetCount: number): Promise<
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ target_count: targetCount }),
   }));
+}
+
+export async function startFullImport(appId: number): Promise<AnalysisJob> {
+  return parseJob(await requestJson(`/api/games/${appId}/imports/full`, { method: "POST" }));
+}
+
+export async function startReconciliation(appId: number): Promise<AnalysisJob> {
+  return parseJob(await requestJson(`/api/games/${appId}/reconciliations`, { method: "POST" }));
 }
 
 export async function getJob(jobId: string): Promise<AnalysisJob> {

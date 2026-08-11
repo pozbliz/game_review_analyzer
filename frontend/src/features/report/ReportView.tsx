@@ -14,8 +14,11 @@ import {
   cancelJob,
   getJob,
   retryJob,
+  startFullImport,
+  startReconciliation,
   startRefresh,
 } from "../../api/shell";
+import StorageControls from "../storage/StorageControls";
 
 interface ReportViewProps {
   reportId: string;
@@ -117,6 +120,29 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
       .catch(() => setRefreshError("Unable to cancel refresh."));
   }
 
+  function beginFullImport(): void {
+    setRefreshError("");
+    startFullImport(appId)
+      .then(setRefreshJob)
+      .catch(() => setRefreshError("Unable to start Full import."));
+  }
+
+  function beginReconciliation(): void {
+    setRefreshError("");
+    startReconciliation(appId)
+      .then(setRefreshJob)
+      .catch(() => setRefreshError("Unable to start reconciliation."));
+  }
+
+  const activeJob: boolean = Boolean(
+    refreshJob && ["queued", "running"].includes(refreshJob.state),
+  );
+  const jobLabel: string = refreshJob?.scope === "full"
+    ? "Full import"
+    : refreshJob?.scope === "reconciliation"
+      ? "Reconciliation"
+      : "Refresh";
+
   const sharedThemeProps: SharedThemeProps = {
     report,
     openThemeId,
@@ -158,6 +184,12 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
           <button type="button" className="refresh-button" onClick={beginRefresh}>
             Refresh reviews
           </button>
+          <details className="dataset-maintenance">
+            <summary>Dataset maintenance</summary>
+            <p>Full import scans every eligible review and may take a long time. Reconciliation scans the current corpus only to record reviews Steam no longer returns.</p>
+            <button type="button" disabled={activeJob} onClick={beginFullImport}>Start Full import</button>
+            <button type="button" disabled={activeJob} onClick={beginReconciliation}>Reconcile deleted reviews</button>
+          </details>
         </div>
       </header>
 
@@ -165,17 +197,17 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
         <section className="refresh-status" aria-live="polite">
           {refreshError && <p role="alert">{refreshError}</p>}
           {refreshJob?.state === "failed" && (
-            <><p>Refresh failed. Existing reports are unchanged.</p><button type="button" onClick={retryRefresh}>Retry refresh</button></>
+            <><p>{jobLabel} failed. Existing reports are unchanged.</p><button type="button" onClick={retryRefresh}>Retry {jobLabel.toLowerCase()}</button></>
           )}
           {refreshJob?.state === "cancelled" && (
-            <><p>Refresh cancelled. Existing reports are unchanged.</p><button type="button" onClick={retryRefresh}>Retry refresh</button></>
+            <><p>{jobLabel} cancelled. Existing reports are unchanged.</p><button type="button" onClick={retryRefresh}>Retry {jobLabel.toLowerCase()}</button></>
           )}
           {["queued", "running"].includes(refreshJob?.state ?? "") && (
-            <><p>Refreshing reviews…</p><button type="button" onClick={cancelRefresh}>Cancel refresh</button></>
+            <><p>{jobLabel} in progress…</p><button type="button" onClick={cancelRefresh}>Cancel {jobLabel.toLowerCase()}</button></>
           )}
-          {refreshJob?.state === "completed" && (
-            <p>Reviews refreshed. Create a report to analyze the latest corpus.</p>
-          )}
+          {refreshJob?.state === "completed" && refreshJob.scope === "refresh" && <p>Reviews refreshed. Create a report to analyze the latest corpus.</p>}
+          {refreshJob?.state === "completed" && refreshJob.scope === "full" && <p>Full import complete. Create a report to analyze the complete corpus.</p>}
+          {refreshJob?.state === "completed" && refreshJob.scope === "reconciliation" && <p>Reconciliation complete. Missing reviews were recorded without deleting historical evidence.</p>}
         </section>
       )}
 
@@ -221,6 +253,12 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
         themes={visible(report.technical_themes)}
         technical
         {...sharedThemeProps}
+      />
+
+      <StorageControls
+        appId={appId}
+        reportId={report.report_version_id}
+        incompleteJobId={refreshJob && ["failed", "cancelled"].includes(refreshJob.state) ? refreshJob.id : undefined}
       />
     </main>
   );

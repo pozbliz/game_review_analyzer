@@ -11,6 +11,7 @@ import {
   SteamMetadata,
 } from "../api/shell";
 import ReportView from "../features/report/ReportView";
+import { deleteIncompleteJob } from "../api/storage";
 
 type HealthState = "loading" | "ready" | "unavailable";
 
@@ -30,6 +31,8 @@ function CatalogApp(): JSX.Element {
   const [targetCount, setTargetCount] = useState<number>(5000);
   const [job, setJob] = useState<AnalysisJob | null>(null);
   const [jobError, setJobError] = useState<string>("");
+  const [jobDeleteConfirmation, setJobDeleteConfirmation] = useState<string>("");
+  const [jobDeleted, setJobDeleted] = useState<boolean>(false);
 
   useEffect(() => {
     let active = true;
@@ -91,6 +94,8 @@ function CatalogApp(): JSX.Element {
   function beginImport(): void {
     if (!preview) return;
     setJobError("");
+    setJobDeleted(false);
+    setJobDeleteConfirmation("");
     startQuickImport(preview.app_id, targetCount)
       .then((startedJob) => {
         window.localStorage.setItem("active-import-job", startedJob.id);
@@ -108,6 +113,17 @@ function CatalogApp(): JSX.Element {
     if (!job) return;
     setJobError("");
     retryJob(job.id).then(setJob).catch(() => setJobError("Unable to retry the import."));
+  }
+
+  function removeIncompleteJob(): void {
+    if (!job) return;
+    setJobError("");
+    deleteIncompleteJob(job.id, jobDeleteConfirmation)
+      .then(() => {
+        window.localStorage.removeItem("active-import-job");
+        setJobDeleted(true);
+      })
+      .catch(() => setJobError("Unable to delete the incomplete job."));
   }
 
   const unknown = "Unknown / unavailable";
@@ -161,6 +177,26 @@ function CatalogApp(): JSX.Element {
               {["queued", "running"].includes(job.state) && (
                 <button type="button" onClick={cancelImport}>Cancel import</button>
               )}
+              {["failed", "cancelled"].includes(job.state) && !jobDeleted && (
+                <div className="job-deletion">
+                  <p>This removes only the incomplete job. Imported reviews and existing reports remain available.</p>
+                  <label>
+                    Type {job.id} to delete this incomplete job
+                    <input
+                      value={jobDeleteConfirmation}
+                      onChange={(event) => setJobDeleteConfirmation(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={jobDeleteConfirmation !== job.id}
+                    onClick={removeIncompleteJob}
+                  >
+                    Delete incomplete job
+                  </button>
+                </div>
+              )}
+              {jobDeleted && <p role="status">Incomplete job deleted</p>}
             </section>
           ) : !preview ? (
             <div className="preview-empty">

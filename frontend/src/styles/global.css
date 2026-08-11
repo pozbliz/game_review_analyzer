@@ -63,6 +63,11 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .import-progress h3 { margin: 0; }
 .import-progress progress { width: 100%; accent-color: var(--forest); }
 .import-progress button { margin-top: 1rem; border: 1px solid var(--forest); border-radius: 8px; padding: .65rem .9rem; color: var(--forest); background: transparent; font-weight: 750; }
+.job-deletion { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.job-deletion p { color: var(--muted); font-size: .85rem; }
+.job-deletion label { display: grid; gap: .4rem; font-size: .85rem; font-weight: 700; }
+.job-deletion input { min-width: 0; padding: .65rem; border: 1px solid #aaa99f; border-radius: 7px; }
+.job-deletion button:disabled { opacity: .45; }
 @media (max-width: 760px) {
   .catalog { grid-template-columns: 1fr; }
   .catalog-search { border-right: 0; border-bottom: 1px solid var(--line); }
@@ -91,6 +96,10 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .refresh-button, .refresh-status button { padding: .65rem .85rem; border: 1px solid var(--forest); border-radius: 8px; color: var(--paper); background: var(--forest); font-weight: 750; }
 .refresh-status { margin: 1rem 0; padding: .8rem 1rem; border-left: 3px solid var(--forest); background: var(--sage); }
 .refresh-status p { display: inline; margin: 0 .8rem 0 0; }
+.dataset-maintenance { max-width: 24rem; text-align: right; }
+.dataset-maintenance summary { cursor: pointer; color: var(--forest); font-size: .85rem; font-weight: 750; }
+.dataset-maintenance p { color: var(--muted); font-size: .78rem; line-height: 1.4; }
+.dataset-maintenance button { margin: .3rem 0 .3rem .4rem; padding: .55rem .7rem; border: 1px solid var(--forest); border-radius: 7px; color: var(--forest); background: var(--paper); font-weight: 700; }
 .report-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--line); background: rgb(255 253 247 / 70%); }
 .report-facts div { min-width: 0; padding: 1.1rem 1.25rem; border-right: 1px solid var(--line); }
 .report-facts div:last-child { border-right: 0; }
@@ -138,6 +147,21 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .review-evidence p:last-child { margin-bottom: 0; line-height: 1.55; }
 .review-context { margin-top: 0; color: var(--muted); font-size: .78rem; font-weight: 700; }
 .empty-themes { margin: 0; padding: 1.2rem; color: var(--muted); }
+.storage-controls { margin-top: 2rem; padding: 1.3rem; border: 1px solid var(--line); border-radius: 14px; background: rgb(255 253 247 / 75%); }
+.storage-controls > h2 { font-size: 1.25rem; }
+.storage-controls > button, .danger-zone button { padding: .6rem .8rem; border: 1px solid var(--forest); border-radius: 8px; color: var(--forest); background: transparent; font-weight: 750; }
+.storage-facts { display: grid; grid-template-columns: auto 1fr; gap: .6rem 1rem; margin: 1rem 0; }
+.storage-facts div { display: contents; }
+.storage-facts dt { color: var(--muted); font-weight: 700; }
+.storage-facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.storage-guidance { color: var(--muted); font-size: .85rem; }
+.danger-zone { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+.danger-zone summary { cursor: pointer; color: var(--danger); font-weight: 800; }
+.danger-zone > div { display: grid; gap: .6rem; margin-top: 1rem; padding: 1rem; border-left: 3px solid var(--danger); background: #fbefea; }
+.danger-zone label { display: grid; gap: .35rem; font-weight: 700; }
+.danger-zone input { max-width: 30rem; padding: .65rem; border: 1px solid #aaa99f; border-radius: 7px; }
+.danger-zone button { width: fit-content; color: var(--danger); border-color: var(--danger); }
+.danger-zone button:disabled { opacity: .45; }
 
 @media (max-width: 900px) {
   .report-facts { grid-template-columns: 1fr 1fr; }
@@ -149,6 +173,7 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
   .report-header { grid-template-columns: 1fr; align-items: start; }
   .calibration { justify-self: start; }
   .report-actions { justify-items: start; }
+  .dataset-maintenance { text-align: left; }
   .report-history ul { right: auto; left: 0; max-width: calc(100vw - 2rem); }
   .report-facts { grid-template-columns: 1fr; }
   .report-facts div { border-right: 0; border-bottom: 1px solid var(--line); }

@@ -30,6 +30,15 @@ class AnalysisJob(BaseModel):
     error_code: str | None
 
 
+class ReconciliationResult(BaseModel):
+    """Describe reviews absent from one explicit complete corpus scan."""
+
+    job_id: str
+    app_id: int
+    present_review_count: int
+    missing_review_ids: tuple[str, ...]
+
+
 class JobNotFound(Exception):
     """Tell callers that an Analysis Job identifier is not stored locally."""
 
@@ -60,11 +69,30 @@ def create_refresh_job(
     return _create_job(database_path, app_id, target_count, "refresh")
 
 
+def create_full_job(database_path: Path, app_id: int) -> AnalysisJob:
+    """Create a Full import that continues until Steam exhausts pagination."""
+
+    # ponytail: display-only upper bound; replace if progress gains an unbounded state.
+    return _create_job(database_path, app_id, 2_147_483_647, "full")
+
+
+def create_reconciliation_job(database_path: Path, app_id: int) -> AnalysisJob:
+    """Create an explicit complete scan that records missing review identifiers."""
+
+    with connect(database_path) as connection:
+        review_count: int = connection.execute(
+            "SELECT COUNT(*) FROM reviews WHERE app_id = ?", (app_id,)
+        ).fetchone()[0]
+    if review_count == 0:
+        raise ValueError("Reconciliation requires an existing review dataset")
+    return _create_job(database_path, app_id, 2_147_483_647, "reconciliation")
+
+
 def _create_job(
     database_path: Path,
     app_id: int,
     target_count: int,
-    scope: Literal["quick", "refresh"],
+    scope: Literal["quick", "full", "refresh", "reconciliation"],
 ) -> AnalysisJob:
     """Persist one queued acquisition job with an explicit supported scope."""
 
@@ -176,7 +204,7 @@ def checkpoint_page(
     with connect(database_path) as connection:
         connection.execute("BEGIN IMMEDIATE")
         row = connection.execute(
-            "SELECT app_id, imported_count FROM analysis_jobs "
+            "SELECT app_id, imported_count, scope FROM analysis_jobs "
             "WHERE id = ? AND state = 'running'",
             (job_id,),
         ).fetchone()
@@ -184,6 +212,12 @@ def checkpoint_page(
             raise ValueError("Job is not running")
         unique_reviews = tuple({review.review_id: review for review in reviews}.values())
         insert_review_revisions(connection, row[0], unique_reviews)
+        if row[2] == "reconciliation":
+            connection.executemany(
+                "INSERT INTO job_seen_reviews(job_id, review_id) VALUES (?, ?) "
+                "ON CONFLICT(job_id, review_id) DO NOTHING",
+                ((job_id, review.review_id) for review in unique_reviews),
+            )
         imported_count: int = row[1] + len(unique_reviews)
         sequence: int = connection.execute(
             "SELECT COALESCE(MAX(sequence), 0) + 1 FROM job_checkpoints WHERE job_id = ?",
@@ -232,6 +266,29 @@ def finish_job(database_path: Path, job_id: str, state: JobState, error_code: st
                     "VALUES (?, ?)",
                     (job_id, json.dumps(revision_ids)),
                 )
+            if row is not None and row[1] == "reconciliation":
+                missing_review_ids: tuple[str, ...] = tuple(
+                    item[0]
+                    for item in connection.execute(
+                        "SELECT reviews.id FROM reviews "
+                        "WHERE reviews.app_id = ? AND NOT EXISTS ("
+                        "SELECT 1 FROM job_seen_reviews "
+                        "WHERE job_seen_reviews.job_id = ? "
+                        "AND job_seen_reviews.review_id = reviews.id) "
+                        "ORDER BY reviews.id",
+                        (row[0], job_id),
+                    )
+                )
+                present_review_count: int = connection.execute(
+                    "SELECT COUNT(*) FROM job_seen_reviews WHERE job_id = ?",
+                    (job_id,),
+                ).fetchone()[0]
+                connection.execute(
+                    "INSERT INTO reconciliation_results("
+                    "job_id, app_id, present_review_count, missing_review_ids_json) "
+                    "VALUES (?, ?, ?, ?)",
+                    (job_id, row[0], present_review_count, json.dumps(missing_review_ids)),
+                )
         connection.execute(
             "UPDATE analysis_jobs SET state = ?, error_code = ?, "
             "updated_at = CURRENT_TIMESTAMP WHERE id = ? AND state = 'running'",
@@ -252,3 +309,24 @@ def load_job_analysis_scope(
     if row is None:
         return None
     return tuple(int(identifier) for identifier in json.loads(row[0]))
+
+
+def load_reconciliation_result(
+    database_path: Path, job_id: str
+) -> ReconciliationResult:
+    """Load one completed explicit reconciliation result."""
+
+    with connect(database_path) as connection:
+        row: tuple[int, int, str] | None = connection.execute(
+            "SELECT app_id, present_review_count, missing_review_ids_json "
+            "FROM reconciliation_results WHERE job_id = ?",
+            (job_id,),
+        ).fetchone()
+    if row is None:
+        raise ValueError("Reconciliation result is unavailable")
+    return ReconciliationResult(
+        job_id=job_id,
+        app_id=row[0],
+        present_review_count=row[1],
+        missing_review_ids=tuple(json.loads(row[2])),
+    )

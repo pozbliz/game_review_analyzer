@@ -99,7 +99,7 @@ describe("application shell", () => {
   });
 
   it("starts a Quick import and exposes durable progress and cancellation", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
       const url = request.toString();
       if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
       if (url === "/api/config") return json({ environment: "test", api_prefix: "/api" });
@@ -109,6 +109,7 @@ describe("application shell", () => {
         return json(job("queued", 0));
       }
       if (url === "/api/jobs/job-1/cancel") return json(job("cancelled", 200));
+      if (url === "/api/jobs/job-1/delete") return new Response(null, { status: 204 });
       return json(job("running", 200));
     });
 
@@ -119,6 +120,19 @@ describe("application shell", () => {
     expect(await screen.findByText("200 of 5,000 reviews")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Cancel import" }));
     expect(await screen.findByText("Import cancelled")).toBeVisible();
+    fireEvent.change(screen.getByLabelText("Type job-1 to delete this incomplete job"), {
+      target: { value: "job-1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Delete incomplete job" }));
+    expect(await screen.findByText("Incomplete job deleted")).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/jobs/job-1/delete",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation: "job-1" }),
+      },
+    );
   });
 
   it("retries a failed Quick import", async () => {
