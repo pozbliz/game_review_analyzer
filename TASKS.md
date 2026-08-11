@@ -158,16 +158,16 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 **Blocked by:** None for fixture-backed implementation. Connected-browser verification and real-world analysis calibration remain acceptance gates.
 
 - [x] Write report and evidence API contract tests.
-- [ ] Write component tests, then build positive, negative, and secondary Technical Theme presentations.
-- [ ] Write interaction tests, then build linked mixed-reception and category exploration.
-- [ ] Write evidence-navigation tests, then build representative excerpt and full-review drill-down.
-- [ ] Display exact scope, provenance, review context, and metric denominators.
-- [ ] Add keyboard, screen-reader, non-color, reduced-motion, laptop, and narrow-width verification.
-- [ ] Verify every displayed metric against stored Theme memberships.
+- [x] Write component tests, then build positive, negative, and secondary Technical Theme presentations.
+- [x] Write interaction tests, then build linked mixed-reception and category exploration.
+- [x] Write evidence-navigation tests, then build representative excerpt and full-review drill-down.
+- [x] Display exact scope, provenance, review context, and metric denominators.
+- [ ] [HUMAN] Complete connected-browser keyboard, screen-reader, non-color, reduced-motion, laptop, and narrow-width verification.
+- [x] Verify every displayed metric against stored Theme memberships.
 
 ### Slice 6 — Export reports safely
 
-**Blocked by:** Slice 5.
+**Blocked by:** None for contract implementation. Slice 5 connected-browser acceptance remains open.
 
 - [ ] Define versioned single-file HTML, JSON, and CSV contracts and write failing contract tests.
 - [ ] Write missing/mismatched-evidence tests, then implement JSON re-import against matching local Game Datasets and Review Revisions.

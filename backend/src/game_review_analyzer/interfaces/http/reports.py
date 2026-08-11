@@ -75,6 +75,7 @@ class ReportThemeResponse(BaseModel):
     primary_category: ThemeCategory
     related_categories: tuple[ThemeCategory, ...]
     support: ThemeSupportResponse
+    evidence_count: int
     representative_evidence: tuple[RepresentativeEvidenceResponse, ...]
     opposes_theme_id: str | None
 
@@ -176,6 +177,7 @@ def build_report_response(
                 percentage=metric.support_percentage,
                 denominator=len(report.review_revision_ids),
             ),
+            evidence_count=len(theme.opinion_point_ids),
             representative_evidence=tuple(
                 RepresentativeEvidenceResponse(
                     opinion_point_id=point.id,

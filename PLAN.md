@@ -102,13 +102,13 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Filters, refresh, and provider automation remain separate to keep report trust independently verifiable.
 
-**Status:** In progress with fixture-backed reports and provisional metrics.
+**Status:** Fixture-backed implementation complete. Connected-browser responsive and accessibility verification remains open, and real-world metrics remain provisional.
 
 ## Slice 6 — Export reports safely
 
 **Outcome:** Export single-file HTML, structured JSON, and Theme/evidence CSV with identity-safe defaults and an explicit full-text option.
 
-**Blocked by:** Slice 5.
+**Blocked by:** None for contract implementation. Slice 5 connected-browser acceptance remains open.
 
 **Scope:** Versioned Export/Import contracts, privacy policy enforcement, report rendering, and export interface.
 
@@ -116,7 +116,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** PDF remains deferred.
 
-**Status:** Blocked.
+**Status:** Ready for fixture-backed contract implementation.
 
 ## Slice 7 — Refresh into immutable report history
 

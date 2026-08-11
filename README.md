@@ -2,7 +2,7 @@
 
 Game Review Analyzer is a planned local web application that turns large sets of Steam reviews into evidence-backed positive and negative game-design themes. It also captures a comprehensive Steam store snapshot so a developer can understand the game, its features, and the review evidence in one report.
 
-The local application shell, direct-AppID metadata preview, durable Quick Steam review import, and fixture-backed report API are complete. Quick imports retain append-only review revisions, survive backend or browser restarts, and expose progress, cancellation, and retry controls. Versioned analysis contracts, bounded Opinion Point extraction, privacy-minimized Manual Codex package validation, deterministic Theme metrics, and immutable typed Report Version persistence are available. Report summaries expose bounded representative evidence; complete Theme evidence is loaded separately with full local review context. Real-world reliability calibration remains deferred.
+The local application shell, direct-AppID metadata preview, durable Quick Steam review import, and fixture-backed report exploration are complete. Quick imports retain append-only review revisions, survive backend or browser restarts, and expose progress, cancellation, and retry controls. Versioned analysis contracts, bounded Opinion Point extraction, privacy-minimized Manual Codex package validation, deterministic Theme metrics, and immutable typed Report Version persistence are available. Reports show ranked design and Technical Themes, linked mixed reception, exact scope and provenance, representative evidence, and on-demand full local review context. Connected-browser acceptance and real-world reliability calibration remain deferred.
 
 ## Product goals
 

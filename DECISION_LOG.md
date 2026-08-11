@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-08-11 — Fixture-backed report exploration completed
+
+**What changed:**
+
+- Added a dependency-free report route with ranked positive, negative, and Technical Theme presentations.
+- Added category filtering, single-open Theme details, linked mixed reception, representative evidence, and on-demand full-review context.
+- Displayed immutable report scope, provenance, support denominators, and calibration status from the report API.
+- Allowed export-contract implementation to proceed while connected-browser report acceptance remains a human gate.
+
+**Why:**
+
+- Native links, controls, and CSS provide the approved evidence exploration without adding a router or UI dependency.
+- The unavailable connected-browser runtime should not block independently testable export contracts.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Complete the existing connected-browser responsive and accessibility acceptance task when that runtime is available.
+
+---
+
 ## 2026-08-11 — Report summary and evidence APIs added
 
 **What changed:**

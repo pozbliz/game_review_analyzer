@@ -45,6 +45,7 @@ def test_report_summary_and_complete_evidence_preserve_metrics_and_context(
     theme = report["positive_themes"][0]
     assert theme["title"] == "Responsive combat"
     assert theme["support"] == {"count": 2, "percentage": 100.0, "denominator": 2}
+    assert theme["evidence_count"] == 2
     assert theme["primary_category"] == "Gameplay and mechanics"
     assert [item["excerpt"] for item in theme["representative_evidence"]] == [
         "Combat is responsive",

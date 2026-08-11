@@ -10,10 +10,18 @@ import {
   startQuickImport,
   SteamMetadata,
 } from "../api/shell";
+import ReportView from "../features/report/ReportView";
 
 type HealthState = "loading" | "ready" | "unavailable";
 
 export default function App(): JSX.Element {
+  const reportMatch: RegExpMatchArray | null = window.location.pathname.match(/^\/reports\/([^/]+)$/);
+  return reportMatch
+    ? <ReportView reportId={decodeURIComponent(reportMatch[1])} />
+    : <CatalogApp />;
+}
+
+function CatalogApp(): JSX.Element {
   const [health, setHealth] = useState<HealthState>("loading");
   const [appId, setAppId] = useState<string>("");
   const [preview, setPreview] = useState<SteamMetadata | null>(null);
