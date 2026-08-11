@@ -49,6 +49,23 @@ class StabilityResult(ContractModel):
     themes: tuple[StabilityTheme, ...] = Field(max_length=60)
 
 
+class StabilityEvidenceRepair(ContractModel):
+    """Replace exact evidence for one explicitly rejected Theme."""
+
+    theme_key: NonEmptyString
+    representative_excerpts: tuple[StabilityEvidence, ...] = Field(
+        min_length=1, max_length=5
+    )
+
+
+class StabilityRepairResult(ContractModel):
+    """Carry evidence-only repairs for one stability run."""
+
+    schema_version: Literal["1.0"]
+    run_id: NonEmptyString
+    repairs: tuple[StabilityEvidenceRepair, ...] = Field(min_length=1)
+
+
 class StabilityValidationError(ValueError):
     """Report a stable rejection code for one imported stability result."""
 
@@ -61,6 +78,61 @@ def stability_result_json_schema() -> dict[str, Any]:
     """Return the strict JSON Schema passed to the non-interactive Codex run."""
 
     return StabilityResult.model_json_schema()
+
+
+def stability_repair_json_schema() -> dict[str, Any]:
+    """Return the strict evidence-only repair schema."""
+
+    return StabilityRepairResult.model_json_schema()
+
+
+def apply_stability_evidence_repair(
+    run_input: dict[str, Any],
+    original_result_json: str,
+    repair_json: str,
+    rejected_theme_keys: set[str],
+) -> StabilityResult:
+    """Merge only approved Theme evidence, then validate the complete result."""
+
+    try:
+        original: StabilityResult = StabilityResult.model_validate_json(
+            original_result_json
+        )
+        repair: StabilityRepairResult = StabilityRepairResult.model_validate_json(
+            repair_json
+        )
+    except ValidationError as error:
+        raise StabilityValidationError(
+            "malformed_repair", "Original result or repair does not match its schema."
+        ) from error
+    repair_keys: set[str] = {item.theme_key for item in repair.repairs}
+    if (
+        repair.run_id != original.run_id
+        or len(repair_keys) != len(repair.repairs)
+        or repair_keys != rejected_theme_keys
+    ):
+        raise StabilityValidationError(
+            "repair_scope_mismatch",
+            "Repair must cover exactly the explicitly rejected Themes.",
+        )
+    theme_keys: set[str] = {theme.theme_key for theme in original.themes}
+    if not repair_keys <= theme_keys:
+        raise StabilityValidationError(
+            "unknown_theme", "Repair references a Theme absent from the original result."
+        )
+    evidence_by_theme: dict[str, tuple[StabilityEvidence, ...]] = {
+        item.theme_key: item.representative_excerpts for item in repair.repairs
+    }
+    repaired_themes: tuple[StabilityTheme, ...] = tuple(
+        theme.model_copy(
+            update={"representative_excerpts": evidence_by_theme[theme.theme_key]}
+        )
+        if theme.theme_key in evidence_by_theme
+        else theme
+        for theme in original.themes
+    )
+    repaired: StabilityResult = original.model_copy(update={"themes": repaired_themes})
+    return validate_stability_result(run_input, repaired.model_dump_json())
 
 
 def validate_stability_result(

@@ -88,7 +88,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** The first complete analysis remains user-mediated so evidence integrity can be proven before provider automation.
 
-**Status:** In progress. The evaluation-only provider contracts and Manual Codex export/import validation were approved ahead of the quality gate so the required provider-run experiments can execute; report production remains blocked by baseline approval.
+**Status:** In progress. The evaluation-only provider contracts and Manual Codex export/import validation were approved ahead of the quality gate so the required provider-run experiments can execute. Repeated Luna runs use isolated inputs and evidence-only repair for strictly rejected excerpts; report production remains blocked by baseline approval.
 
 ## Slice 5 — Explore an evidence-rich report
 

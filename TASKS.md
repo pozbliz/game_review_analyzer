@@ -135,7 +135,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] [HUMAN] Approve transmitting the 15,000-review stability corpus through repeated Codex CLI runs and pin `gpt-5.6-luna` with medium reasoning.
 - [x] Prepare and validate contiguous, interleaved, and hashed full-corpus inputs plus the strict stability-result schema.
 - [x] Complete the Luna-medium synthetic conformance run and first valid 5,000-review stability run.
-- [ ] [HUMAN] Choose targeted evidence-only repair or a stronger model after three Hades II Luna outputs failed exact-evidence validation.
+- [x] [HUMAN] Choose and validate targeted evidence-only repair after three Hades II Luna outputs failed exact-evidence validation.
 - [ ] Measure whether the latest 5,000 eligible reviews produce stable headline Themes across representative games.
 - [ ] Calibrate provisional absolute support, percentage support, cluster-coherence, and Technical Theme thresholds.
 - [ ] Evaluate exact-excerpt validation and resistance to instructions embedded in review text.

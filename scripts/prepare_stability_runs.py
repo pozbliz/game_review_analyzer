@@ -10,6 +10,7 @@ from game_review_analyzer.application.evaluation_corpus import (
     partition_reviews_for_evaluation,
 )
 from game_review_analyzer.application.stability_evaluation import (
+    stability_repair_json_schema,
     stability_result_json_schema,
 )
 from game_review_analyzer.domain.reviews import SteamReview
@@ -39,6 +40,7 @@ def main() -> None:
     corpus: dict[str, Any] = json.loads(arguments.corpus.read_text(encoding="utf-8"))
     arguments.output_directory.mkdir(parents=True, exist_ok=True)
     result_schema: dict[str, Any] = stability_result_json_schema()
+    repair_schema: dict[str, Any] = stability_repair_json_schema()
 
     written: int = 0
     for game in corpus["games"]:
@@ -51,6 +53,9 @@ def main() -> None:
             run_directory.mkdir(parents=True, exist_ok=True)
             (run_directory / "result-schema.json").write_text(
                 json.dumps(result_schema, indent=2), encoding="utf-8"
+            )
+            (run_directory / "repair-schema.json").write_text(
+                json.dumps(repair_schema, indent=2), encoding="utf-8"
             )
             batches: tuple[tuple[SteamReview, ...], ...] = (
                 partition_reviews_for_evaluation(

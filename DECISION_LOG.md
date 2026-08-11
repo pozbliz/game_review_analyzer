@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-11 — Evidence-only stability repair approved
+
+**What changed:**
+
+- Added a strict repair contract containing only explicitly rejected Theme keys and replacement representative excerpts.
+- Added a deterministic merge that preserves all other result fields and revalidates the complete result against the exact run input.
+- Repaired the single invalid Hades II contiguous Theme on the first targeted attempt; the resulting 16-Theme output passed strict validation.
+
+**Why:**
+
+- Whole-result regeneration allowed Luna to change valid evidence while fixing one rejected excerpt. A narrow contract makes unrelated mutation structurally impossible.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None until the repeated-run metrics and provisional thresholds are ready.
+
+---
+
 ## 2026-08-11 — Luna stability run stopped after three evidence failures
 
 **What changed:**
