@@ -36,6 +36,7 @@ Embeddings are not required in the MVP. They remain a future enhancement for sem
 - `DESIGN.md` — authoritative product behavior and architecture
 - `docs/specifications/DOMAIN_GLOSSARY.md` — canonical domain terminology
 - `docs/specifications/ANALYSIS_EVALUATION.md` — analysis-quality corpus format and scoring rules
+- `docs/evaluation/pilot-v1.md` — first human-adjudicated evaluation results and limits
 - `PLAN.md` — phased implementation sequence
 - `TASKS.md` — active work and unresolved issues
 - `DECISION_LOG.md` — design-change history

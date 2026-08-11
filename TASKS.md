@@ -118,10 +118,12 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Skip blank recommendation-only Steam entries that contain no analyzable review text.
 - [x] Write balanced-subset selection tests and add the repeatable local evaluation-corpus acquisition script.
 - [x] Download the approved 60-review local pool and prepare an 18-review, 38-Opinion-Point pilot candidate round.
-- [ ] [HUMAN] Visually verify the local gold-label review tool with the first real candidate corpus.
+- [x] [HUMAN] Visually verify the local gold-label review tool with the first real candidate corpus.
+- [x] Adjudicate all 38 Opinion Point candidates and record honest pilot precision and sentiment results.
 - [x] Define the provider-independent evaluation format, scoring rubric, and synthetic conformance fixture without treating it as calibration evidence.
 
-- [ ] Define the labeled evaluation-set format and create representative samples spanning several games and review styles.
+- [x] Define the labeled evaluation-set format and create representative samples spanning several games and review styles.
+- [ ] Add and complete a missing-Opinion-Point review round before calculating extraction recall.
 - [ ] Evaluate Opinion Point extraction, Opinion Sentiment, neutral exclusion, paraphrase grouping, categories, summary faithfulness, and exact excerpts.
 - [ ] Evaluate opposing-Theme linkage and review-level liked/disliked/mixed classification.
 - [ ] Measure whether the latest 5,000 eligible reviews produce stable headline Themes across representative games.

@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-11 — First Opinion Point pilot adjudicated
+
+**What changed:**
+
+- Converted all 38 reviewed candidate decisions into a local adjudicated corpus.
+- Recorded candidate precision and field-level agreement, including the corrected neutral difficulty description.
+- Kept extraction recall, pairwise grouping, summaries, opposing links, and thresholds explicitly unmeasured.
+
+**Why:**
+
+- Candidate approval is useful evidence, but treating an anchored review round as a complete accuracy evaluation would overstate reliability.
+
+**New issues:**
+
+- The next human round needs explicit missing-point, pairwise grouping, opposing-link, and summary-faithfulness judgments.
+
+**Needs human judgment:**
+
+- Review those follow-up judgments before approving the evaluation baseline.
+
+---
+
 ## 2026-08-11 — First real-game human review round prepared
 
 **What changed:**
