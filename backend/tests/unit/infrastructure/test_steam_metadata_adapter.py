@@ -63,3 +63,18 @@ def test_adapter_distinguishes_missing_and_malformed_games() -> None:
 def test_adapter_rejects_invalid_app_id_before_requesting_steam() -> None:
     with pytest.raises(ValueError, match="positive integer"):
         adapter_for("invalid.json").fetch(0)
+
+
+def test_adapter_discards_non_steam_capsule_urls() -> None:
+    fixture_bytes = (FIXTURE_DIRECTORY / "valid.json").read_bytes().replace(
+        b"https://cdn.akamai.steamstatic.com/steam/apps/1145350/header.jpg",
+        b"javascript:alert(1)",
+    )
+
+    def open_fixture(_: Request, __: float) -> BytesIO:
+        return BytesIO(fixture_bytes)
+
+    metadata = SteamStoreMetadataAdapter(open_url=open_fixture).fetch(1145350)
+
+    assert metadata.capsule_image_url is None
+    assert "capsule_image_url" in metadata.missing_fields

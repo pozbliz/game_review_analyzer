@@ -4,6 +4,7 @@ from collections.abc import Callable
 import json
 from typing import Any
 from urllib.error import URLError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from pydantic import ValidationError
@@ -79,7 +80,7 @@ class SteamStoreMetadataAdapter:
         ):
             developers = tuple(developers_value) or None
 
-        capsule_image_url: str | None = SteamStoreMetadataAdapter._optional_string(
+        capsule_image_url: str | None = SteamStoreMetadataAdapter._optional_steam_image_url(
             data.get("header_image")
         )
         release_value: Any = data.get("release_date")
@@ -127,3 +128,16 @@ class SteamStoreMetadataAdapter:
     @staticmethod
     def _optional_string(value: Any) -> str | None:
         return value.strip() if isinstance(value, str) and value.strip() else None
+
+    @staticmethod
+    def _optional_steam_image_url(value: Any) -> str | None:
+        normalized_value: str | None = SteamStoreMetadataAdapter._optional_string(value)
+        if normalized_value is None:
+            return None
+        parsed_url = urlparse(normalized_value)
+        hostname: str = parsed_url.hostname or ""
+        if parsed_url.scheme != "https" or not (
+            hostname == "steamstatic.com" or hostname.endswith(".steamstatic.com")
+        ):
+            return None
+        return normalized_value

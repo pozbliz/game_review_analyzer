@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Steam capsule sources restricted
+
+**What changed:**
+
+- Normalized capsule artwork only from HTTPS `steamstatic.com` hosts; other optional media becomes unavailable.
+- Renamed the adapter test module to prevent full-suite collection collisions.
+
+**Why:**
+
+- Store metadata is untrusted input and must not make the frontend request arbitrary URLs.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Direct-AppID Catalog confirmation built
 
 **What changed:**
