@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-11 — Evaluation games and human reviewer approved
+
+**What changed:**
+
+- Approved Hades II, Stardew Valley, and Cyberpunk 2077 for the initial real-game evaluation corpus.
+- Confirmed the user will independently review candidate gold labels.
+- Clarified that the benchmark evaluates prompts, schemas, validation, and thresholds; it does not train a model.
+
+**Why:**
+
+- The three games provide different design and technical feedback patterns, while independent human review prevents provider output from defining its own ground truth.
+
+**New issues:**
+
+- The raw-review storage policy is still unresolved.
+
+**Needs human judgment:**
+
+- Decide whether raw review text remains local and gitignored or is committed to the repository.
+
+---
+
 ## 2026-08-11 — Provider-independent evaluation format established
 
 **What changed:**

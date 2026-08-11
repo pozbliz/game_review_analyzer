@@ -108,9 +108,11 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Slice 4 — Produce the first immutable report through Manual Codex
 
-**Blocked by:** Human approval of a legally and privacy-safe real-review corpus and gold-label process, then the analysis-quality approval gate.
+**Blocked by:** Human approval of the raw-review storage policy, then the analysis-quality approval gate.
 
-- [ ] [HUMAN] Approve the real-game review corpus, repository/storage policy, and independent gold-label process used for analysis-quality evaluation.
+- [x] [HUMAN] Approve Hades II, Stardew Valley, and Cyberpunk 2077 as the real-game evaluation corpus.
+- [ ] [HUMAN] Approve whether raw review text remains local and gitignored or is committed to the repository.
+- [x] [HUMAN] Confirm the user will independently review candidate gold labels.
 - [x] Define the provider-independent evaluation format, scoring rubric, and synthetic conformance fixture without treating it as calibration evidence.
 
 - [ ] Define the labeled evaluation-set format and create representative samples spanning several games and review styles.
