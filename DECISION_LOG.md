@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Steam storefront metadata adapter added
+
+**What changed:**
+
+- Added a replaceable, timeout-bounded storefront adapter that normalizes one AppID through the tested metadata contract.
+- Kept missing games, malformed responses, and transient source failures distinct.
+
+**Why:**
+
+- The standard-library HTTP boundary is sufficient for one best-effort request and avoids a new runtime dependency.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Steam preview unknowns made explicit
 
 **What changed:**
