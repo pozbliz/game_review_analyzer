@@ -1,0 +1,13 @@
+{
+  "1145350": {
+    "success": true,
+    "data": {
+      "steam_appid": 1145350,
+      "name": "Hades II",
+      "developers": ["Supergiant Games"],
+      "header_image": "https://cdn.akamai.steamstatic.com/steam/apps/1145350/header.jpg",
+      "release_date": {"coming_soon": false, "date": "6 May, 2024"},
+      "recommendations": {"total": 48239}
+    }
+  }
+}
