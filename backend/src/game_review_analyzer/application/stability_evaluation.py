@@ -46,7 +46,7 @@ class StabilityResult(ContractModel):
     reasoning_effort: Literal["medium"]
     partition_strategy: Literal["contiguous", "interleaved", "hashed"]
     review_count: int = Field(gt=0)
-    themes: tuple[StabilityTheme, ...] = Field(max_length=60)
+    themes: tuple[StabilityTheme, ...] = Field(min_length=1, max_length=60)
 
 
 class StabilityEvidenceRepair(ContractModel):

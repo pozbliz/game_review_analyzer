@@ -75,6 +75,7 @@ def test_stability_result_is_bound_to_scope_and_exact_evidence() -> None:
     assert len(validate_stability_result(run_input, json.dumps(valid_result)).themes) == 1
 
     invalid_results: tuple[tuple[str, dict[str, Any]], ...] = (
+        ("malformed_result", {**valid_result, "themes": []}),
         ("scope_mismatch", {**valid_result, "run_id": "other-run"}),
         (
             "unknown_review_revision",

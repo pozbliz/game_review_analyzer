@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Empty stability results rejected
+
+**What changed:**
+
+- Required every stability result to contain 1–60 Themes after Hades II interleaved returned an empty Theme list.
+- Preserved that first output as rejected and regenerated all isolated run schemas before retrying.
+
+**Why:**
+
+- A structurally valid but empty result cannot measure headline-Theme stability and must fail at the provider boundary.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Evidence-only stability repair approved
 
 **What changed:**
