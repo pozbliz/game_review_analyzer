@@ -31,12 +31,15 @@ from game_review_analyzer.infrastructure.persistence.jobs import (
     AnalysisJob,
     JobNotFound,
     create_job,
+    create_refresh_job,
     get_job,
     recoverable_job_ids,
     request_cancellation,
     retry_job,
 )
 from game_review_analyzer.infrastructure.persistence.report_versions import (
+    ReportHistoryEntry,
+    list_report_versions,
     load_report_version,
 )
 from game_review_analyzer.infrastructure.steam_metadata import (
@@ -169,6 +172,34 @@ def create_app(
         )
         submit(job.id)
         return job
+
+    @app.post(
+        f"{API_PREFIX}/games/{{app_id}}/refreshes",
+        response_model=AnalysisJob,
+        status_code=202,
+    )
+    def start_refresh(app_id: int, request: QuickImportRequest) -> AnalysisJob:
+        if load_game_dataset(resolved_settings.database_path, app_id) is None:
+            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
+        try:
+            job: AnalysisJob = create_refresh_job(
+                resolved_settings.database_path, app_id, request.target_count
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "refresh_requires_reviews"}
+            ) from error
+        submit(job.id)
+        return job
+
+    @app.get(
+        f"{API_PREFIX}/games/{{app_id}}/reports",
+        response_model=tuple[ReportHistoryEntry, ...],
+    )
+    def report_history(app_id: int) -> tuple[ReportHistoryEntry, ...]:
+        if load_game_dataset(resolved_settings.database_path, app_id) is None:
+            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
+        return list_report_versions(resolved_settings.database_path, app_id)
 
     @app.get(f"{API_PREFIX}/reports/{{report_version_id}}", response_model=ReportResponse)
     def report_summary(report_version_id: str) -> ReportResponse:

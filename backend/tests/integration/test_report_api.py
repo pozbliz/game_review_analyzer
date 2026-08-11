@@ -64,21 +64,22 @@ def test_report_summary_and_complete_evidence_preserve_metrics_and_context(
 
 def seed_report(database_path: Path) -> None:
     initialize_database(database_path)
+    game_metadata = SteamMetadata(
+        app_id=1145350,
+        title="Hades II",
+        developers=("Supergiant Games",),
+        capsule_image_url=None,
+        release_date=None,
+        release_status="unknown",
+        review_count=2,
+        source_status="partial",
+        missing_fields=frozenset(
+            {"capsule_image_url", "release_date", "release_status"}
+        ),
+    )
     save_game_dataset(
         database_path,
-        SteamMetadata(
-            app_id=1145350,
-            title="Hades II",
-            developers=("Supergiant Games",),
-            capsule_image_url=None,
-            release_date=None,
-            release_status="unknown",
-            review_count=2,
-            source_status="partial",
-            missing_fields=frozenset(
-                {"capsule_image_url", "release_date", "release_status"}
-            ),
-        ),
+        game_metadata,
     )
     reviews: tuple[SteamReview, ...] = (
         review("review-1", "Combat is responsive.", True, 120, 3),
@@ -143,9 +144,10 @@ def seed_report(database_path: Path) -> None:
     save_report_version(
         database_path,
         ReportVersion(
-            schema_version="1.0",
+            schema_version="2.0",
             report_version_id="report-1",
             app_id=1145350,
+            metadata_snapshot=game_metadata,
             review_revision_ids=revision_ids,
             analysis_result=analysis,
             metric_policy=policy,

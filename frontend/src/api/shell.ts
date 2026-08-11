@@ -34,7 +34,7 @@ export type JobState = "queued" | "running" | "completed" | "failed" | "cancelle
 export interface AnalysisJob {
   id: string;
   app_id: number;
-  scope: "quick";
+  scope: "quick" | "refresh";
   state: JobState;
   target_count: number;
   imported_count: number;
@@ -68,7 +68,7 @@ function parseJob(payload: unknown): AnalysisJob {
     !isRecord(payload) ||
     typeof payload.id !== "string" ||
     typeof payload.app_id !== "number" ||
-    payload.scope !== "quick" ||
+    !(payload.scope === "quick" || payload.scope === "refresh") ||
     !["queued", "running", "completed", "failed", "cancelled"].includes(
       String(payload.state),
     ) ||
@@ -85,6 +85,14 @@ function parseJob(payload: unknown): AnalysisJob {
 
 export async function startQuickImport(appId: number, targetCount: number): Promise<AnalysisJob> {
   return parseJob(await requestJson(`/api/games/${appId}/imports/quick`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ target_count: targetCount }),
+  }));
+}
+
+export async function startRefresh(appId: number, targetCount: number): Promise<AnalysisJob> {
+  return parseJob(await requestJson(`/api/games/${appId}/refreshes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ target_count: targetCount }),

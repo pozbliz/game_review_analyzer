@@ -89,7 +89,15 @@ def test_validated_fixture_creates_a_provisional_immutable_report(tmp_path: Path
     assert [item.theme_id for item in report.theme_metrics.negative_headlines] == [
         "ev-t2"
     ]
+    assert report.metadata_snapshot.title == game["title"]
+    save_game_dataset(
+        database_path,
+        metadata(game).model_copy(update={"title": "Changed current title"}),
+    )
     assert load_report_version(database_path, report.report_version_id) == report
+    assert load_report_version(
+        database_path, report.report_version_id
+    ).metadata_snapshot.title == game["title"]
 
 
 def metadata(game: dict[str, Any]) -> SteamMetadata:

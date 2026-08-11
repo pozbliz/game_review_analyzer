@@ -1,5 +1,6 @@
 """Immutable Report Version persistence tests."""
 
+import json
 from pathlib import Path
 import sqlite3
 
@@ -67,6 +68,37 @@ def test_report_version_rejects_revisions_outside_its_game(tmp_path: Path) -> No
         save_report_version(database_path, report_version((999,)))
 
 
+def test_migration_upgrades_existing_report_to_typed_metadata_snapshot(
+    tmp_path: Path,
+) -> None:
+    database_path: Path = initialized_dataset(tmp_path)
+    with sqlite3.connect(database_path) as connection:
+        revision_ids: tuple[int, ...] = tuple(
+            row[0] for row in connection.execute("SELECT id FROM review_revisions")
+        )
+    save_report_version(database_path, report_version(revision_ids))
+    with sqlite3.connect(database_path) as connection:
+        snapshot: dict[str, object] = json.loads(
+            connection.execute(
+                "SELECT snapshot_json FROM report_versions WHERE id = 'report-1'"
+            ).fetchone()[0]
+        )
+        snapshot.pop("metadata_snapshot")
+        snapshot["schema_version"] = "1.0"
+        connection.execute(
+            "UPDATE report_versions SET snapshot_json = ? WHERE id = 'report-1'",
+            (json.dumps(snapshot),),
+        )
+        connection.execute("DELETE FROM schema_migrations WHERE version = 5")
+
+    initialize_database(database_path)
+
+    migrated: ReportVersion | None = load_report_version(database_path, "report-1")
+    assert migrated is not None
+    assert migrated.schema_version == "2.0"
+    assert migrated.metadata_snapshot.title == "Hades II"
+
+
 def initialized_dataset(tmp_path: Path) -> Path:
     database_path: Path = tmp_path / "app.sqlite3"
     initialize_database(database_path)
@@ -111,9 +143,22 @@ def initialized_dataset(tmp_path: Path) -> Path:
 
 def report_version(revision_ids: tuple[int, ...]) -> ReportVersion:
     return ReportVersion(
-        schema_version="1.0",
+        schema_version="2.0",
         report_version_id="report-1",
         app_id=1145350,
+        metadata_snapshot=SteamMetadata(
+            app_id=1145350,
+            title="Hades II",
+            developers=("Supergiant Games",),
+            capsule_image_url=None,
+            release_date=None,
+            release_status="unknown",
+            review_count=None,
+            source_status="partial",
+            missing_fields=frozenset(
+                {"capsule_image_url", "release_date", "release_status", "review_count"}
+            ),
+        ),
         review_revision_ids=revision_ids,
         analysis_result=AnalysisResult(
             schema_version="1.0",

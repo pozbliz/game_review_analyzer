@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from game_review_analyzer.domain.analysis import (
     AnalysisResult,
@@ -11,6 +11,7 @@ from game_review_analyzer.domain.analysis import (
     ThemeCategory,
     ThemePolarity,
 )
+from game_review_analyzer.domain.steam_metadata import SteamMetadata
 
 
 class ReportContractModel(ContractModel):
@@ -71,9 +72,10 @@ class ThemeMetrics(ReportContractModel):
 class ReportVersion(ReportContractModel):
     """Preserve one complete report result and its exact immutable scope."""
 
-    schema_version: Literal["1.0"]
+    schema_version: Literal["2.0"]
     report_version_id: NonEmptyString
     app_id: int = Field(gt=0)
+    metadata_snapshot: SteamMetadata
     review_revision_ids: tuple[int, ...] = Field(min_length=1)
     analysis_result: AnalysisResult
     metric_policy: ThemeMetricPolicy
@@ -88,3 +90,11 @@ class ReportVersion(ReportContractModel):
         if len(value) != len(set(value)) or any(identifier <= 0 for identifier in value):
             raise ValueError("Review Revision identifiers must be unique and positive")
         return value
+
+    @model_validator(mode="after")
+    def require_matching_metadata(self) -> "ReportVersion":
+        """Bind the metadata snapshot to the same game as the report scope."""
+
+        if self.metadata_snapshot.app_id != self.app_id:
+            raise ValueError("Report metadata must match the report AppID")
+        return self

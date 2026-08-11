@@ -9,7 +9,7 @@ afterEach(() => {
 
 describe("report exploration", () => {
   it("shows ranked design and Technical Themes with one inline detail at a time", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(json(reportPayload()));
+    vi.spyOn(globalThis, "fetch").mockImplementation(reportFetch);
 
     render(<ReportView reportId="report-1" />);
 
@@ -33,7 +33,8 @@ describe("report exploration", () => {
   it("filters by category and drills from representative evidence into full reviews", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url: string = request.toString();
-      return url.endsWith("/evidence") ? json(evidencePayload()) : json(reportPayload());
+      if (url.endsWith("/evidence")) return json(evidencePayload());
+      return reportFetch(request);
     });
     render(<ReportView reportId="report-1" />);
     await screen.findByRole("heading", { name: "Hades II" });
@@ -56,10 +57,97 @@ describe("report exploration", () => {
       "/api/reports/report-1/themes/responsive-combat/evidence",
     );
   });
+
+  it("starts refresh and exposes immutable report history with failure recovery", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      async (request, options) => {
+        const url: string = request.toString();
+        if (url.endsWith("/refreshes")) return json(jobPayload("failed"));
+        if (url.endsWith("/retry")) return json(jobPayload("queued"));
+        if (url.endsWith("/api/jobs/refresh-job")) return json(jobPayload("completed"));
+        return reportFetch(request, options);
+      },
+    );
+    render(<ReportView reportId="report-1" />);
+
+    expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
+    expect(await screen.findByText("Report history (2)")).toBeVisible();
+    expect(screen.getByRole("link", { name: /report-2/i })).toHaveAttribute(
+      "href",
+      "/reports/report-2",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh reviews" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Retry refresh" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/jobs/refresh-job/retry",
+      { method: "POST" },
+    ));
+  });
+
+  it("cancels a running refresh without changing the displayed report", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      async (request) => {
+        const url: string = request.toString();
+        if (url.endsWith("/refreshes")) return json(jobPayload("running"));
+        if (url.endsWith("/cancel")) return json(jobPayload("cancelled"));
+        if (url.endsWith("/api/jobs/refresh-job")) return json(jobPayload("running"));
+        return reportFetch(request);
+      },
+    );
+    render(<ReportView reportId="report-1" />);
+    await screen.findByRole("heading", { name: "Hades II" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh reviews" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel refresh" }));
+
+    expect(await screen.findByText("Refresh cancelled. Existing reports are unchanged.")).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/jobs/refresh-job/cancel",
+      { method: "POST" },
+    );
+  });
 });
 
 function json(payload: object): Response {
   return new Response(JSON.stringify(payload), { status: 200 });
+}
+
+async function reportFetch(request: RequestInfo | URL, _options?: RequestInit): Promise<Response> {
+  const url: string = request.toString();
+  return url.endsWith("/games/1145350/reports")
+    ? json(historyPayload())
+    : json(reportPayload());
+}
+
+function historyPayload(): object[] {
+  return ["report-2", "report-1"].map((reportId) => ({
+    report_version_id: reportId,
+    app_id: 1145350,
+    game_title: "Hades II",
+    review_count: 2,
+    provider: "manual-codex",
+    model: "fixture-model",
+    thresholds_calibrated: false,
+    created_at: "2026-08-11 12:00:00",
+  }));
+}
+
+function jobPayload(
+  state: "queued" | "running" | "completed" | "failed" | "cancelled",
+): object {
+  return {
+    id: "refresh-job",
+    app_id: 1145350,
+    scope: "refresh",
+    state,
+    target_count: 5000,
+    imported_count: 0,
+    cursor: "*",
+    cancel_requested: false,
+    error_code: state === "failed" ? "steam_unavailable" : null,
+  };
 }
 
 function reportPayload(): object {

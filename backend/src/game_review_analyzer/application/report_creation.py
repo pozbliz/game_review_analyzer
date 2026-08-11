@@ -16,6 +16,9 @@ from game_review_analyzer.domain.reports import (
 from game_review_analyzer.infrastructure.persistence.report_versions import (
     save_report_version,
 )
+from game_review_analyzer.infrastructure.persistence.game_datasets import (
+    load_game_dataset,
+)
 
 
 def create_manual_codex_report(
@@ -29,6 +32,9 @@ def create_manual_codex_report(
     """Validate, calculate, and append one provisional Manual Codex report."""
 
     result: AnalysisResult = validate_manual_codex_result(request, result_json)
+    metadata = load_game_dataset(database_path, request.app_id)
+    if metadata is None:
+        raise ValueError("Matching Game Dataset metadata is unavailable")
     metrics: ThemeMetrics = calculate_theme_metrics(
         (review.review_revision_id for review in request.reviews),
         result.opinion_points,
@@ -36,9 +42,10 @@ def create_manual_codex_report(
         metric_policy,
     )
     report: ReportVersion = ReportVersion(
-        schema_version="1.0",
+        schema_version="2.0",
         report_version_id=report_version_id,
         app_id=request.app_id,
+        metadata_snapshot=metadata,
         review_revision_ids=tuple(review_revision_ids),
         analysis_result=result,
         metric_policy=metric_policy,

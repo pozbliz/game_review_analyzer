@@ -74,6 +74,17 @@ export interface ThemeEvidence {
   items: ThemeEvidenceItem[];
 }
 
+export interface ReportHistoryEntry {
+  report_version_id: string;
+  app_id: number;
+  game_title: string;
+  review_count: number;
+  provider: string;
+  model: string;
+  thresholds_calibrated: boolean;
+  created_at: string;
+}
+
 export async function getReport(reportId: string): Promise<ReportSummary> {
   return parseReport(await requestJson(`/api/reports/${encodeURIComponent(reportId)}`));
 }
@@ -85,6 +96,12 @@ export async function getThemeEvidence(
   return parseThemeEvidence(await requestJson(
     `/api/reports/${encodeURIComponent(reportId)}/themes/${encodeURIComponent(themeId)}/evidence`,
   ));
+}
+
+export async function getReportHistory(appId: number): Promise<ReportHistoryEntry[]> {
+  const payload: unknown = await requestJson(`/api/games/${appId}/reports`);
+  if (!Array.isArray(payload)) throw new Error("Invalid report history response");
+  return payload.map(parseHistoryEntry);
 }
 
 async function requestJson(path: string): Promise<unknown> {
@@ -193,6 +210,16 @@ function parseEvidenceItem(value: unknown): ThemeEvidenceItem {
     throw new Error("Invalid complete evidence response");
   }
   return value as unknown as ThemeEvidenceItem;
+}
+
+function parseHistoryEntry(value: unknown): ReportHistoryEntry {
+  if (!isRecord(value) ||
+      !strings(value, ["report_version_id", "game_title", "provider", "model", "created_at"]) ||
+      !numbers(value, ["app_id", "review_count"]) ||
+      typeof value.thresholds_calibrated !== "boolean") {
+    throw new Error("Invalid report history response");
+  }
+  return value as unknown as ReportHistoryEntry;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

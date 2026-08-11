@@ -130,7 +130,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Normal refresh cannot detect deleted Steam reviews; explicit reconciliation remains later.
 
-**Status:** Ready for fixture-backed implementation.
+**Status:** Complete with append-only delta refresh, durable latest-revision reanalysis checkpoints, immutable metadata snapshots, newest-first history, and UI recovery controls.
 
 ## Slice 8 — Run one automated cloud provider securely
 

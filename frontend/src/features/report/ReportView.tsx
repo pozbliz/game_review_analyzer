@@ -1,12 +1,21 @@
 import { useEffect, useState } from "react";
 import {
   getReport,
+  getReportHistory,
   getThemeEvidence,
   MixedReception,
   ReportSummary,
+  ReportHistoryEntry,
   ReportTheme,
   ThemeEvidence,
 } from "../../api/reports";
+import {
+  AnalysisJob,
+  cancelJob,
+  getJob,
+  retryJob,
+  startRefresh,
+} from "../../api/shell";
 
 interface ReportViewProps {
   reportId: string;
@@ -19,18 +28,41 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
   const [category, setCategory] = useState<string>("All categories");
   const [evidence, setEvidence] = useState<Record<string, ThemeEvidence>>({});
   const [evidenceLoading, setEvidenceLoading] = useState<string | null>(null);
+  const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
+  const [refreshJob, setRefreshJob] = useState<AnalysisJob | null>(null);
+  const [refreshError, setRefreshError] = useState<string>("");
 
   useEffect(() => {
     let active: boolean = true;
     getReport(reportId)
       .then((value) => {
-        if (active) setReport(value);
+        if (!active) return;
+        setReport(value);
+        void getReportHistory(value.game.app_id)
+          .then((items) => { if (active) setHistory(items); })
+          .catch(() => { if (active) setRefreshError("Unable to load report history."); });
       })
       .catch(() => {
         if (active) setError("Unable to load this report.");
       });
     return () => { active = false; };
   }, [reportId]);
+
+  useEffect(() => {
+    if (!refreshJob || !["queued", "running"].includes(refreshJob.state)) return;
+    let active: boolean = true;
+    const refresh = (): void => {
+      getJob(refreshJob.id)
+        .then((job) => { if (active) setRefreshJob(job); })
+        .catch(() => { if (active) setRefreshError("Unable to refresh progress."); });
+    };
+    refresh();
+    const timer: number = window.setInterval(refresh, 500);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [refreshJob?.id, refreshJob?.state]);
 
   const allThemes: ReportTheme[] = report
     ? [...report.positive_themes, ...report.negative_themes, ...report.technical_themes]
@@ -44,6 +76,7 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
 
   if (error) return <main className="report-state"><p role="alert">{error}</p></main>;
   if (!report) return <main className="report-state"><p role="status">Loading report…</p></main>;
+  const appId: number = report.game.app_id;
 
   const visible = (themes: ReportTheme[]): ReportTheme[] => category === "All categories"
     ? themes
@@ -60,6 +93,28 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
     } finally {
       setEvidenceLoading(null);
     }
+  }
+
+  function beginRefresh(): void {
+    setRefreshError("");
+    startRefresh(appId, 5000)
+      .then(setRefreshJob)
+      .catch(() => setRefreshError("Unable to start refresh."));
+  }
+
+  function retryRefresh(): void {
+    if (!refreshJob) return;
+    setRefreshError("");
+    retryJob(refreshJob.id)
+      .then(setRefreshJob)
+      .catch(() => setRefreshError("Unable to retry refresh."));
+  }
+
+  function cancelRefresh(): void {
+    if (!refreshJob) return;
+    cancelJob(refreshJob.id)
+      .then(setRefreshJob)
+      .catch(() => setRefreshError("Unable to cancel refresh."));
   }
 
   const sharedThemeProps: SharedThemeProps = {
@@ -81,10 +136,48 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
           <h1>{report.game.title}</h1>
           <p className="report-subtitle">Steam AppID {report.game.app_id} · Report {report.report_version_id}</p>
         </div>
-        <span className={`calibration ${report.scope.thresholds_calibrated ? "calibrated" : "provisional"}`}>
-          {report.scope.thresholds_calibrated ? "Calibrated thresholds" : "Provisional thresholds"}
-        </span>
+        <div className="report-actions">
+          <span className={`calibration ${report.scope.thresholds_calibrated ? "calibrated" : "provisional"}`}>
+            {report.scope.thresholds_calibrated ? "Calibrated thresholds" : "Provisional thresholds"}
+          </span>
+          <details className="report-history">
+            <summary>Report history ({history.length})</summary>
+            <ul>
+              {history.map((entry) => (
+                <li key={entry.report_version_id}>
+                  <a
+                    href={`/reports/${encodeURIComponent(entry.report_version_id)}`}
+                    aria-current={entry.report_version_id === report.report_version_id ? "page" : undefined}
+                  >
+                    {entry.report_version_id} · {entry.review_count.toLocaleString()} reviews
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+          <button type="button" className="refresh-button" onClick={beginRefresh}>
+            Refresh reviews
+          </button>
+        </div>
       </header>
+
+      {(refreshJob || refreshError) && (
+        <section className="refresh-status" aria-live="polite">
+          {refreshError && <p role="alert">{refreshError}</p>}
+          {refreshJob?.state === "failed" && (
+            <><p>Refresh failed. Existing reports are unchanged.</p><button type="button" onClick={retryRefresh}>Retry refresh</button></>
+          )}
+          {refreshJob?.state === "cancelled" && (
+            <><p>Refresh cancelled. Existing reports are unchanged.</p><button type="button" onClick={retryRefresh}>Retry refresh</button></>
+          )}
+          {["queued", "running"].includes(refreshJob?.state ?? "") && (
+            <><p>Refreshing reviews…</p><button type="button" onClick={cancelRefresh}>Cancel refresh</button></>
+          )}
+          {refreshJob?.state === "completed" && (
+            <p>Reviews refreshed. Create a report to analyze the latest corpus.</p>
+          )}
+        </section>
+      )}
 
       <section className="report-facts" aria-label="Report scope and provenance">
         <div><span>Review scope</span><strong>{report.scope.review_count.toLocaleString()} reviews</strong></div>

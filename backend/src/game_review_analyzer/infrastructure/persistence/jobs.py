@@ -1,6 +1,7 @@
 """SQLite persistence and transitions for durable Analysis Jobs."""
 
 from pathlib import Path
+import json
 import sqlite3
 from typing import Literal
 from uuid import uuid4
@@ -42,12 +43,37 @@ def connect(database_path: Path) -> sqlite3.Connection:
 def create_job(database_path: Path, app_id: int, target_count: int) -> AnalysisJob:
     """Create and return one queued Quick import job."""
 
+    return _create_job(database_path, app_id, target_count, "quick")
+
+
+def create_refresh_job(
+    database_path: Path, app_id: int, target_count: int
+) -> AnalysisJob:
+    """Create one queued refresh only when the game already owns reviews."""
+
+    with connect(database_path) as connection:
+        review_count: int = connection.execute(
+            "SELECT COUNT(*) FROM reviews WHERE app_id = ?", (app_id,)
+        ).fetchone()[0]
+    if review_count == 0:
+        raise ValueError("Refresh requires an existing review dataset")
+    return _create_job(database_path, app_id, target_count, "refresh")
+
+
+def _create_job(
+    database_path: Path,
+    app_id: int,
+    target_count: int,
+    scope: Literal["quick", "refresh"],
+) -> AnalysisJob:
+    """Persist one queued acquisition job with an explicit supported scope."""
+
     job_id: str = str(uuid4())
     with connect(database_path) as connection:
         connection.execute(
             "INSERT INTO analysis_jobs(id, app_id, scope, state, target_count) "
-            "VALUES (?, ?, 'quick', 'queued', ?)",
-            (job_id, app_id, target_count),
+            "VALUES (?, ?, ?, 'queued', ?)",
+            (job_id, app_id, scope, target_count),
         )
     return get_job(database_path, job_id)
 
@@ -182,8 +208,47 @@ def finish_job(database_path: Path, job_id: str, state: JobState, error_code: st
     if state not in ("completed", "failed", "cancelled"):
         raise ValueError("finish_job requires a terminal state")
     with connect(database_path) as connection:
+        if state == "completed":
+            row: tuple[int, str] | None = connection.execute(
+                "SELECT app_id, scope FROM analysis_jobs WHERE id = ? AND state = 'running'",
+                (job_id,),
+            ).fetchone()
+            if row is not None and row[1] == "refresh":
+                revision_ids: tuple[int, ...] = tuple(
+                    item[0]
+                    for item in connection.execute(
+                        "SELECT review_revisions.id FROM review_revisions "
+                        "JOIN reviews ON reviews.id = review_revisions.review_id "
+                        "WHERE reviews.app_id = ? AND NOT EXISTS ("
+                        "SELECT 1 FROM review_revisions AS newer "
+                        "WHERE newer.review_id = review_revisions.review_id "
+                        "AND newer.id > review_revisions.id) "
+                        "ORDER BY review_revisions.id",
+                        (row[0],),
+                    )
+                )
+                connection.execute(
+                    "INSERT INTO job_analysis_scopes(job_id, review_revision_ids_json) "
+                    "VALUES (?, ?)",
+                    (job_id, json.dumps(revision_ids)),
+                )
         connection.execute(
             "UPDATE analysis_jobs SET state = ?, error_code = ?, "
             "updated_at = CURRENT_TIMESTAMP WHERE id = ? AND state = 'running'",
             (state, error_code, job_id),
         )
+
+
+def load_job_analysis_scope(
+    database_path: Path, job_id: str
+) -> tuple[int, ...] | None:
+    """Return the exact latest-revision corpus checkpointed at refresh completion."""
+
+    with connect(database_path) as connection:
+        row: tuple[str] | None = connection.execute(
+            "SELECT review_revision_ids_json FROM job_analysis_scopes WHERE job_id = ?",
+            (job_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return tuple(int(identifier) for identifier in json.loads(row[0]))

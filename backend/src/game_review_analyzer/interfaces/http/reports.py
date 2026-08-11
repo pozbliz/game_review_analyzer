@@ -17,9 +17,6 @@ from game_review_analyzer.domain.reports import (
     ThemeMetric,
 )
 from game_review_analyzer.domain.reviews import SteamReview
-from game_review_analyzer.infrastructure.persistence.game_datasets import (
-    load_game_dataset,
-)
 from game_review_analyzer.infrastructure.persistence.review_revisions import (
     load_review_revisions_by_ids,
 )
@@ -150,9 +147,7 @@ def build_report_response(
 ) -> ReportResponse:
     """Build a bounded report summary from one typed snapshot."""
 
-    metadata = load_game_dataset(database_path, report.app_id)
-    if metadata is None:
-        raise ValueError("Report game metadata is unavailable")
+    metadata = report.metadata_snapshot
     theme_by_id: dict[str, Theme] = {
         theme.id: theme for theme in report.analysis_result.themes
     }

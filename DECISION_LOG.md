@@ -1,5 +1,31 @@
 # Decision Log
 
+## 2026-08-11 — Append-only refresh and immutable report history completed
+
+**What changed:**
+
+- Added refresh jobs that reuse durable acquisition checkpoints while appending only new or edited Review Revisions.
+- Checkpointed the exact latest retained revision for every review at refresh completion and built provider-neutral reanalysis requests from that corpus.
+- Added Report Version 2.0 with an owned Steam metadata snapshot and migrated stored 1.0 snapshots so later dataset changes cannot alter historical presentation.
+- Added newest-first report-history persistence and HTTP contracts plus native report-history, refresh, progress, and retry controls.
+- Verified a fixture refresh through new Report Version creation while historical report, evidence, and metadata bytes remained unchanged.
+
+**Why:**
+
+- Reusing one durable job mechanism keeps cancellation, retry, restart recovery, and page checkpoints consistent across initial and refresh acquisition.
+- Metadata must live inside the typed report snapshot; reading mutable current Game Dataset metadata would make historical reports change after refresh.
+- Pre-2.0 snapshots are upgraded once with the current retained metadata because the earlier schema did not preserve their historical metadata value.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Safe report export and local-evidence re-import completed
 
 **What changed:**

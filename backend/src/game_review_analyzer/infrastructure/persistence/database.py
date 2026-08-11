@@ -1,10 +1,11 @@
 """SQLite initialization and migration primitives."""
 
+import json
 import sqlite3
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 6
 
 
 def initialize_database(database_path: Path) -> None:
@@ -92,6 +93,29 @@ def initialize_database(database_path: Path) -> None:
                 "PRIMARY KEY(report_version_id, review_revision_id))"
             )
             connection.execute("INSERT INTO schema_migrations(version) VALUES (4)")
+        if 5 not in applied_versions:
+            rows: list[tuple[str, str, str]] = connection.execute(
+                "SELECT report_versions.id, report_versions.snapshot_json, "
+                "game_datasets.metadata_json FROM report_versions "
+                "JOIN game_datasets ON game_datasets.app_id = report_versions.app_id"
+            ).fetchall()
+            for report_id, snapshot_json, metadata_json in rows:
+                snapshot: dict[str, object] = json.loads(snapshot_json)
+                snapshot["schema_version"] = "2.0"
+                snapshot.setdefault("metadata_snapshot", json.loads(metadata_json))
+                connection.execute(
+                    "UPDATE report_versions SET snapshot_json = ? WHERE id = ?",
+                    (json.dumps(snapshot, separators=(",", ":")), report_id),
+                )
+            connection.execute("INSERT INTO schema_migrations(version) VALUES (5)")
+        if 6 not in applied_versions:
+            connection.execute(
+                "CREATE TABLE job_analysis_scopes ("
+                "job_id TEXT PRIMARY KEY REFERENCES analysis_jobs(id) ON DELETE CASCADE, "
+                "review_revision_ids_json TEXT NOT NULL, "
+                "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            connection.execute("INSERT INTO schema_migrations(version) VALUES (6)")
 
 
 def schema_version(database_path: Path) -> int:

@@ -49,7 +49,7 @@ class JsonReportExport(ReportContractModel):
     """Carry one report snapshot plus fingerprints for strict local re-import."""
 
     kind: Literal["game-review-analyzer-report"]
-    format_version: Literal["1.0"]
+    format_version: Literal["2.0"]
     full_review_text_included: bool
     privacy_warning: NonEmptyString
     report: ReportVersion
@@ -93,7 +93,7 @@ def export_report_json(
     )
     document = JsonReportExport(
         kind="game-review-analyzer-report",
-        format_version="1.0",
+        format_version="2.0",
         full_review_text_included=include_full_review_text,
         privacy_warning=PRIVACY_WARNING if include_full_review_text else OMISSION_NOTICE,
         report=report,
@@ -193,9 +193,7 @@ def export_report_html(database_path: Path, report_version_id: str) -> str:
     """Render escaped standalone HTML with optional external Steam media."""
 
     report: ReportVersion = required_report(database_path, report_version_id)
-    metadata = load_game_dataset(database_path, report.app_id)
-    if metadata is None:
-        raise ValueError("Matching local Game Dataset is unavailable")
+    metadata = report.metadata_snapshot
     theme_by_id: dict[str, Theme] = {
         theme.id: theme for theme in report.analysis_result.themes
     }
@@ -230,6 +228,7 @@ def export_report_html(database_path: Path, report_version_id: str) -> str:
     return (
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "<meta name=\"game-review-analyzer-format-version\" content=\"1.0\">"
         f"<title>{escape(metadata.title)} report</title>"
         "<style>body{max-width:70rem;margin:auto;padding:2rem;font:16px system-ui;line-height:1.5}"
         "article{border-top:1px solid #ccc;padding:1rem 0}small{color:#555}blockquote{margin-left:1rem}</style>"

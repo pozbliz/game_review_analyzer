@@ -38,7 +38,7 @@ def test_json_contract_round_trips_only_with_exact_local_evidence(tmp_path: Path
     document: dict[str, object] = json.loads(exported)
 
     assert document["kind"] == "game-review-analyzer-report"
-    assert document["format_version"] == "1.0"
+    assert document["format_version"] == "2.0"
     assert document["full_review_text_included"] is False
     assert "Combat is responsive." not in exported
     assert all("review_text" not in item for item in document["evidence_bindings"])
@@ -131,6 +131,7 @@ def test_html_escapes_untrusted_content_and_blocks_unsafe_media(tmp_path: Path) 
     exported: str = export_report_html(database_path, "unsafe-report")
 
     assert exported.startswith("<!doctype html>")
+    assert 'game-review-analyzer-format-version" content="1.0' in exported
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in exported
     assert "<script>" not in exported
     assert "javascript:" not in exported

@@ -181,12 +181,12 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 **Blocked by:** None for fixture-backed implementation. Real-world analysis calibration remains an acceptance gate.
 
-- [ ] Write delta-ingestion tests for new, unchanged, and edited Steam reviews.
-- [ ] Implement append-only refresh while preserving exact historical Review Revisions.
-- [ ] Write failing checkpoint tests, then implement durable refresh and relevant-corpus reanalysis.
-- [ ] Write repository tests for immutable history and newest-Report-Version selection.
-- [ ] Write component tests, then build refresh controls, report history, and failure recovery.
-- [ ] Verify that refresh leaves historical reports, source evidence, and metadata snapshots byte-for-byte unchanged.
+- [x] Write delta-ingestion tests for new, unchanged, and edited Steam reviews.
+- [x] Implement append-only refresh while preserving exact historical Review Revisions.
+- [x] Write failing checkpoint tests, then implement durable refresh and relevant-corpus reanalysis.
+- [x] Write repository tests for immutable history and newest-Report-Version selection.
+- [x] Write component tests, then build refresh controls, report history, and failure recovery.
+- [x] Verify that refresh leaves historical reports, source evidence, and metadata snapshots byte-for-byte unchanged.
 
 ### Slice 8 — Run one automated cloud provider securely
 
