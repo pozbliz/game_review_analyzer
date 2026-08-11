@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Direct-AppID preview API exposed
+
+**What changed:**
+
+- Added validated direct-AppID preview behavior with explicit not-found, malformed-source, and temporary-source responses.
+- Successful previews persist before returning to the frontend.
+
+**Why:**
+
+- One synchronous metadata request is bounded and does not need the durable Job Runner introduced in Slice 3.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Initial Game Dataset preview persisted
 
 **What changed:**
