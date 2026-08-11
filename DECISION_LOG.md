@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Provider-independent evaluation format established
+
+**What changed:**
+
+- Defined versioned gold labels and deterministic scoring for extraction, sentiment, neutrality, grouping, categories, evidence, opposing links, and review classification.
+- Added three synthetic conformance cases with an integrity test.
+
+**Why:**
+
+- The corpus can now be labeled consistently before any provider schema exists, while synthetic examples remain explicitly excluded from real-game threshold calibration.
+
+**New issues:**
+
+- None beyond the existing real-corpus and independent-annotation approval gate.
+
+**Needs human judgment:**
+
+- The recorded corpus, storage, and gold-label decisions remain open.
+
+---
+
 ## 2026-08-11 — Analysis-quality evaluation corpus requires approval
 
 **What changed:**
