@@ -29,6 +29,9 @@ from game_review_analyzer.infrastructure.persistence.jobs import (
     request_cancellation,
     retry_job,
 )
+from game_review_analyzer.infrastructure.persistence.report_versions import (
+    load_report_version,
+)
 from game_review_analyzer.infrastructure.steam_metadata import (
     SteamGameNotFound,
     SteamMetadataMalformed,
@@ -37,6 +40,12 @@ from game_review_analyzer.infrastructure.steam_metadata import (
 )
 from game_review_analyzer.infrastructure.steam_reviews import SteamReviewIngestionAdapter
 from game_review_analyzer.shared.config import Settings
+from game_review_analyzer.interfaces.http.reports import (
+    ReportResponse,
+    ThemeEvidenceResponse,
+    build_report_response,
+    build_theme_evidence_response,
+)
 
 API_PREFIX = "/api"
 
@@ -153,6 +162,31 @@ def create_app(
         )
         submit(job.id)
         return job
+
+    @app.get(f"{API_PREFIX}/reports/{{report_version_id}}", response_model=ReportResponse)
+    def report_summary(report_version_id: str) -> ReportResponse:
+        report = load_report_version(resolved_settings.database_path, report_version_id)
+        if report is None:
+            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
+        return build_report_response(resolved_settings.database_path, report)
+
+    @app.get(
+        f"{API_PREFIX}/reports/{{report_version_id}}/themes/{{theme_id}}/evidence",
+        response_model=ThemeEvidenceResponse,
+    )
+    def theme_evidence(
+        report_version_id: str,
+        theme_id: str,
+    ) -> ThemeEvidenceResponse:
+        report = load_report_version(resolved_settings.database_path, report_version_id)
+        if report is None:
+            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
+        response: ThemeEvidenceResponse | None = build_theme_evidence_response(
+            resolved_settings.database_path, report, theme_id
+        )
+        if response is None:
+            raise HTTPException(status_code=404, detail={"code": "theme_not_found"})
+        return response
 
     @app.get(f"{API_PREFIX}/jobs/{{job_id}}", response_model=AnalysisJob)
     def job_progress(job_id: str) -> AnalysisJob:

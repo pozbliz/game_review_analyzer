@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-11 — Report summary and evidence APIs added
+
+**What changed:**
+
+- Added a bounded immutable report summary endpoint with game identity, exact scope, provenance, ranked design and Technical Themes, mixed reception, categories, support denominators, and representative evidence.
+- Added a separate complete-evidence endpoint that joins every Theme Opinion Point to its exact locally stored Review Revision and context.
+- Allowed fixture-backed Slice 5 implementation to proceed while retaining connected-browser and real-world calibration acceptance gates.
+
+**Why:**
+
+- Separating bounded summaries from complete evidence keeps initial report payloads manageable without weakening traceability.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None until the existing browser and calibration gates resume.
+
+---
+
 ## 2026-08-11 — Provisional Manual Codex report path completed
 
 **What changed:**

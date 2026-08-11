@@ -155,9 +155,9 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Slice 5 — Explore an evidence-rich report
 
-**Blocked by:** Slices 0 and 4.
+**Blocked by:** None for fixture-backed implementation. Connected-browser verification and real-world analysis calibration remain acceptance gates.
 
-- [ ] Write report and evidence API contract tests.
+- [x] Write report and evidence API contract tests.
 - [ ] Write component tests, then build positive, negative, and secondary Technical Theme presentations.
 - [ ] Write interaction tests, then build linked mixed-reception and category exploration.
 - [ ] Write evidence-navigation tests, then build representative excerpt and full-review drill-down.

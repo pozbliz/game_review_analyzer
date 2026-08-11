@@ -94,7 +94,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Outcome:** Read positive and negative rankings, linked mixed reception, categories, representative excerpts, full evidence, playtime, helpfulness, and scope in the approved responsive interface.
 
-**Blocked by:** Slices 0 and 4.
+**Blocked by:** None for fixture-backed implementation. Connected-browser verification and real-world analysis calibration remain acceptance gates.
 
 **Scope:** Report/evidence API, Theme Metrics presentation, report navigation, accessibility, keyboard behavior, and responsive layout.
 
@@ -102,7 +102,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Filters, refresh, and provider automation remain separate to keep report trust independently verifiable.
 
-**Status:** Blocked.
+**Status:** In progress with fixture-backed reports and provisional metrics.
 
 ## Slice 6 — Export reports safely
 

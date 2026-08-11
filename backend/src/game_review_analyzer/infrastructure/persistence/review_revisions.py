@@ -52,3 +52,26 @@ def insert_review_revisions(
         )
         inserted_revisions += cursor.rowcount
     return inserted_revisions
+
+
+def load_review_revisions_by_ids(
+    database_path: Path,
+    revision_ids: Iterable[int],
+) -> dict[int, SteamReview]:
+    """Load exact immutable Review Revisions by their local identifiers."""
+
+    identifiers: tuple[int, ...] = tuple(revision_ids)
+    if not identifiers:
+        return {}
+    placeholders: str = ",".join("?" for _ in identifiers)
+    with sqlite3.connect(database_path) as connection:
+        rows: list[tuple[int, str]] = connection.execute(
+            f"SELECT id, content_json FROM review_revisions WHERE id IN ({placeholders})",
+            identifiers,
+        ).fetchall()
+    revisions: dict[int, SteamReview] = {
+        row[0]: SteamReview.model_validate_json(row[1]) for row in rows
+    }
+    if set(revisions) != set(identifiers):
+        raise ValueError("One or more Review Revisions are unavailable")
+    return revisions
