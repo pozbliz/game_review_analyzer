@@ -1,5 +1,25 @@
 # Decision Log
 
+## 2026-08-11 — Analysis-quality evaluation corpus requires approval
+
+**What changed:**
+
+- Recorded a human gate for the real-game review corpus, its repository/storage policy, and an independent gold-label process before Slice 4 evaluation begins.
+
+**Why:**
+
+- The approved design requires real-game calibration. Synthetic samples cannot establish headline stability, and provider-generated labels cannot serve as independent ground truth for evaluating that provider.
+
+**New issues:**
+
+- No legally/privacy-reviewed real-review corpus or independent annotation process is currently available in the repository.
+
+**Needs human judgment:**
+
+- Select the corpus source and games, decide whether review text may be committed or must remain local, and identify who approves gold labels.
+
+---
+
 ## 2026-08-11 — Durable Quick import slice completed
 
 **What changed:**

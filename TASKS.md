@@ -108,7 +108,9 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Slice 4 — Produce the first immutable report through Manual Codex
 
-**Blocked by:** An initial labeled evaluation set, provisional reliability thresholds, and the analysis-quality approval gate.
+**Blocked by:** Human approval of a legally and privacy-safe real-review corpus and gold-label process, then the analysis-quality approval gate.
+
+- [ ] [HUMAN] Approve the real-game review corpus, repository/storage policy, and independent gold-label process used for analysis-quality evaluation.
 
 - [ ] Define the labeled evaluation-set format and create representative samples spanning several games and review styles.
 - [ ] Evaluate Opinion Point extraction, Opinion Sentiment, neutral exclusion, paraphrase grouping, categories, summary faithfulness, and exact excerpts.

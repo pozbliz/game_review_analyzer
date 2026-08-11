@@ -80,7 +80,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Outcome:** Export a privacy-minimized Codex package, import valid structured results, compute authoritative Theme metrics, and store a minimal immutable Report Version.
 
-**Blocked by:** An initial labeled evaluation set, provisional reliability thresholds, and explicit human approval of the analysis-quality baseline.
+**Blocked by:** Human approval of a legally and privacy-safe real-review corpus and independent gold-label process, then explicit approval of the resulting analysis-quality baseline.
 
 **Scope:** Analysis Provider contract, versioned schemas, Codex export/import, deterministic Theme Metrics, Report Repository, and minimal report presentation.
 
