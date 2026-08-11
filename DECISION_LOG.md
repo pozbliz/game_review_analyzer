@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Durable Quick Job Runner implemented
+
+**What changed:**
+
+- Added queued/running/terminal transitions, durable cancellation, retry, restart requeue, and atomic review-page checkpoints.
+- Kept the runner with its SQLite and Steam infrastructure behind one `run(job_id)` interface instead of adding an unused persistence port.
+
+**Why:**
+
+- Atomic page persistence prevents review evidence and progress cursors from diverging after interruption.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Steam Review Revisions made append-only
 
 **What changed:**
