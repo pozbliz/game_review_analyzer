@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — FastAPI serves the compiled frontend
+
+**What changed:**
+
+- Mounted an available compiled frontend directory at `/` after registering API routes.
+- Added a configurable frontend distribution path for source and packaged layouts.
+
+**Why:**
+
+- FastAPI's native static-file support provides the production delivery path without a second server or custom file handling.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Shell API contracts validated at runtime
 
 **What changed:**

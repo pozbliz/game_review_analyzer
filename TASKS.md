@@ -16,7 +16,7 @@
 - [x] Write failing migration tests, then establish SQLite initialization and migration tooling.
 - [x] Write failing frontend shell and backend-health tests, then implement the minimal React/Vite application shell.
 - [x] Establish typed frontend/backend API communication and contract verification.
-- [ ] Write a failing production-serving test, then serve compiled frontend assets through FastAPI.
+- [x] Write a failing production-serving test, then serve compiled frontend assets through FastAPI.
 - [x] Add backend tests, frontend tests, type checking, production builds, and migration checks to CI.
 - [ ] Verify a clean local installation and document the development workflow.
 
@@ -74,7 +74,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Write failing migration tests, then establish SQLite initialization and migration tooling.
 - [x] Write failing frontend shell and backend-health tests, then implement the minimal React/Vite application shell.
 - [x] Establish typed frontend/backend API communication and contract verification.
-- [ ] Write a failing production-serving test, then serve compiled frontend assets through FastAPI.
+- [x] Write a failing production-serving test, then serve compiled frontend assets through FastAPI.
 - [x] Add backend tests, frontend tests, type checking, production builds, and migration checks to CI.
 - [ ] Establish reproducible dependency installation using committed lock data and frozen CI installs.
 - [ ] Resolve or explicitly constrain the FastAPI/Starlette test-client deprecation warning.

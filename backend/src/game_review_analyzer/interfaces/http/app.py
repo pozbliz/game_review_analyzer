@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator, Literal
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
@@ -45,6 +46,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return PublicConfigResponse(
             environment=resolved_settings.environment,
             api_prefix=resolved_settings.api_prefix,
+        )
+
+    if resolved_settings.frontend_dist_path.is_dir():
+        app.mount(
+            "/",
+            StaticFiles(directory=resolved_settings.frontend_dist_path, html=True),
+            name="frontend",
         )
 
     return app
