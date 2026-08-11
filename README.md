@@ -57,6 +57,8 @@ npm run build
 
 For development, run `uv run uvicorn game_review_analyzer.interfaces.http.app:app --reload` from `backend/` and `npm run dev` from `frontend/`. For the production delivery path, build the frontend first and run only the backend; FastAPI serves `frontend/dist/` along with the API.
 
+The local human evaluation tool is available at `frontend/public/review-labeler.html` directly or `/review-labeler.html` through the running application. It loads candidate JSON locally and exports reviewed JSON without transmitting review data.
+
 The backend uses a packaged `src/game_review_analyzer/` layout with domain, application, interface, infrastructure, and shared ownership boundaries. The frontend shell lives under `frontend/src/app/`, shared styling under `frontend/src/styles/`, and integration tests under `frontend/tests/`.
 
 ## Known constraints

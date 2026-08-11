@@ -24,6 +24,14 @@ All excerpts must be exact substrings of the referenced review. A Theme must hav
 
 Raw real-review text, reviewer identifiers, and annotations must follow the separately approved corpus storage policy. Provider outputs are never gold labels.
 
+## Human review workflow
+
+Raw corpus and reviewed files remain under the local, gitignored `evaluation-data/` directory. Candidate labels contain the source review, exact candidate excerpt, sentiment, subject, category, and Theme title.
+
+Open [`review-labeler.html`](../../frontend/public/review-labeler.html) directly or at `/review-labeler.html` when the application is running. Load the candidate JSON, then use the buttons or keyboard shortcuts to approve, correct, or reject each Opinion Point. The browser autosaves the current round by source filename. When every candidate has a decision, export the reviewed JSON and either attach it in conversation or place it under `evaluation-data/` and provide its path.
+
+The exported file is the handoff back to Codex. It preserves each source candidate and adds a `humanReview` object containing the decision, corrected sentiment, category, Technical Theme flag, subject, and Theme title. No data is transmitted by the page.
+
 ## Automated scoring
 
 Score each provider run without rounding intermediate values:

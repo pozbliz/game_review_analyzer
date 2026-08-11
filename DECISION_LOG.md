@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Human gold-label review moved into a local browser tool
+
+**What changed:**
+
+- Added a self-contained review-labeling page with candidate approval, button corrections, keyboard shortcuts, autosave, progress, rejection, and reviewed-JSON export.
+- Kept raw corpus and reviewed files under the gitignored `evaluation-data/` directory.
+
+**Why:**
+
+- Human review should feel like a short classification round rather than terminal data entry, while the exported JSON provides a deterministic handoff back to Codex.
+
+**New issues:**
+
+- Connected-browser visual verification remains unavailable in the current tool runtime; jsdom interaction coverage and the production build are the automated boundary.
+
+**Needs human judgment:**
+
+- The user must visually confirm the local labeling experience when the first real candidate corpus is ready.
+
+---
+
 ## 2026-08-11 — Evaluation games and human reviewer approved
 
 **What changed:**
