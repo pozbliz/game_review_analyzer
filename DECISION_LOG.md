@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-11 — Quick import API made asynchronous and recoverable
+
+**What changed:**
+
+- Added start, progress, cancellation, and retry endpoints backed by one process-local import worker.
+- Startup requeues interrupted jobs from their last durable checkpoint.
+- Corrected a stale Game Dataset test that still assumed the pre-job schema version.
+
+**Why:**
+
+- A standard-library single-worker executor keeps HTTP requests responsive without introducing a second queue or concurrency model.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Durable Quick Job Runner implemented
 
 **What changed:**

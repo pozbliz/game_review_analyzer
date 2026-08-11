@@ -1,11 +1,12 @@
 """FastAPI application shell and its public health/configuration endpoints."""
 
 from contextlib import asynccontextmanager
+from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncIterator, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from game_review_analyzer.application.game_preview import (
     InvalidAppId,
@@ -14,13 +15,27 @@ from game_review_analyzer.application.game_preview import (
 )
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
-from game_review_analyzer.infrastructure.persistence.game_datasets import save_game_dataset
+from game_review_analyzer.infrastructure.job_runner import JobRunner, ReviewPageSource
+from game_review_analyzer.infrastructure.persistence.game_datasets import (
+    load_game_dataset,
+    save_game_dataset,
+)
+from game_review_analyzer.infrastructure.persistence.jobs import (
+    AnalysisJob,
+    JobNotFound,
+    create_job,
+    get_job,
+    recoverable_job_ids,
+    request_cancellation,
+    retry_job,
+)
 from game_review_analyzer.infrastructure.steam_metadata import (
     SteamGameNotFound,
     SteamMetadataMalformed,
     SteamMetadataUnavailable,
     SteamStoreMetadataAdapter,
 )
+from game_review_analyzer.infrastructure.steam_reviews import SteamReviewIngestionAdapter
 from game_review_analyzer.shared.config import Settings
 
 API_PREFIX = "/api"
@@ -40,19 +55,38 @@ class PublicConfigResponse(BaseModel):
     api_prefix: Literal["/api"]
 
 
+class QuickImportRequest(BaseModel):
+    """Validate the user-selected review cap for one Quick import."""
+
+    target_count: int = Field(default=5000, ge=1)
+
+
 def create_app(
     settings: Settings | None = None,
     metadata_source: SteamMetadataSource | None = None,
+    review_source: ReviewPageSource | None = None,
 ) -> FastAPI:
     """Create an application instance, optionally using test-specific settings."""
 
     resolved_settings = settings or Settings.from_environment()
     resolved_metadata_source = metadata_source or SteamStoreMetadataAdapter()
+    runner = JobRunner(
+        resolved_settings.database_path,
+        review_source or SteamReviewIngestionAdapter(),
+    )
 
     @asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         initialize_database(resolved_settings.database_path)
-        yield
+        # ponytail: one import worker; increase only after measured parallel demand.
+        executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="review-import")
+        application.state.import_executor = executor
+        for job_id in recoverable_job_ids(resolved_settings.database_path):
+            executor.submit(runner.run, job_id)
+        try:
+            yield
+        finally:
+            executor.shutdown(wait=True)
 
     app = FastAPI(title="Game Review Analyzer", lifespan=lifespan)
 
@@ -94,6 +128,55 @@ def create_app(
                 status_code=503,
                 detail={"code": "steam_unavailable", "message": "Steam metadata is temporarily unavailable"},
             ) from error
+
+    def submit(job_id: str) -> None:
+        app.state.import_executor.submit(runner.run, job_id)
+
+    def existing_job(job_id: str) -> AnalysisJob:
+        try:
+            return get_job(resolved_settings.database_path, job_id)
+        except JobNotFound as error:
+            raise HTTPException(status_code=404, detail={"code": "job_not_found"}) from error
+
+    @app.post(
+        f"{API_PREFIX}/games/{{app_id}}/imports/quick",
+        response_model=AnalysisJob,
+        status_code=202,
+    )
+    def start_quick_import(app_id: int, request: QuickImportRequest) -> AnalysisJob:
+        if load_game_dataset(resolved_settings.database_path, app_id) is None:
+            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
+        job: AnalysisJob = create_job(
+            resolved_settings.database_path,
+            app_id,
+            request.target_count,
+        )
+        submit(job.id)
+        return job
+
+    @app.get(f"{API_PREFIX}/jobs/{{job_id}}", response_model=AnalysisJob)
+    def job_progress(job_id: str) -> AnalysisJob:
+        return existing_job(job_id)
+
+    @app.post(f"{API_PREFIX}/jobs/{{job_id}}/cancel", response_model=AnalysisJob)
+    def cancel_job(job_id: str) -> AnalysisJob:
+        existing_job(job_id)
+        request_cancellation(resolved_settings.database_path, job_id)
+        return get_job(resolved_settings.database_path, job_id)
+
+    @app.post(
+        f"{API_PREFIX}/jobs/{{job_id}}/retry",
+        response_model=AnalysisJob,
+        status_code=202,
+    )
+    def retry_failed_job(job_id: str) -> AnalysisJob:
+        existing_job(job_id)
+        try:
+            job: AnalysisJob = retry_job(resolved_settings.database_path, job_id)
+        except ValueError as error:
+            raise HTTPException(status_code=409, detail={"code": "job_not_retryable"}) from error
+        submit(job.id)
+        return job
 
     if resolved_settings.frontend_dist_path.is_dir():
         app.mount(

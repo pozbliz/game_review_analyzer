@@ -19,6 +19,7 @@
 - [x] Write a failing production-serving test, then serve compiled frontend assets through FastAPI.
 - [x] Add backend tests, frontend tests, type checking, production builds, and migration checks to CI.
 - [x] Verify a clean local installation and document the development workflow.
+- [x] Correct the stale Game Dataset schema-version assertion after the review/job migration.
 
 Active implementation checklist derived from the approved `PLAN.md`. Tasks remain in plan-slice order. Mark decisions or editor work requiring user input with `[HUMAN]`.
 
@@ -101,7 +102,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Implement the paginated Steam Review Ingestion adapter.
 - [x] Write failing deduplication and edited-review tests, then implement append-only Review Revision behavior.
 - [x] Write failing Job Runner state-transition tests, then implement checkpoints, cancellation, retry, and restart recovery.
-- [ ] Write API tests, then expose import progress, cancellation, and retry behavior.
+- [x] Write API tests, then expose import progress, cancellation, and retry behavior.
 - [ ] Write component tests, then build the analysis-setup and progress interface.
 - [ ] Verify browser-refresh and backend-restart recovery with an interrupted Quick import.
 

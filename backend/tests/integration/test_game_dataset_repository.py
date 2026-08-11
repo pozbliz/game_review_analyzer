@@ -33,7 +33,6 @@ def test_metadata_preview_round_trips_as_initial_game_dataset(tmp_path: Path) ->
 
     save_game_dataset(database_path, metadata)
 
-    assert CURRENT_SCHEMA_VERSION == 2
-    assert schema_version(database_path) == 2
+    assert schema_version(database_path) == CURRENT_SCHEMA_VERSION
     assert load_game_dataset(database_path, 1145350) == metadata
     assert load_game_dataset(database_path, 999999999) is None
