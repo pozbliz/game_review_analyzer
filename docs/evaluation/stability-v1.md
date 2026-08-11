@@ -23,3 +23,9 @@ Three independent Stardew Valley outputs are valid: contiguous produced 22 Theme
 Hades II contiguous exhausted the three-attempt limit for whole-result generation. Discovery contained two case-normalized excerpts; repair attempt two left one unchanged; the final repair fixed that excerpt but regenerated unrelated evidence and introduced a new non-exact excerpt. The user then approved a new evidence-only repair contract that can replace excerpts only for explicitly rejected Theme keys. Its first output repaired `polished_sequel_and_expanded_content` without changing support membership or any unrelated Theme field, and the complete 16-Theme result passed strict validation. A provider output is never silently repaired or scored after validation failure.
 
 The first Hades II interleaved attempt returned zero Themes, exposing that the initial schema had only a maximum Theme count. The result was rejected and preserved; the shared contract now requires 1–60 Themes before further runs.
+
+## Revised method
+
+The monolithic 5,000-review discovery runs were stopped after Cyberpunk 2077 contiguous exceeded ten minutes without producing output. Those exploratory outputs are retained locally but will not establish stability or calibrate support thresholds because their Theme memberships contain only sampled evidence rather than every matching review.
+
+The replacement method extracts exact Opinion Points once in 250-review batches, validates every batch against its source scope, then performs repeated bounded consolidation over the same validated points. Theme support is derived deterministically from complete Opinion Point membership. Sixty local extraction packages now cover all 15,000 reviews; no extraction model calls have started.

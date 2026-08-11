@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-08-11 — Stability evaluation restored to batch-first analysis
+
+**What changed:**
+
+- Stopped monolithic 5,000-review discovery runs before scoring or threshold calibration.
+- Added an Opinion Point-only batch contract that reuses exact-scope and exact-excerpt validation.
+- Prepared 60 isolated 250-review extraction packages covering all 15,000 approved reviews once.
+- Moved repeated stability trials to bounded consolidation over validated Opinion Points, with deterministic support calculation afterward.
+
+**Why:**
+
+- Monolithic runs were slow and returned sampled support memberships, which cannot produce auditable support counts or threshold calibration. The approved design already requires batch extraction before cross-batch consolidation.
+
+**New issues:**
+
+- Cross-batch consolidation must preserve every assigned Opinion Point identifier while merging paraphrases over bounded passes.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- Approve the resulting stability metrics and provisional thresholds after the revised experiment completes.
+
+---
+
 ## 2026-08-11 — Empty stability results rejected
 
 **What changed:**

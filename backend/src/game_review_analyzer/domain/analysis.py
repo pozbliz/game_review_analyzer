@@ -84,6 +84,16 @@ class OpinionPoint(ContractModel):
     supports_theme_id: NonEmptyString | None
 
 
+class ExtractedOpinionPoint(ContractModel):
+    """Represent one exact opinion before cross-batch grouping."""
+
+    id: NonEmptyString
+    review_revision_id: NonEmptyString
+    excerpt: NonEmptyString
+    sentiment: OpinionSentiment
+    subject: NonEmptyString
+
+
 class Theme(ContractModel):
     """Group recurring equivalent Opinion Points into one evidence-backed claim."""
 
@@ -118,3 +128,15 @@ class AnalysisResult(ContractModel):
     opinion_points: tuple[OpinionPoint, ...]
     themes: tuple[Theme, ...]
     mechanic_classifications: tuple[MechanicClassification, ...]
+
+
+class OpinionExtractionResult(ContractModel):
+    """Carry validated Opinion Points from one bounded review batch."""
+
+    schema_version: Literal["1.0"]
+    request_id: NonEmptyString
+    scope_sha256: Sha256Digest
+    provider: NonEmptyString
+    model: NonEmptyString
+    completed_review_revision_ids: tuple[NonEmptyString, ...] = Field(min_length=1)
+    opinion_points: tuple[ExtractedOpinionPoint, ...]

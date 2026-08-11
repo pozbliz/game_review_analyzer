@@ -66,7 +66,9 @@ The approved real corpus must span several games, game sizes, recommendation dis
 
 The approved initial games are Hades II, Stardew Valley, and Cyberpunk 2077. Codex may prepare candidate annotations, but the user independently reviews them before they become gold labels. This benchmark calibrates prompts, schemas, validation, and thresholds; it does not train or fine-tune a model.
 
-For each game, compare headline Themes across the latest eligible 5,000 reviews using at least three deterministic batch partitions and at least three provider runs. Report support-count variance, support-percentage variance, and pairwise Jaccard overlap of matched headline Theme identifiers.
+For each game, extract Opinion Points once from the latest eligible 5,000 reviews in bounded batches. Each batch result must cover its exact Review Revision scope and pass identifier and exact-excerpt validation before consolidation. Do not estimate Theme support during extraction.
+
+Compare headline Themes using at least three deterministic orderings of the same validated Opinion Points and at least three bounded multi-pass consolidation runs. Theme membership must reference the extracted Opinion Point identifiers; calculate distinct-review support and percentages deterministically after consolidation. Report support-count variance, support-percentage variance, and pairwise Jaccard overlap of matched Theme memberships.
 
 Calibrate absolute support, percentage support, cluster coherence, and Technical Theme thresholds by a documented grid search. Publish every candidate setting's false-positive and false-negative counts; do not select thresholds until the human approval task is complete.
 
