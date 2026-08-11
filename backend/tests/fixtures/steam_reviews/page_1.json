@@ -1,0 +1,36 @@
+{
+  "success": 1,
+  "cursor": "next+cursor==",
+  "reviews": [
+    {
+      "recommendationid": "1001",
+      "language": "english",
+      "review": "Combat feels responsive.",
+      "timestamp_created": 100,
+      "timestamp_updated": 100,
+      "voted_up": true,
+      "votes_up": 12,
+      "votes_funny": 1,
+      "weighted_vote_score": "0.8",
+      "steam_purchase": true,
+      "received_for_free": false,
+      "written_during_early_access": true,
+      "author": {"playtime_forever": 3000, "playtime_at_review": 2400}
+    },
+    {
+      "recommendationid": "1002",
+      "language": "english",
+      "review": "The onboarding is unclear.",
+      "timestamp_created": 110,
+      "timestamp_updated": 120,
+      "voted_up": false,
+      "votes_up": 4,
+      "votes_funny": 0,
+      "weighted_vote_score": "0.4",
+      "steam_purchase": false,
+      "received_for_free": true,
+      "written_during_early_access": false,
+      "author": {"playtime_forever": 900, "playtime_at_review": 600}
+    }
+  ]
+}

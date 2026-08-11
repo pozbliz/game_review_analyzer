@@ -1,0 +1,36 @@
+{
+  "success": 1,
+  "cursor": "done",
+  "reviews": [
+    {
+      "recommendationid": "2001",
+      "language": "english",
+      "review": "Eligible English review.",
+      "timestamp_created": 100,
+      "timestamp_updated": 100,
+      "voted_up": true,
+      "votes_up": 0,
+      "votes_funny": 0,
+      "weighted_vote_score": "0",
+      "steam_purchase": true,
+      "received_for_free": false,
+      "written_during_early_access": false,
+      "author": {"playtime_forever": 10, "playtime_at_review": 10}
+    },
+    {
+      "recommendationid": "2002",
+      "language": "schinese",
+      "review": "Ineligible language.",
+      "timestamp_created": 100,
+      "timestamp_updated": 100,
+      "voted_up": true,
+      "votes_up": 0,
+      "votes_funny": 0,
+      "weighted_vote_score": "0",
+      "steam_purchase": true,
+      "received_for_free": false,
+      "written_during_early_access": false,
+      "author": {"playtime_forever": 10, "playtime_at_review": 10}
+    }
+  ]
+}

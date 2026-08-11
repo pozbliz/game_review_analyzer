@@ -97,8 +97,8 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 **Blocked by:** Nothing. This is the next execution frontier.
 
 - [x] Write migration and integrity tests for reviews, immutable Review Revisions, Analysis Jobs, and checkpoints.
-- [ ] Create fixtures and failing tests for pagination, cursor encoding, eligibility, pacing, bounded retries, cursor repetition, and source exhaustion.
-- [ ] Implement the paginated Steam Review Ingestion adapter.
+- [x] Create fixtures and failing tests for pagination, cursor encoding, eligibility, pacing, bounded retries, cursor repetition, and source exhaustion.
+- [x] Implement the paginated Steam Review Ingestion adapter.
 - [ ] Write failing deduplication and edited-review tests, then implement append-only Review Revision behavior.
 - [ ] Write failing Job Runner state-transition tests, then implement checkpoints, cancellation, retry, and restart recovery.
 - [ ] Write API tests, then expose import progress, cancellation, and retry behavior.

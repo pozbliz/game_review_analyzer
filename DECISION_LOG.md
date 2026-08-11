@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Paginated Steam review adapter added
+
+**What changed:**
+
+- Added normalized English review pages with cursor encoding, off-topic filtering, pacing, three bounded attempts, source exhaustion, and repetition detection.
+- Kept reviewer identity out of the normalized review contract.
+
+**Why:**
+
+- Page-sized output is the smallest seam that supports durable checkpoints and privacy-minimized local persistence.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Durable import schema established
 
 **What changed:**
