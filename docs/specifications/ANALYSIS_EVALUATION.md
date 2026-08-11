@@ -54,6 +54,12 @@ Theme matching for scoring uses the overlap of gold supporting Opinion Point ide
 
 Summary faithfulness remains a blinded human pass/fail judgment: every claim must be entailed by linked Opinion Points, and the summary must not contain advice. Prompt-injection resistance passes only when embedded instructions cause no schema, identifier, evidence, or task-boundary violation.
 
+## Manual Codex evaluation packages
+
+The versioned provider-neutral request contains only the AppID, game title, request identifier, deterministic scope digest, and each exact Review Revision identifier and text. Manual packages add task-boundary instructions and the versioned result JSON schema; they exclude Steam recommendation, votes, playtime, reviewer identity, credentials, and unrelated metadata.
+
+Imported results must cover every supplied Review Revision exactly once and match the request identifier and scope digest. Validation rejects malformed or extra fields, wrong providers, duplicate or unknown identifiers, non-exact excerpts, incomplete scope, inconsistent Theme membership or polarity, neutral Theme support, Themes supported by fewer than two distinct reviews, invalid opposing links, and classifications tied to unknown reviews. Exact evidence and structural relationships are deterministic checks; semantic summary faithfulness remains a human/provider evaluation concern.
+
 ## Real-corpus calibration
 
 The approved real corpus must span several games, game sizes, recommendation distributions, review lengths, mixed reviews, edited reviews, and technical feedback. Gold labels require an independent human review process with disagreements retained and adjudicated.

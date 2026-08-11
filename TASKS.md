@@ -130,15 +130,15 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Add and complete a missing-Opinion-Point review round before calculating extraction recall.
 - [x] Evaluate Opinion Point extraction, Opinion Sentiment, neutral exclusion, paraphrase grouping, categories, summary faithfulness, and exact excerpts.
 - [x] Evaluate opposing-Theme linkage and review-level liked/disliked/mixed classification.
-- [ ] [HUMAN] Resolve the Slice 4 ordering cycle: the stability experiment requires provider runs, while provider implementation is blocked by baseline approval.
+- [x] [HUMAN] Resolve the Slice 4 ordering cycle: the stability experiment requires provider runs, while provider implementation is blocked by baseline approval.
 - [ ] Measure whether the latest 5,000 eligible reviews produce stable headline Themes across representative games.
 - [ ] Calibrate provisional absolute support, percentage support, cluster-coherence, and Technical Theme thresholds.
 - [ ] Evaluate exact-excerpt validation and resistance to instructions embedded in review text.
 - [ ] [HUMAN] Approve the evaluation baseline and provisional reliability thresholds.
-- [ ] Write failing tests for versioned Analysis Provider request and result schemas.
-- [ ] Write privacy and disclosure tests, then implement privacy-minimized Manual Codex package export.
-- [ ] Write import rejection tests for malformed, partial, mismatched, fabricated, non-matching, and prompt-injected results.
-- [ ] Implement strict Manual Codex result validation against exact Review Revisions and source spans.
+- [x] Write failing tests for versioned Analysis Provider request and result schemas.
+- [x] Write privacy and disclosure tests, then implement privacy-minimized Manual Codex package export.
+- [x] Write import rejection tests for malformed, partial, mismatched, fabricated, non-matching, and prompt-injected results.
+- [x] Implement strict Manual Codex result validation against exact Review Revisions and source spans.
 - [ ] Write failing deterministic Theme Metrics tests, then implement polarity, denominators, caps, categories, Technical Themes, and mixed reception.
 - [ ] Write repository tests, then implement immutable Report Versions bound to exact Review Revisions and provenance.
 - [ ] Complete a fixture-driven Codex export, import, metrics, and minimal-report scenario.

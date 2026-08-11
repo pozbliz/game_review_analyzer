@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-08-11 — Minimal Manual Codex evaluation path moved before quality approval
+
+**What changed:**
+
+- Added strict versioned Analysis Provider request and result contracts.
+- Added privacy-minimized Manual Codex package export with a deterministic exact-scope digest.
+- Added one strict import boundary for schema, scope, completion, identifier, exact-excerpt, Theme-membership, polarity, opposition, and classification validation.
+- Kept report persistence, metrics, and UI integration behind the analysis-quality approval gate.
+
+**Why:**
+
+- The user approved resolving the gate-order cycle by moving only the provider path needed to perform the required repeated stability experiment.
+
+**New issues:**
+
+- Deterministic validation cannot prove semantic summary faithfulness; it remains a human/provider evaluation check.
+
+The existing summary-faithfulness evaluation task covers this issue.
+
+**Needs human judgment:**
+
+- Approve the evaluation baseline and provisional thresholds after the repeated provider runs.
+
+---
+
 ## 2026-08-11 — Analysis-quality gate ordering cycle identified
 
 **What changed:**
