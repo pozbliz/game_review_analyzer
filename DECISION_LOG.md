@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-11 — Follow-up quality judgments made button-only
+
+**What changed:**
+
+- Extended the local labeler to run generic choice-based quality rounds alongside Opinion Point correction rounds.
+- Prepared 35 explicit completeness, grouping, summary, opposing-link, and review-classification judgments from the adjudicated pilot.
+- Removed the proposed Hades difficulty opposition after the human-neutral correction eliminated its negative Theme.
+
+**Why:**
+
+- Explicit pair and completeness judgments close measurement gaps without asking the reviewer to author labels in a terminal or blank form.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Complete and export the prepared pilot quality round.
+
+---
+
 ## 2026-08-11 — First Opinion Point pilot adjudicated
 
 **What changed:**

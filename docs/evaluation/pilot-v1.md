@@ -35,4 +35,4 @@ The sole correction changed a difficulty description from negative to neutral. T
 
 ## Next evaluation round
 
-Use the adjudicated Opinion Points to collect explicit same/different Theme judgments, opposing/unrelated Theme judgments, and faithful/unsupported summary judgments. Add a missing-Opinion-Point check before calculating extraction recall. Expand only after the reviewer confirms that workflow.
+The prepared `quality_round_pilot_v1.json` contains 35 button-only judgments: 18 completeness checks, 8 Theme-grouping comparisons, 5 summary-faithfulness checks, 2 opposing-link checks, and 2 review-level classifications. Complete and export that round before calculating the remaining pilot metrics. Expand only after the reviewer confirms that workflow.

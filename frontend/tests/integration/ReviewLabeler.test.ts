@@ -3,12 +3,7 @@ import html from "../../public/review-labeler.html?raw";
 
 describe("human gold-label review tool", () => {
   it("loads candidates, accepts button corrections, and completes a review round", () => {
-    const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1];
-    if (!script) throw new Error("Review labeler script not found");
-    document.open();
-    document.write(html.replace(/<script>[\s\S]*<\/script>/, ""));
-    document.close();
-    Function(script)();
+    loadLabeler(document);
 
     button(document, "Try demo").click();
     expect(document.querySelector("[data-review-text]")?.textContent).toContain(
@@ -29,7 +24,32 @@ describe("human gold-label review tool", () => {
     expect(document.querySelector("[data-progress]")?.textContent).toBe("3 of 3 reviewed");
     expect(button(document, "Export reviewed JSON").disabled).toBe(false);
   });
+
+  it("runs button-only quality judgment rounds", () => {
+    loadLabeler(document);
+
+    button(document, "Try quality demo").click();
+
+    expect(document.querySelector("[data-question]")?.textContent).toBe(
+      "Did the candidates capture every opinion?",
+    );
+    button(document, "Complete").click();
+    expect(document.querySelector("[data-progress]")?.textContent).toBe("1 of 2 reviewed");
+    expect(button(document, "Same Theme")).toBeEnabled();
+    button(document, "Same Theme").click();
+
+    expect(button(document, "Export reviewed JSON")).toBeEnabled();
+  });
 });
+
+function loadLabeler(document: Document): void {
+  const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1];
+  if (!script) throw new Error("Review labeler script not found");
+  document.open();
+  document.write(html.replace(/<script>[\s\S]*<\/script>/, ""));
+  document.close();
+  Function(script)();
+}
 
 function button(document: Document, name: string): HTMLButtonElement {
   const match = [...document.querySelectorAll("button")].find(

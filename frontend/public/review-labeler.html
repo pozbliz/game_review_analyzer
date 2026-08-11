@@ -93,15 +93,16 @@
         <div class="toolbar" style="justify-content:center">
           <label class="file-label">Load candidate JSON<input type="file" accept="application/json,.json" data-file></label>
           <button type="button" data-demo>Try demo</button>
+          <button type="button" data-quality-demo>Try quality demo</button>
         </div>
       </div>
 
       <section class="source hidden" data-source aria-labelledby="review-title">
         <p class="eyebrow" data-game>Game</p>
-        <h1 id="review-title">Source review</h1>
+        <h1 id="review-title" data-source-title>Source review</h1>
         <blockquote class="review" data-review-text></blockquote>
         <div class="candidate">
-          <strong>Candidate Opinion Point</strong>
+          <strong data-candidate-label>Candidate Opinion Point</strong>
           <span data-excerpt></span>
         </div>
       </section>
@@ -109,28 +110,34 @@
       <section class="labels hidden" data-labels aria-labelledby="labels-title">
         <p class="eyebrow">Your verdict</p>
         <h2 id="labels-title">Is this label correct?</h2>
-        <fieldset>
-          <legend>Sentiment</legend>
-          <div class="choice-grid" data-sentiments>
-            <button type="button" data-value="positive">Positive</button>
-            <button type="button" data-value="negative">Negative</button>
-            <button type="button" data-value="neutral">Neutral</button>
+        <div data-point-form>
+          <fieldset>
+            <legend>Sentiment</legend>
+            <div class="choice-grid" data-sentiments>
+              <button type="button" data-value="positive">Positive</button>
+              <button type="button" data-value="negative">Negative</button>
+              <button type="button" data-value="neutral">Neutral</button>
+            </div>
+          </fieldset>
+          <label for="category">Primary category</label>
+          <select id="category" data-category></select>
+          <label class="check-label"><input type="checkbox" data-technical> Technical Theme</label>
+          <label for="subject">Subject</label>
+          <input id="subject" data-subject>
+          <label for="theme">Theme title</label>
+          <input id="theme" data-theme placeholder="No Theme for neutral points">
+          <div class="actions">
+            <button class="danger" type="button" data-reject>Reject candidate</button>
+            <button class="primary" type="button" data-approve>Approve &amp; next</button>
           </div>
-        </fieldset>
-        <label for="category">Primary category</label>
-        <select id="category" data-category></select>
-        <label class="check-label"><input type="checkbox" data-technical> Technical Theme</label>
-        <label for="subject">Subject</label>
-        <input id="subject" data-subject>
-        <label for="theme">Theme title</label>
-        <input id="theme" data-theme placeholder="No Theme for neutral points">
-        <div class="actions">
-          <button class="danger" type="button" data-reject>Reject candidate</button>
-          <button class="primary" type="button" data-approve>Approve &amp; next</button>
+          <p><small><kbd>1</kbd> positive · <kbd>2</kbd> negative · <kbd>3</kbd> neutral · <kbd>Enter</kbd> approve</small></p>
+        </div>
+        <div class="hidden" data-judgment>
+          <p data-question></p>
+          <div class="choice-grid" data-judgment-choices></div>
         </div>
         <button class="secondary" type="button" data-back>← Previous</button>
         <p class="status" role="status" data-status></p>
-        <p><small><kbd>1</kbd> positive · <kbd>2</kbd> negative · <kbd>3</kbd> neutral · <kbd>Enter</kbd> approve</small></p>
       </section>
     </section>
 
@@ -184,6 +191,20 @@
           themeTitle: "Join-related freezes", technical: true
         }
       ];
+      const qualityDemoItems = [
+        {
+          id: "quality-1", game: "Ember Vault", sourceTitle: "Opinion Point completeness",
+          context: "Review: The dash feels immediate.\n\nCandidates: Responsive dash.",
+          prompt: "Did the candidates capture every opinion?", candidateAnswer: "Complete",
+          choices: ["Complete", "Missing opinion"]
+        },
+        {
+          id: "quality-2", game: "Mosslight Village", sourceTitle: "Theme grouping",
+          context: "A: The short day makes choices meaningful.\n\nB: Limited daylight gives each trip purpose.",
+          prompt: "Do these Opinion Points express the same Theme?", candidateAnswer: "Same Theme",
+          choices: ["Same Theme", "Different Themes"]
+        }
+      ];
 
       const elements = {
         empty: document.querySelector("[data-empty]"),
@@ -192,8 +213,14 @@
         progress: document.querySelector("progress"),
         progressCopy: document.querySelector("[data-progress]"),
         game: document.querySelector("[data-game]"),
+        sourceTitle: document.querySelector("[data-source-title]"),
         reviewText: document.querySelector("[data-review-text]"),
+        candidateLabel: document.querySelector("[data-candidate-label]"),
         excerpt: document.querySelector("[data-excerpt]"),
+        pointForm: document.querySelector("[data-point-form]"),
+        judgment: document.querySelector("[data-judgment]"),
+        question: document.querySelector("[data-question]"),
+        judgmentChoices: document.querySelector("[data-judgment-choices]"),
         sentiments: [...document.querySelectorAll("[data-sentiments] button")],
         category: document.querySelector("[data-category]"),
         technical: document.querySelector("[data-technical]"),
@@ -206,7 +233,7 @@
         export: document.querySelector("[data-export]"),
         reset: document.querySelector("[data-reset]")
       };
-      let state = { sourceName: "", storageKey: "", items: [], index: 0 };
+      let state = { sourceName: "", storageKey: "", mode: "point", items: [], index: 0 };
 
       elements.category.append(...categories.map((category) => {
         const option = document.createElement("option");
@@ -216,14 +243,22 @@
       }));
 
       document.querySelector("[data-demo]").addEventListener("click", () => {
-        loadRound(demoItems, "demo-candidates.json");
+        loadRound(demoItems, "demo-candidates.json", "point");
+      });
+      document.querySelector("[data-quality-demo]").addEventListener("click", () => {
+        loadRound(qualityDemoItems, "demo-quality.json", "judgment");
       });
       document.querySelectorAll("[data-file]").forEach((input) => {
         input.addEventListener("change", async (event) => {
           const file = event.target.files && event.target.files[0];
           if (!file) return;
           try {
-            loadRound(flattenCorpus(JSON.parse(await file.text())), file.name);
+            const payload = JSON.parse(await file.text());
+            if (payload.kind === "judgment_round" && Array.isArray(payload.items)) {
+              loadRound(payload.items, file.name, "judgment");
+            } else {
+              loadRound(flattenCorpus(payload), file.name, "point");
+            }
           } catch (error) {
             elements.status.textContent = error instanceof Error ? error.message : "Invalid candidate file.";
           } finally {
@@ -251,20 +286,22 @@
       });
       document.addEventListener("keydown", (event) => {
         if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return;
+        if (state.mode !== "point") return;
         if (event.key === "1") setSentiment("positive");
         if (event.key === "2") setSentiment("negative");
         if (event.key === "3") setSentiment("neutral");
         if (event.key === "Enter" && state.items.length) decide("approved");
       });
 
-      function loadRound(items, sourceName) {
-        if (!items.length) throw new Error("The candidate file contains no Opinion Points.");
+      function loadRound(items, sourceName, mode) {
+        if (!items.length) throw new Error("The review file contains no items.");
         // ponytail: filename-scoped autosave; add a content hash only if same-name collisions occur.
         const storageKey = `gold-label-review:${sourceName}`;
         const saved = localStorage.getItem(storageKey);
-        state = saved ? JSON.parse(saved) : { sourceName, storageKey, items, index: 0 };
+        state = saved ? JSON.parse(saved) : { sourceName, storageKey, mode, items, index: 0 };
         state.sourceName = sourceName;
         state.storageKey = storageKey;
+        state.mode = mode;
         state.index = nextUnreviewedIndex(state.items);
         elements.empty.classList.add("hidden");
         elements.source.classList.remove("hidden");
@@ -333,6 +370,14 @@
         render();
       }
 
+      function decideJudgment(answer) {
+        state.items[state.index].humanReview = { answer };
+        localStorage.setItem(state.storageKey, JSON.stringify(state));
+        const next = nextUnreviewedIndex(state.items);
+        state.index = next === state.items.length ? state.items.length - 1 : next;
+        render();
+      }
+
       function nextUnreviewedIndex(items) {
         const index = items.findIndex((item) => !item.humanReview);
         return index === -1 ? items.length : index;
@@ -346,9 +391,26 @@
         elements.progressCopy.textContent = `${reviewed} of ${state.items.length} reviewed`;
         elements.export.disabled = reviewed !== state.items.length;
         elements.back.disabled = state.index === 0;
-        elements.game.textContent = `${item.game} · ${item.reviewRevisionId}`;
-        elements.reviewText.textContent = item.reviewText;
-        elements.excerpt.textContent = item.excerpt;
+        elements.game.textContent = state.mode === "point" ? `${item.game} · ${item.reviewRevisionId}` : item.game;
+        elements.sourceTitle.textContent = state.mode === "point" ? "Source review" : item.sourceTitle;
+        elements.reviewText.textContent = state.mode === "point" ? item.reviewText : item.context;
+        elements.candidateLabel.textContent = state.mode === "point" ? "Candidate Opinion Point" : "Candidate answer";
+        elements.excerpt.textContent = state.mode === "point" ? item.excerpt : item.candidateAnswer;
+        elements.pointForm.classList.toggle("hidden", state.mode !== "point");
+        elements.judgment.classList.toggle("hidden", state.mode !== "judgment");
+        if (state.mode === "judgment") {
+          elements.question.textContent = item.prompt;
+          elements.judgmentChoices.replaceChildren(...item.choices.map((choice) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = choice;
+            button.setAttribute("aria-pressed", String(item.humanReview?.answer === choice));
+            button.addEventListener("click", () => decideJudgment(choice));
+            return button;
+          }));
+          elements.status.textContent = item.humanReview ? `Saved as ${item.humanReview.answer}.` : "Choose the answer you believe is correct.";
+          return;
+        }
         elements.category.value = item.humanReview?.category || item.category;
         elements.technical.checked = item.humanReview?.technical ?? Boolean(item.technical);
         elements.subject.value = item.humanReview?.subject || item.subject;
@@ -360,7 +422,7 @@
       function exportRound() {
         const output = {
           schema_version: "1.0",
-          kind: "human_gold_label_review",
+          kind: state.mode === "point" ? "human_gold_label_review" : "human_quality_review",
           source_file: state.sourceName,
           reviewed_at: new Date().toISOString(),
           items: state.items
