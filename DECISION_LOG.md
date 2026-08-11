@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-11 — Pilot quality follow-up completed
+
+**What changed:**
+
+- Recorded all 35 human quality judgments: 17 of 18 reviews had complete Opinion Point coverage, and every selected grouping, summary, opposing-link, and review-classification case passed.
+- Prepared a four-button correction round for the exact candidate spans omitted from the one incomplete Hades II review.
+- Kept extraction recall unreported until those missing spans are human-adjudicated.
+
+**Why:**
+
+- A completeness failure identifies an incomplete review but does not by itself define the gold Opinion Points needed for recall scoring.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Accept or reject the four proposed missing Opinion Points before extraction recall is calculated.
+
+---
+
 ## 2026-08-11 — Follow-up quality judgments made button-only
 
 **What changed:**

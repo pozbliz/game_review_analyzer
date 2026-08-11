@@ -122,10 +122,11 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Adjudicate all 38 Opinion Point candidates and record honest pilot precision and sentiment results.
 - [x] Extend the local labeler with reusable button-only quality judgment rounds.
 - [x] Prepare the 35-item pilot follow-up for completeness, grouping, summaries, opposing links, and review classification.
-- [ ] [HUMAN] Complete and export the pilot quality follow-up round.
+- [x] [HUMAN] Complete and export the pilot quality follow-up round.
 - [x] Define the provider-independent evaluation format, scoring rubric, and synthetic conformance fixture without treating it as calibration evidence.
 
 - [x] Define the labeled evaluation-set format and create representative samples spanning several games and review styles.
+- [ ] [HUMAN] Complete and export the four-item missing-Opinion-Point correction round.
 - [ ] Add and complete a missing-Opinion-Point review round before calculating extraction recall.
 - [ ] Evaluate Opinion Point extraction, Opinion Sentiment, neutral exclusion, paraphrase grouping, categories, summary faithfulness, and exact excerpts.
 - [ ] Evaluate opposing-Theme linkage and review-level liked/disliked/mixed classification.
