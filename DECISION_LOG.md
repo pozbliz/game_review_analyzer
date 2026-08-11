@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-11 — Codex CLI rejected for bulk extraction
+
+**What changed:**
+
+- Ran one 250-review Hades II extraction pilot and added a reusable batch-output validator.
+- Stopped before the remaining 59 batches after the pilot exceeded five minutes and failed exact-excerpt validation.
+
+**Why:**
+
+- At the observed runtime, sequential extraction would take hours, and the first output still required repair. The agentic file-driven CLI is not an economical bulk-inference surface.
+
+**New issues:**
+
+- Bulk extraction needs an explicitly approved execution path, preferably a direct structured-output API.
+
+The new issue above was added to `TASKS.md`.
+
+**Needs human judgment:**
+
+- Choose direct API inference or postpone the 15,000-review calibration.
+
+---
+
 ## 2026-08-11 — Stability evaluation restored to batch-first analysis
 
 **What changed:**

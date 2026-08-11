@@ -28,4 +28,6 @@ The first Hades II interleaved attempt returned zero Themes, exposing that the i
 
 The monolithic 5,000-review discovery runs were stopped after Cyberpunk 2077 contiguous exceeded ten minutes without producing output. Those exploratory outputs are retained locally but will not establish stability or calibrate support thresholds because their Theme memberships contain only sampled evidence rather than every matching review.
 
-The replacement method extracts exact Opinion Points once in 250-review batches, validates every batch against its source scope, then performs repeated bounded consolidation over the same validated points. Theme support is derived deterministically from complete Opinion Point membership. Sixty local extraction packages now cover all 15,000 reviews; no extraction model calls have started.
+The replacement method extracts exact Opinion Points once in 250-review batches, validates every batch against its source scope, then performs repeated bounded consolidation over the same validated points. Theme support is derived deterministically from complete Opinion Point membership. Sixty local extraction packages cover all 15,000 reviews.
+
+One Hades II extraction pilot through Codex CLI exceeded five minutes and then produced a non-exact excerpt (`op-073`). The remaining 59 packages were not run. Bulk extraction now requires an explicitly approved execution path; direct structured-output API inference is the recommended alternative to the agentic file-driven CLI.
