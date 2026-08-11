@@ -3,7 +3,7 @@
 ## 2026-08-10
 
 - [x] Consolidate approved prototype surfaces around a shared forest-green, sage, neutral, and motion theme.
-- [ ] Establish shared production design tokens during application scaffolding.
+- [x] Establish shared production design tokens during application scaffolding.
 - [x] [HUMAN] Approve the combined Catalog → Split → Timeline → Research workflow as the implementation-ready direction.
 - [x] Record the approved prototype direction and update affected design documentation before scaffolding production code.
 
@@ -89,7 +89,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Implement the replaceable Steam Metadata adapter against the tested contract.
 - [x] Write persistence tests, then store the initial Game Dataset and metadata preview.
 - [x] Write API tests, then expose AppID validation and preview behavior.
-- [ ] Write component tests, then build the game-confirmation interface.
+- [x] Write component tests, then build the game-confirmation interface.
 - [ ] Verify that optional metadata failures do not block a valid preview.
 
 ### Slice 3 — Persist a durable Quick review import

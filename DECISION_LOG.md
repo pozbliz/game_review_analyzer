@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-11 — Direct-AppID Catalog confirmation built
+
+**What changed:**
+
+- Replaced the placeholder shell with the first production Catalog surface for direct AppID preview and identity confirmation.
+- Established shared forest, sage, neutral, spacing, radius, shadow, and motion tokens with responsive and reduced-motion behavior.
+
+**Why:**
+
+- Slice 2 needs identity confirmation now; name search and report setup remain owned by later slices.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Direct-AppID preview API exposed
 
 **What changed:**
