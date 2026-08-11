@@ -1,6 +1,9 @@
 """Selection tests for the human-reviewed evaluation subset."""
 
-from game_review_analyzer.application.evaluation_corpus import select_balanced_reviews
+from game_review_analyzer.application.evaluation_corpus import (
+    select_balanced_reviews,
+    select_latest_reviews,
+)
 from game_review_analyzer.domain.reviews import SteamReview
 
 
@@ -13,6 +16,17 @@ def test_selection_caps_each_recommendation_group_and_preserves_source_order() -
     selected = select_balanced_reviews(reviews, per_recommendation=2)
 
     assert [item.review_id for item in selected] == ["1", "2", "4", "5"]
+
+
+def test_latest_selection_preserves_natural_recommendation_distribution() -> None:
+    reviews = tuple(
+        review(str(index), recommended)
+        for index, recommended in enumerate((True, True, False, True), start=1)
+    )
+
+    selected = select_latest_reviews(reviews, limit=3)
+
+    assert [item.review_id for item in selected] == ["1", "2", "3"]
 
 
 def review(review_id: str, recommended: bool) -> SteamReview:

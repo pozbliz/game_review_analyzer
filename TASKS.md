@@ -131,6 +131,8 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Evaluate Opinion Point extraction, Opinion Sentiment, neutral exclusion, paraphrase grouping, categories, summary faithfulness, and exact excerpts.
 - [x] Evaluate opposing-Theme linkage and review-level liked/disliked/mixed classification.
 - [x] [HUMAN] Resolve the Slice 4 ordering cycle: the stability experiment requires provider runs, while provider implementation is blocked by baseline approval.
+- [x] Download and validate the natural-distribution 5,000-review stability corpus for each approved game.
+- [ ] [HUMAN] Approve transmitting the 15,000-review stability corpus through repeated Codex CLI runs and pin the evaluation model.
 - [ ] Measure whether the latest 5,000 eligible reviews produce stable headline Themes across representative games.
 - [ ] Calibrate provisional absolute support, percentage support, cluster-coherence, and Technical Theme thresholds.
 - [ ] Evaluate exact-excerpt validation and resistance to instructions embedded in review text.

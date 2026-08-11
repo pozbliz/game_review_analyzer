@@ -1,8 +1,20 @@
 """Selection rules for a small human-reviewed analysis evaluation subset."""
 
 from collections.abc import Iterable
+from itertools import islice
 
 from game_review_analyzer.domain.reviews import SteamReview
+
+
+def select_latest_reviews(
+    reviews: Iterable[SteamReview],
+    limit: int,
+) -> tuple[SteamReview, ...]:
+    """Keep the latest source-ordered reviews without balancing recommendations."""
+
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+    return tuple(islice(reviews, limit))
 
 
 def select_balanced_reviews(

@@ -5,7 +5,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-from game_review_analyzer.application.evaluation_corpus import select_balanced_reviews
+from game_review_analyzer.application.evaluation_corpus import (
+    select_balanced_reviews,
+    select_latest_reviews,
+)
 from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.infrastructure.steam_reviews import SteamReviewIngestionAdapter
 
@@ -18,7 +21,9 @@ GAMES: tuple[tuple[str, int, str], ...] = (
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--per-recommendation", type=int, default=10)
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--per-recommendation", type=int)
+    selection.add_argument("--per-game", type=int)
     parser.add_argument("--max-pages", type=int, default=20)
     parser.add_argument(
         "--output",
@@ -26,28 +31,45 @@ def main() -> None:
         default=Path("evaluation-data/real_raw_v1.json"),
     )
     arguments = parser.parse_args()
+    per_recommendation: int | None = arguments.per_recommendation
+    per_game: int | None = arguments.per_game
+    if per_recommendation is None and per_game is None:
+        per_recommendation = 10
     source = SteamReviewIngestionAdapter()
     games: list[dict[str, Any]] = []
 
     for case_id, app_id, title in GAMES:
         collected: list[SteamReview] = []
         selected: tuple[SteamReview, ...] = ()
+        selection_complete: bool = False
         for page_number, page in enumerate(source.iter_pages(app_id), start=1):
             collected.extend(page.reviews)
-            selected = select_balanced_reviews(collected, arguments.per_recommendation)
-            if recommendation_counts(selected) == {
-                True: arguments.per_recommendation,
-                False: arguments.per_recommendation,
-            }:
+            if per_game is not None:
+                selected = select_latest_reviews(collected, per_game)
+                selection_complete = len(selected) == per_game
+            else:
+                assert per_recommendation is not None
+                selected = select_balanced_reviews(collected, per_recommendation)
+                selection_complete = recommendation_counts(selected) == {
+                    True: per_recommendation,
+                    False: per_recommendation,
+                }
+            if selection_complete:
                 break
             if page_number >= arguments.max_pages:
-                raise RuntimeError(f"{title} did not satisfy both review quotas")
+                raise RuntimeError(f"{title} did not satisfy the review quota")
+        if not selection_complete:
+            raise RuntimeError(f"{title} exhausted Steam before satisfying the review quota")
         games.append(
             {
                 "case_id": case_id,
                 "app_id": app_id,
                 "title": title,
-                "style": "real recent balanced recommendation subset",
+                "style": (
+                    "real recent natural recommendation distribution"
+                    if per_game is not None
+                    else "real recent balanced recommendation subset"
+                ),
                 "reviews": [review.model_dump(mode="json") for review in selected],
                 "opinion_points": [],
                 "themes": [],
@@ -59,7 +81,8 @@ def main() -> None:
         "schema_version": "1.0",
         "corpus_kind": "real_candidate",
         "selection": {
-            "per_recommendation": arguments.per_recommendation,
+            "per_recommendation": per_recommendation,
+            "per_game": per_game,
             "maximum_pages_per_game": arguments.max_pages,
             "ordering": "Steam recent source order",
         },

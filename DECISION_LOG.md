@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-08-11 — Natural-distribution stability corpus acquired
+
+**What changed:**
+
+- Extended the existing evaluation acquisition script with a natural, source-ordered per-game cap while retaining its balanced human-review mode.
+- Downloaded and validated 5,000 unique eligible reviews for each approved game into the gitignored local evaluation directory.
+- Deferred all model runs pending explicit approval for external processing and a pinned evaluation model.
+
+**Why:**
+
+- Headline stability must be measured on the actual recent recommendation distribution rather than the deliberately balanced human-label pilot.
+
+**New issues:**
+
+- The repeated Codex experiment will transmit approximately 10.95 MB of public Steam review data and consume substantial provider quota.
+
+The new issue above was added to `TASKS.md` as a human approval gate.
+
+**Needs human judgment:**
+
+- Approve external processing and the exact Codex model before the nine-run minimum begins.
+
+---
+
 ## 2026-08-11 — Minimal Manual Codex evaluation path moved before quality approval
 
 **What changed:**
