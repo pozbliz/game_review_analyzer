@@ -1,5 +1,25 @@
 # Decision Log
 
+## 2026-08-11 — Initial Game Dataset preview persisted
+
+**What changed:**
+
+- Added schema migration 2 and SQLite round-trip persistence for one current normalized metadata preview per AppID.
+
+**Why:**
+
+- Slice 2 needs durable game identity without prematurely creating immutable Report Version snapshot history.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — Steam storefront metadata adapter added
 
 **What changed:**

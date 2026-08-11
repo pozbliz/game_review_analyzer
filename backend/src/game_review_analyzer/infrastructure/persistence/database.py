@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 
 
 def initialize_database(database_path: Path) -> None:
@@ -25,6 +25,14 @@ def initialize_database(database_path: Path) -> None:
                 "(key TEXT PRIMARY KEY, value TEXT NOT NULL)"
             )
             connection.execute("INSERT INTO schema_migrations(version) VALUES (1)")
+        if 2 not in applied_versions:
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS game_datasets ("
+                "app_id INTEGER PRIMARY KEY CHECK (app_id > 0), "
+                "metadata_json TEXT NOT NULL, "
+                "updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            connection.execute("INSERT INTO schema_migrations(version) VALUES (2)")
 
 
 def schema_version(database_path: Path) -> int:
