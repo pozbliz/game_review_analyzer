@@ -41,7 +41,22 @@ Embeddings are not required in the MVP. They remain a future enhancement for sem
 
 ## Local development
 
-The backend lives in `backend/`, using a packaged `src/game_review_analyzer/` layout with domain, application, interface, infrastructure, and shared ownership boundaries. The React/Vite frontend lives in `frontend/`, with its shell under `src/app/`, shared styling under `src/styles/`, and integration tests under `tests/`. See the individual directory README and CI workflow for current test and build commands.
+Install Python 3.12, [uv](https://docs.astral.sh/uv/), and Node.js 20.19 or newer. Restore and verify each toolchain from its committed lockfile:
+
+```powershell
+cd backend
+uv sync --locked --extra dev
+uv run pytest
+
+cd ../frontend
+npm ci
+npm test
+npm run build
+```
+
+For development, run `uv run uvicorn game_review_analyzer.interfaces.http.app:app --reload` from `backend/` and `npm run dev` from `frontend/`. For the production delivery path, build the frontend first and run only the backend; FastAPI serves `frontend/dist/` along with the API.
+
+The backend uses a packaged `src/game_review_analyzer/` layout with domain, application, interface, infrastructure, and shared ownership boundaries. The frontend shell lives under `frontend/src/app/`, shared styling under `frontend/src/styles/`, and integration tests under `frontend/tests/`.
 
 ## Known constraints
 

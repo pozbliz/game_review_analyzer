@@ -1,9 +1,9 @@
 # Backend
 
-Run from this directory after installing the development extras:
+Install [uv](https://docs.astral.sh/uv/), then run from this directory:
 
 ```powershell
-python -m pip install -e ".[dev]"
-python -m pytest
-python -m uvicorn game_review_analyzer.interfaces.http.app:app --reload
+uv sync --locked --extra dev
+uv run pytest
+uv run uvicorn game_review_analyzer.interfaces.http.app:app --reload
 ```

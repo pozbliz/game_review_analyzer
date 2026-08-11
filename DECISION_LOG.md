@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-11 — Dependency installation frozen and warnings resolved
+
+**What changed:**
+
+- Added a cross-platform `uv.lock` and changed backend CI to `uv sync --locked`.
+- Changed frontend CI to `npm ci` with the existing lockfile.
+- Replaced deprecated `httpx` test-client compatibility with `httpx2`.
+- Updated Vite, Vitest, the React plugin, and jsdom to supported releases after a frozen install exposed five advisories.
+
+**Why:**
+
+- Frozen installs must resolve the same tested dependency graph locally and in CI without retaining known high or critical advisories.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-11 — FastAPI serves the compiled frontend
 
 **What changed:**
