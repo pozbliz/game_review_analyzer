@@ -87,7 +87,7 @@ class SteamReviewIngestionAdapter:
         )
         for attempt in range(self._max_attempts):
             try:
-                with self._open_url(request, self._timeout_seconds) as response:
+                with self._open_url(request, timeout=self._timeout_seconds) as response:
                     payload: Any = json.loads(response.read())
                 return self._normalize_page(payload)
             except (OSError, URLError) as error:
@@ -114,6 +114,9 @@ class SteamReviewIngestionAdapter:
             if raw_review.get("language") != "english":
                 continue
             try:
+                review_text: Any = raw_review["review"]
+                if isinstance(review_text, str) and not review_text.strip():
+                    continue
                 author: Any = raw_review["author"]
                 if not isinstance(author, dict):
                     raise TypeError("author must be an object")
@@ -122,7 +125,7 @@ class SteamReviewIngestionAdapter:
                     SteamReview(
                         review_id=str(raw_review["recommendationid"]),
                         language="english",
-                        text=raw_review["review"],
+                        text=review_text,
                         source_created_at=raw_review["timestamp_created"],
                         source_updated_at=raw_review["timestamp_updated"],
                         recommended=raw_review["voted_up"],

@@ -28,7 +28,8 @@ def test_adapter_encodes_cursor_filters_eligibility_and_stops_at_exhaustion() ->
     requests: list[Request] = []
     sleeps: list[float] = []
 
-    def open_fixture(request: Request, _: float) -> BytesIO:
+    def open_fixture(request: Request, *, timeout: float) -> BytesIO:
+        assert timeout == 15.0
         requests.append(request)
         return next(responses)
 
@@ -45,7 +46,7 @@ def test_adapter_encodes_cursor_filters_eligibility_and_stops_at_exhaustion() ->
 def test_adapter_excludes_non_english_reviews() -> None:
     responses = fixture_responses("mixed_eligibility.json", "page_empty.json")
     adapter = SteamReviewIngestionAdapter(
-        open_url=lambda *_: next(responses),
+        open_url=lambda *_, **__: next(responses),
         sleep=lambda _: None,
     )
 
@@ -54,11 +55,26 @@ def test_adapter_excludes_non_english_reviews() -> None:
     assert [review.review_id for review in pages[0].reviews] == ["2001"]
 
 
+def test_adapter_skips_recommendation_only_entries_without_review_text() -> None:
+    payload = (FIXTURE_DIRECTORY / "mixed_eligibility.json").read_bytes().replace(
+        b'"Eligible English review."',
+        b'"   "',
+    )
+    adapter = SteamReviewIngestionAdapter(
+        open_url=lambda *_, **__: BytesIO(payload),
+        sleep=lambda _: None,
+    )
+
+    page = next(adapter.iter_pages(1145350))
+
+    assert page.reviews == ()
+
+
 def test_adapter_retries_transient_failures_with_bounded_backoff() -> None:
     attempts = 0
     sleeps: list[float] = []
 
-    def eventually_open(*_: object) -> BytesIO:
+    def eventually_open(*_: object, **__: object) -> BytesIO:
         nonlocal attempts
         attempts += 1
         if attempts < 3:
@@ -75,7 +91,7 @@ def test_adapter_retries_transient_failures_with_bounded_backoff() -> None:
 def test_adapter_stops_after_three_failed_attempts() -> None:
     attempts = 0
 
-    def never_open(*_: object) -> BytesIO:
+    def never_open(*_: object, **__: object) -> BytesIO:
         nonlocal attempts
         attempts += 1
         raise URLError("offline")
@@ -89,7 +105,7 @@ def test_adapter_stops_after_three_failed_attempts() -> None:
 
 def test_adapter_rejects_repeated_cursors() -> None:
     adapter = SteamReviewIngestionAdapter(
-        open_url=lambda *_: BytesIO(
+        open_url=lambda *_, **__: BytesIO(
             (FIXTURE_DIRECTORY / "cursor_repeat.json").read_bytes()
         ),
         sleep=lambda _: None,

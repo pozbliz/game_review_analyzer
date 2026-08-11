@@ -114,6 +114,10 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Keep raw review text and reviewed annotations local under the gitignored `evaluation-data/` directory.
 - [x] [HUMAN] Confirm the user will independently review candidate gold labels.
 - [x] Build a local browser-based label-review tool with button corrections, keyboard shortcuts, autosave, progress, and reviewed-JSON export.
+- [x] Fix live Steam metadata and review requests to pass `urllib` timeouts by keyword.
+- [x] Skip blank recommendation-only Steam entries that contain no analyzable review text.
+- [x] Write balanced-subset selection tests and add the repeatable local evaluation-corpus acquisition script.
+- [x] Download the approved 60-review local pool and prepare an 18-review, 38-Opinion-Point pilot candidate round.
 - [ ] [HUMAN] Visually verify the local gold-label review tool with the first real candidate corpus.
 - [x] Define the provider-independent evaluation format, scoring rubric, and synthetic conformance fixture without treating it as calibration evidence.
 

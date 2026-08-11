@@ -46,7 +46,7 @@ class SteamStoreMetadataAdapter:
             headers={"User-Agent": "GameReviewAnalyzer/0.1"},
         )
         try:
-            with self._open_url(request, self._timeout_seconds) as response:
+            with self._open_url(request, timeout=self._timeout_seconds) as response:
                 payload: Any = json.loads(response.read())
         except (OSError, URLError) as error:
             raise SteamMetadataUnavailable("Steam metadata request failed") from error

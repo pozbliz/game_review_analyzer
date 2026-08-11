@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-11 — First real-game human review round prepared
+
+**What changed:**
+
+- Added deterministic source-order selection for equal Recommended and Not Recommended evaluation quotas.
+- Fixed both live Steam adapters to pass `urllib` timeouts by keyword and skipped blank recommendation-only review entries.
+- Downloaded a local 60-review pool and prepared an 18-review pilot containing 38 candidate Opinion Points for the browser labeler.
+
+**Why:**
+
+- A small balanced pilot exposes sentiment and usability failures before expanding human labeling, while the later 5,000-review stability evaluation preserves natural recommendation distribution.
+
+**New issues:**
+
+- None. Both live-data defects found during acquisition were fixed at the shared adapter boundary with regression coverage.
+
+**Needs human judgment:**
+
+- Visually verify the labeler, review the pilot candidates, and export the completed JSON.
+
+---
+
 ## 2026-08-11 — Human gold-label review moved into a local browser tool
 
 **What changed:**

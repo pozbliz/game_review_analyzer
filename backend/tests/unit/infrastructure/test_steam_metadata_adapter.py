@@ -18,7 +18,7 @@ FIXTURE_DIRECTORY = Path(__file__).parents[2] / "fixtures" / "steam_metadata"
 def adapter_for(name: str) -> SteamStoreMetadataAdapter:
     fixture_bytes = (FIXTURE_DIRECTORY / name).read_bytes()
 
-    def open_fixture(request: Request, timeout: float) -> BytesIO:
+    def open_fixture(request: Request, *, timeout: float) -> BytesIO:
         assert request.full_url.endswith("appdetails?appids=1145350&l=english")
         assert timeout == 10.0
         return BytesIO(fixture_bytes)
@@ -71,7 +71,8 @@ def test_adapter_discards_non_steam_capsule_urls() -> None:
         b"javascript:alert(1)",
     )
 
-    def open_fixture(_: Request, __: float) -> BytesIO:
+    def open_fixture(_: Request, *, timeout: float) -> BytesIO:
+        assert timeout == 10.0
         return BytesIO(fixture_bytes)
 
     metadata = SteamStoreMetadataAdapter(open_url=open_fixture).fetch(1145350)
