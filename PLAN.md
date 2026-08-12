@@ -2,7 +2,7 @@
 
 ## Status
 
-The product design and this strategic plan are approved. Slices 1–7, 11, and 12 are implemented, while Slice 4 retains a deferred production-quality calibration gate. Slice 8 is active with Codex CLI approved as the first automated provider path, Slice 9 follows with Ollama first, and calibration blocks Slice 10; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
+The product design and this strategic plan are approved. Slices 1–8, 11, and 12 are implemented apart from live Codex verification, while Slice 4 retains a deferred production-quality calibration gate. Slice 9 is active with the Ollama local adapter and model selection implemented; local Qwen benchmarking and later provider choices remain. Calibration blocks Slice 10; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
 
 ## Durable verification seams
 
@@ -158,7 +158,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Supporting multiple vendors increases ongoing compatibility and evaluation work.
 
-**Status:** Blocked.
+**Status:** In progress. Local Ollama availability and installed-model discovery, schema-constrained streaming analysis, cancellation, exact validation, durable report integration, measured usage, and explicit provider/model selection are implemented. This machine has no Ollama CLI or running service, so live Qwen 3.5 4B/9B benchmarking awaits a user-installed runtime and models. Hosted API and Claude Code adapters remain optional later work.
 
 ## Slice 10 — Filter evidence and create Cohort Analyses
 

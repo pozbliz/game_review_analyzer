@@ -6,16 +6,19 @@ import {
   cancelAnalysisRun,
   CodexCliProviderStatus,
   getCodexCliProviderStatus,
+  getOllamaProviderStatus,
   getGamePreview,
   getHealth,
   getJob,
   getAnalysisRun,
   getPublicConfig,
   GameSearchResult,
+  OllamaProviderStatus,
   retryJob,
   searchGames,
   startQuickImport,
   startCodexAnalysis,
+  startOllamaAnalysis,
   SteamMetadata,
 } from "../api/shell";
 import ReportView from "../features/report/ReportView";
@@ -46,6 +49,8 @@ function CatalogApp(): JSX.Element {
   const [jobDeleteConfirmation, setJobDeleteConfirmation] = useState<string>("");
   const [jobDeleted, setJobDeleted] = useState<boolean>(false);
   const [codexStatus, setCodexStatus] = useState<CodexCliProviderStatus | null>(null);
+  const [ollamaStatus, setOllamaStatus] = useState<OllamaProviderStatus | null>(null);
+  const [providerSelection, setProviderSelection] = useState<string>("codex-cli");
   const [analysisRun, setAnalysisRun] = useState<AnalysisRun | null>(null);
   const [analysisError, setAnalysisError] = useState<string>("");
 
@@ -61,6 +66,14 @@ function CatalogApp(): JSX.Element {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    let active: boolean = true;
+    getOllamaProviderStatus()
+      .then((status) => { if (active) setOllamaStatus(status); })
+      .catch(() => { if (active) setOllamaStatus(null); });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -183,12 +196,18 @@ function CatalogApp(): JSX.Element {
     const selectedAppId = preview?.app_id ?? job?.app_id;
     if (!selectedAppId) return;
     setAnalysisError("");
-    startCodexAnalysis(selectedAppId)
+    const selectedModel = providerSelection.startsWith("ollama::")
+      ? providerSelection.slice("ollama::".length)
+      : null;
+    const start = selectedModel
+      ? startOllamaAnalysis(selectedAppId, selectedModel)
+      : startCodexAnalysis(selectedAppId);
+    start
       .then((run) => {
         window.localStorage.setItem("active-analysis-run", run.id);
         setAnalysisRun(run);
       })
-      .catch(() => setAnalysisError("Unable to start Codex CLI analysis."));
+      .catch(() => setAnalysisError("Unable to start the selected analysis provider."));
   }
 
   function cancelAnalysis(): void {
@@ -312,15 +331,23 @@ function CatalogApp(): JSX.Element {
                   <button
                     type="button"
                     onClick={beginAnalysis}
-                    disabled={!codexStatus?.installed || !codexStatus.authenticated}
+                    disabled={
+                      providerSelection === "codex-cli"
+                        ? !codexStatus?.installed || !codexStatus.authenticated
+                        : !ollamaStatus?.models.some(
+                            (model) => providerSelection === `ollama::${model.name}`,
+                          )
+                    }
                   >
-                    Analyze with Codex CLI
+                    {providerSelection === "codex-cli"
+                      ? "Analyze with Codex CLI"
+                      : "Analyze with Ollama"}
                   </button>
                 </>
               )}
               {analysisRun && (
                 <div className="analysis-progress">
-                  <p className="eyebrow">CODEX ANALYSIS</p>
+                  <p className="eyebrow">{analysisRun.provider === "ollama" ? "OLLAMA ANALYSIS" : "CODEX ANALYSIS"}</p>
                   <h3>{
                     analysisRun.state === "completed" ? "Report complete" :
                     analysisRun.state === "failed" ? "Analysis failed" :
@@ -334,7 +361,7 @@ function CatalogApp(): JSX.Element {
                     <>
                       {analysisRun.input_tokens !== null && analysisRun.output_tokens !== null && (
                         <p>
-                          Measured usage: {analysisRun.input_tokens.toLocaleString()} input and {analysisRun.output_tokens.toLocaleString()} output tokens. Remaining subscription quota is unavailable.
+                          Measured usage: {analysisRun.input_tokens.toLocaleString()} input and {analysisRun.output_tokens.toLocaleString()} output tokens.{analysisRun.provider === "codex-cli" ? " Remaining subscription quota is unavailable." : " Processing stayed on this device."}
                         </p>
                       )}
                       <a href={`/reports/${encodeURIComponent(analysisRun.report_version_id)}`}>View report</a>
@@ -373,7 +400,20 @@ function CatalogApp(): JSX.Element {
               )}
               <div className="analysis-setup">
                 <p><strong>Quick analysis</strong><br />Latest eligible English reviews</p>
-                {codexStatus && (
+                <label htmlFor="analysis-provider">Analysis provider</label>
+                <select
+                  id="analysis-provider"
+                  value={providerSelection}
+                  onChange={(event) => setProviderSelection(event.target.value)}
+                >
+                  <option value="codex-cli">Codex CLI · GPT-5.6 Luna</option>
+                  {ollamaStatus?.models.map((model) => (
+                    <option key={model.name} value={`ollama::${model.name}`}>
+                      Ollama · {model.name}
+                    </option>
+                  ))}
+                </select>
+                {providerSelection === "codex-cli" && codexStatus && (
                   <div className="provider-disclosure">
                     <strong>{
                       codexStatus.installed && codexStatus.authenticated
@@ -383,6 +423,23 @@ function CatalogApp(): JSX.Element {
                     <span>GPT-5.6 Luna · {codexStatus.reasoning_effort} reasoning</span>
                     <p>External cloud processing: review text is sent to OpenAI only when you start analysis.</p>
                     <p>Remaining subscription quota and dollar cost are unavailable to this application.</p>
+                  </div>
+                )}
+                {providerSelection.startsWith("ollama::") && (
+                  <div className="provider-disclosure">
+                    <strong>Ollama local model ready</strong>
+                    <span>{providerSelection.slice("ollama::".length)}</span>
+                    <p>Local processing: review text stays on this device.</p>
+                    <p>The application only uses models already installed in Ollama and never downloads one.</p>
+                  </div>
+                )}
+                {ollamaStatus && ollamaStatus.models.length === 0 && (
+                  <div className="provider-disclosure">
+                    <strong>Ollama has no installed models</strong>
+                    <p>After installing Ollama, copy and run one command outside this application:</p>
+                    <code>ollama pull qwen3.5:4b</code>
+                    <code>ollama pull qwen3.5:9b</code>
+                    <p>Restart the app after the model download completes.</p>
                   </div>
                 )}
                 <label htmlFor="review-limit">Review limit</label>

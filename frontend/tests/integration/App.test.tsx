@@ -133,6 +133,7 @@ describe("application shell", () => {
       if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
       if (url === "/api/config") return json(publicConfig());
       if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json({ ...ollamaProvider(), available: false, models: [] });
       if (url.startsWith("/api/games/preview")) return json(metadata());
       if (url === "/api/games/1145350/imports/quick") {
         expect(options).toMatchObject({ method: "POST", body: JSON.stringify({ target_count: 5000 }) });
@@ -219,6 +220,60 @@ describe("application shell", () => {
     );
   });
 
+  it("selects an installed Ollama model and starts local analysis explicitly", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
+      const url = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url.startsWith("/api/games/preview")) return json(metadata());
+      if (url === "/api/games/1145350/imports/quick") return json(job("completed", 5000));
+      if (url === "/api/games/1145350/analyses/ollama") {
+        expect(options).toMatchObject({
+          method: "POST",
+          body: expect.stringContaining('"model":"qwen3.5:4b"'),
+        });
+        return json({ ...analysisRun("queued"), provider: "ollama", model: "qwen3.5:4b" });
+      }
+      return json({ ...analysisRun("completed"), provider: "ollama", model: "qwen3.5:4b" });
+    });
+
+    render(<App />);
+    await previewGame();
+    fireEvent.change(screen.getByLabelText("Analysis provider"), {
+      target: { value: "ollama::qwen3.5:4b" },
+    });
+    expect(screen.getByText(/local processing: review text stays on this device/i)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Analyze with Ollama" }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/games/1145350/analyses/ollama",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("shows external-only model commands when Ollama has no installed models", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") {
+        return json({ ...ollamaProvider(), available: false, models: [] });
+      }
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+
+    expect(screen.getByText("ollama pull qwen3.5:4b")).toBeVisible();
+    expect(screen.getByText("ollama pull qwen3.5:9b")).toBeVisible();
+    expect(screen.getByText(/copy and run one command outside this application/i)).toBeVisible();
+  });
+
   it("retries a failed Quick import", async () => {
     let progressRequests = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
@@ -226,6 +281,7 @@ describe("application shell", () => {
       if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
       if (url === "/api/config") return json(publicConfig());
       if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json({ ...ollamaProvider(), available: false, models: [] });
       if (url.startsWith("/api/games/preview")) return json(metadata());
       if (url === "/api/games/1145350/imports/quick") return json(job("queued", 0));
       if (url === "/api/jobs/job-1/retry") return json(job("queued", 0));
@@ -288,6 +344,20 @@ function codexProvider(): object {
     reasoning_effort: "medium",
     processing_location: "external_cloud",
     cost_basis: "subscription_quota_unknown",
+  };
+}
+
+function ollamaProvider(): object {
+  return {
+    available: true,
+    version: "0.12.6",
+    processing_location: "local_device",
+    models: [{
+      name: "qwen3.5:4b",
+      size: 3_400_000_000,
+      parameter_size: "4B",
+      quantization_level: "Q4_K_M",
+    }],
   };
 }
 

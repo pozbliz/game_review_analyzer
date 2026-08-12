@@ -5,8 +5,12 @@ from typing import Protocol
 
 from game_review_analyzer.application.manual_codex import build_analysis_request
 from game_review_analyzer.application.report_creation import create_report
+from game_review_analyzer.application.provider import (
+    AnalysisProviderError,
+    CancellationSignal,
+    ProviderRun,
+)
 from game_review_analyzer.domain.analysis import AnalysisRequest, AnalysisSourceReview
-from game_review_analyzer.infrastructure.codex_cli import CodexCliError, CodexCliRun
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     finish_analysis_run,
     get_analysis_run,
@@ -22,7 +26,9 @@ class AnalysisProvider(Protocol):
 
     model: str
 
-    def analyze(self, request: AnalysisRequest, *, cancel_event: object) -> CodexCliRun:
+    def analyze(
+        self, request: AnalysisRequest, *, cancel_event: CancellationSignal
+    ) -> ProviderRun:
         """Return one validated analysis result."""
 
 
@@ -101,7 +107,7 @@ class AnalysisRunner:
                 cached_input_tokens=provider_run.usage.cached_input_tokens,
                 output_tokens=provider_run.usage.output_tokens,
             )
-        except CodexCliError as error:
+        except AnalysisProviderError as error:
             state = "cancelled" if error.code == "cancelled" else "failed"
             finish_analysis_run(self._database_path, run.id, state, error_code=error.code)
         except ValueError:

@@ -10,6 +10,7 @@ from game_review_analyzer.infrastructure.persistence.database import (
 )
 from game_review_analyzer.interfaces.http.app import create_app
 from game_review_analyzer.infrastructure.codex_cli import CodexCliStatus
+from game_review_analyzer.infrastructure.ollama import OllamaModel, OllamaStatus
 from game_review_analyzer.shared.config import Settings
 
 
@@ -76,6 +77,35 @@ def test_codex_provider_status_discloses_cloud_and_quota_without_credentials(
         "cost_basis": "subscription_quota_unknown",
     }
     assert "credential" not in response.text.lower()
+
+
+def test_ollama_status_lists_installed_local_models_without_download_controls(
+    tmp_path: Path,
+) -> None:
+    status = OllamaStatus(
+        available=True,
+        version="0.12.6",
+        models=(OllamaModel("qwen3.5:4b", 3_400_000_000, "4B", "Q4_K_M"),),
+    )
+    with TestClient(create_app(
+        Settings(database_path=tmp_path / "app.sqlite3"),
+        ollama_status_source=lambda: status,
+    )) as client:
+        response = client.get("/api/providers/ollama")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "available": True,
+        "version": "0.12.6",
+        "processing_location": "local_device",
+        "models": [{
+            "name": "qwen3.5:4b",
+            "size": 3_400_000_000,
+            "parameter_size": "4B",
+            "quantization_level": "Q4_K_M",
+        }],
+    }
+    assert "pull" not in response.text.lower()
 
 
 def test_shell_endpoints_publish_explicit_response_contracts(tmp_path: Path) -> None:

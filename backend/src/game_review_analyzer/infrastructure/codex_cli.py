@@ -7,7 +7,6 @@ from pathlib import Path
 import shutil
 import subprocess
 from tempfile import TemporaryDirectory
-from threading import Event
 from typing import Any
 
 from game_review_analyzer.application.manual_codex import (
@@ -16,23 +15,16 @@ from game_review_analyzer.application.manual_codex import (
     validate_analysis_result,
 )
 from game_review_analyzer.domain.analysis import AnalysisRequest, AnalysisResult
+from game_review_analyzer.application.provider import (
+    AnalysisProviderError,
+    CancellationSignal,
+    ProviderRun,
+    ProviderUsage,
+)
 
 
-@dataclass(frozen=True)
-class CodexCliUsage:
-    """Report token usage exposed by a completed Codex CLI turn."""
-
-    input_tokens: int | None
-    cached_input_tokens: int | None
-    output_tokens: int | None
-
-
-@dataclass(frozen=True)
-class CodexCliRun:
-    """Return a validated provider result and non-secret measured usage."""
-
-    result: AnalysisResult
-    usage: CodexCliUsage
+CodexCliUsage = ProviderUsage
+CodexCliRun = ProviderRun
 
 
 @dataclass(frozen=True)
@@ -46,13 +38,8 @@ class CodexCliStatus:
     reasoning_effort: str
 
 
-class CodexCliError(RuntimeError):
+class CodexCliError(AnalysisProviderError):
     """Expose a stable non-secret failure code for one Codex CLI run."""
-
-    def __init__(self, code: str, message: str) -> None:
-        super().__init__(message)
-        self.code: str = code
-
 
 class CodexCliProvider:
     """Execute one isolated analysis using the user's existing Codex CLI login."""
@@ -76,7 +63,7 @@ class CodexCliProvider:
         self,
         request: AnalysisRequest,
         *,
-        cancel_event: Event | None = None,
+        cancel_event: CancellationSignal | None = None,
     ) -> CodexCliRun:
         """Run Codex and validate its final JSON against the exact review scope."""
 
@@ -110,7 +97,7 @@ class CodexCliProvider:
     def _run_once(
         self,
         request: AnalysisRequest,
-        cancel_event: Event | None,
+        cancel_event: CancellationSignal | None,
     ) -> tuple[str, str]:
         with TemporaryDirectory(prefix="game-review-analyzer-codex-") as directory:
             working_directory: Path = Path(directory)

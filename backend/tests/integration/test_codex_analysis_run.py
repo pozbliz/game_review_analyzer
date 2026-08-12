@@ -9,6 +9,7 @@ from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.analysis_runner import AnalysisRunner
 from game_review_analyzer.infrastructure.codex_cli import CodexCliRun, CodexCliUsage
 from game_review_analyzer.infrastructure.codex_cli import CodexCliStatus
+from game_review_analyzer.infrastructure.ollama import OllamaModel, OllamaStatus
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     create_analysis_run,
     get_analysis_run,
@@ -26,6 +27,7 @@ class FakeProvider:
     """Return a valid empty result for the exact requested corpus."""
 
     model = "gpt-5.6-luna"
+    provider = "codex-cli"
 
     def analyze(self, request, *, cancel_event=None) -> CodexCliRun:
         assert cancel_event is not None
@@ -33,7 +35,7 @@ class FakeProvider:
             schema_version="1.0",
             request_id=request.request_id,
             scope_sha256=request.scope_sha256,
-            provider="codex-cli",
+            provider=self.provider,
             model=self.model,
             completed_review_revision_ids=tuple(
                 review.review_revision_id for review in request.reviews
@@ -136,6 +138,51 @@ def test_api_rejects_analysis_when_codex_is_not_authenticated(tmp_path: Path) ->
 
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == "codex_cli_not_ready"
+
+
+def test_api_runs_only_an_explicitly_installed_ollama_model(tmp_path: Path) -> None:
+    database_path = tmp_path / "app.sqlite3"
+    status = OllamaStatus(
+        True,
+        "0.12.6",
+        (OllamaModel("qwen3.5:4b", 3_400_000_000, "4B", "Q4_K_M"),),
+    )
+    provider = FakeProvider()
+    provider.provider = "ollama"
+    provider.model = "qwen3.5:4b"
+    with TestClient(create_app(
+        Settings(database_path=database_path),
+        ollama_status_source=lambda: status,
+        analysis_provider=provider,
+    )) as client:
+        save_game_dataset(database_path, metadata())
+        save_review_revisions(database_path, 1145350, (review("Good game", 100),))
+        started = client.post(
+            "/api/games/1145350/analyses/ollama",
+            json={
+                "model": "qwen3.5:4b",
+                "minimum_support_count": 2,
+                "minimum_support_percentage": 1,
+                "technical_minimum_support_count": 2,
+                "technical_minimum_support_percentage": 1,
+            },
+        )
+        missing = client.post(
+            "/api/games/1145350/analyses/ollama",
+            json={
+                "model": "not-installed:latest",
+                "minimum_support_count": 2,
+                "minimum_support_percentage": 1,
+                "technical_minimum_support_count": 2,
+                "technical_minimum_support_percentage": 1,
+            },
+        )
+
+    assert started.status_code == 202
+    assert started.json()["provider"] == "ollama"
+    assert started.json()["model"] == "qwen3.5:4b"
+    assert missing.status_code == 409
+    assert missing.json()["detail"]["code"] == "ollama_model_not_installed"
 
 
 def metadata() -> SteamMetadata:

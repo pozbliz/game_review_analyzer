@@ -1,5 +1,31 @@
 # Decision Log
 
+## 2026-08-12 — Ollama local-provider path implemented
+
+**What changed:**
+
+- Added local-only Ollama service discovery and listing of models already installed by the user.
+- Added schema-constrained streaming analysis with bounded malformed-output retry, cancellation, measured token use, and the existing exact-scope/evidence validator.
+- Added explicit Codex CLI versus installed Ollama model selection and local-processing disclosure in the analysis interface.
+- Added inert Qwen 3.5 4B/9B installation commands that the user must copy and run outside the application.
+
+**Why:**
+
+- The same durable Analysis Run and immutable Report Version path can support a cheap local model without a new orchestration system or dependency.
+- Restricting selection to `/api/tags` results prevents the application from silently pulling a model or changing providers.
+
+**New issues:**
+
+- This machine has neither an Ollama CLI nor a running local service, so Qwen 3.5 4B/9B quality and performance cannot yet be benchmarked.
+
+Both issues are tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- Install and start Ollama plus the desired Qwen model before requesting the benchmark.
+
+---
+
 ## 2026-08-12 — Durable Codex CLI analysis flow completed
 
 **What changed:**

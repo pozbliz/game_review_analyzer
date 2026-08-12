@@ -253,7 +253,7 @@ The automated Codex adapter runs `codex exec` non-interactively in an isolated t
 
 Starting provider analysis creates a durable **Analysis Run** that snapshots the latest immutable Review Revision for every retained review before external processing begins. Its state, provider/model, provisional metric policy, cancellation request, measured token usage, and completed Report Version identifier are stored locally. Acquisition jobs and provider runs remain separate because their progress and recovery data are materially different.
 
-The application never downloads an Ollama model. It detects Ollama, lists installed compatible models, recommends model names, and displays copyable commands that the user chooses to run outside the app. Ollama structured output is called directly through its local API rather than through an agentic CLI. If Codex or Ollama is unavailable, Steam lookup, metadata retrieval, and review downloading still work; analysis waits for another configured provider.
+The application never downloads an Ollama model. It detects the default local-only service, lists already-installed models, and requires the user to explicitly select one. Ollama analysis streams schema-constrained output through its local API so cancellation can stop result processing; exact scope, evidence, provider, and model validation remain identical to the Codex path. Installation guidance and copyable model commands may be shown, but the user runs them outside the app. If Codex or Ollama is unavailable, Steam lookup, metadata retrieval, and review downloading still work; analysis waits for an explicitly selected available provider.
 
 ### Credentials
 

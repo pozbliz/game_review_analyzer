@@ -23,14 +23,18 @@
 
 Active implementation checklist derived from the approved `PLAN.md`. Tasks remain in plan-slice order. Mark decisions or editor work requiring user input with `[HUMAN]`.
 
-### Continuation checkpoint — 2026-08-11
+## 2026-08-12
 
-- Last production implementation: `feat(analysis): persist Codex CLI report runs`.
-- Last complete code gate: 93 backend tests passed, 18 frontend tests passed, and the frontend production build passed after durable Codex CLI analysis integration.
+### Continuation checkpoint — 2026-08-12
+
+- Last production implementation: Ollama local-provider integration and explicit provider/model selection.
+- Last complete code gate: 100 backend tests passed, 20 frontend tests passed, and the frontend production build passed after Ollama integration.
 - Approved next path: automate the user's authenticated Codex CLI with `gpt-5.6-luna` and medium reasoning; the application must not read or store Codex credentials.
 - Current environment check: Codex CLI `0.147.0` is installed but `codex login status` reports `Not logged in`.
-- Slice 8 implementation is complete except live authenticated verification and optional explicit model-selection controls. Transmit review text only after the user explicitly starts a disclosed Codex run.
-- Then implement Ollama first in Slice 9 and benchmark installed Qwen 3.5 models against the existing pilot before adding hosted API adapters. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
+- Current environment check: neither the Ollama CLI nor the default local service is available; no model was installed or downloaded.
+- [ ] [HUMAN] Install and start Ollama, then independently install Qwen 3.5 4B and/or 9B before local benchmarking.
+- Slice 8 implementation is complete except live authenticated verification. Transmit review text only after the user explicitly starts a disclosed Codex run.
+- Ollama implementation is complete for local discovery, explicit selection, structured analysis, and external-only install guidance. Next benchmark installed Qwen 3.5 models against the existing pilot; add hosted API adapters only when requested. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
 - Remaining human gates are connected-browser accessibility/responsive verification, the deferred production-quality baseline, MIT copyright-holder confirmation, and source/package release approval.
 
 ## 2026-08-09
@@ -218,18 +222,18 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Slice 9 — Add the remaining provider choices
 
-**Blocked by:** Slice 8 and cross-provider evaluation readiness.
+**Blocked by:** No implementation blocker. Live model evaluation requires a user-installed Ollama runtime and compatible models.
 
 - [ ] Apply the shared conformance suite to every remaining provider adapter.
-- [ ] Implement Ollama as the next provider using its local structured-output API.
+- [x] Implement Ollama as the next provider using its local structured-output API.
 - [ ] Benchmark installed Qwen 3.5 9B and 4B models against the human-reviewed pilot when compatible hardware is available.
 - [ ] Implement evaluated OpenAI, Anthropic Claude, Google Gemini, or Claude Code adapters when requested.
 - [ ] Write Credential Store contract tests, then implement session, environment, and operating-system-vault adapters before the first API provider.
 - [ ] Write estimator tests, then implement dated pipeline-wide cost estimates for paid per-token providers.
-- [ ] Write discovery fixtures and tests, then implement Ollama availability and installed-model detection.
-- [ ] Verify the application never initiates an Ollama model installation or download.
-- [ ] Add compatible-model guidance and copyable commands that run only through explicit user action outside the app.
-- [ ] Test explicit provider/model selection and no-fallback behavior across all adapters.
+- [x] Write discovery fixtures and tests, then implement Ollama availability and installed-model detection.
+- [x] Verify the application never initiates an Ollama model installation or download.
+- [x] Add compatible-model guidance and copyable commands that run only through explicit user action outside the app.
+- [x] Test explicit provider/model selection and no-fallback behavior across the implemented Codex CLI and Ollama adapters.
 - [ ] Evaluate no-embedding quality, token use, and pipeline-wide approximate cost across the initial providers.
 
 ### Slice 10 — Filter evidence and create Cohort Analyses

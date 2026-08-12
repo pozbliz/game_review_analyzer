@@ -50,6 +50,11 @@ from game_review_analyzer.infrastructure.analysis_runner import (
     AnalysisProvider,
     AnalysisRunner,
 )
+from game_review_analyzer.infrastructure.ollama import (
+    OllamaProvider,
+    OllamaStatus,
+    ollama_status,
+)
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     AnalysisRun,
     AnalysisRunNotFound,
@@ -132,6 +137,30 @@ class CodexCliProviderResponse(BaseModel):
     cost_basis: Literal["subscription_quota_unknown"]
 
 
+class OllamaModelResponse(BaseModel):
+    """Expose non-secret metadata for one already-installed local model."""
+
+    name: str
+    size: int | None
+    parameter_size: str | None
+    quantization_level: str | None
+
+
+class OllamaProviderResponse(BaseModel):
+    """Expose local Ollama readiness without installation controls."""
+
+    available: bool
+    version: str | None
+    processing_location: Literal["local_device"]
+    models: tuple[OllamaModelResponse, ...]
+
+
+class OllamaAnalysisRequest(ThemeMetricPolicy):
+    """Select one installed local model and explicit provisional thresholds."""
+
+    model: str = Field(min_length=1)
+
+
 class QuickImportRequest(BaseModel):
     """Validate the user-selected review cap for one Quick import."""
 
@@ -151,6 +180,7 @@ def create_app(
     catalog_source: CatalogSource | None = None,
     fallback_search_source: FallbackSearchSource | None = None,
     codex_status_source: Callable[[], CodexCliStatus] | None = None,
+    ollama_status_source: Callable[[], OllamaStatus] | None = None,
     analysis_provider: AnalysisProvider | None = None,
 ) -> FastAPI:
     """Create an application instance, optionally using test-specific settings."""
@@ -162,16 +192,24 @@ def create_app(
     resolved_catalog_source = catalog_source or SteamCatalogAdapter()
     resolved_fallback_source = fallback_search_source or SteamStoreSearchAdapter()
     resolved_codex_status_source = codex_status_source or codex_cli_status
-    resolved_analysis_provider = analysis_provider or CodexCliProvider(
-        executable=shutil.which("codex") or "codex"
-    )
+    resolved_ollama_status_source = ollama_status_source or ollama_status
     runner = JobRunner(
         resolved_settings.database_path,
         review_source or SteamReviewIngestionAdapter(),
     )
-    analysis_runner = AnalysisRunner(
-        resolved_settings.database_path, resolved_analysis_provider
-    )
+
+    def run_analysis(run_id: str) -> None:
+        run = get_analysis_run(resolved_settings.database_path, run_id)
+        provider: AnalysisProvider
+        if analysis_provider is not None:
+            provider = analysis_provider
+        elif run.provider == "codex-cli":
+            provider = CodexCliProvider(executable=shutil.which("codex") or "codex")
+        elif run.provider == "ollama":
+            provider = OllamaProvider(model=run.model)
+        else:
+            raise ValueError(f"Unsupported analysis provider: {run.provider}")
+        AnalysisRunner(resolved_settings.database_path, provider).run(run_id)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -186,7 +224,7 @@ def create_app(
         for job_id in recoverable_job_ids(resolved_settings.database_path):
             executor.submit(runner.run, job_id)
         for run_id in recoverable_analysis_run_ids(resolved_settings.database_path):
-            analysis_executor.submit(analysis_runner.run, run_id)
+            analysis_executor.submit(run_analysis, run_id)
         try:
             yield
         finally:
@@ -220,6 +258,21 @@ def create_app(
             cost_basis="subscription_quota_unknown",
         )
 
+    @app.get(
+        f"{API_PREFIX}/providers/ollama",
+        response_model=OllamaProviderResponse,
+    )
+    def local_ollama_status() -> OllamaProviderResponse:
+        status: OllamaStatus = resolved_ollama_status_source()
+        return OllamaProviderResponse(
+            available=status.available,
+            version=status.version,
+            processing_location="local_device",
+            models=tuple(
+                OllamaModelResponse(**model.__dict__) for model in status.models
+            ),
+        )
+
     @app.post(
         f"{API_PREFIX}/games/{{app_id}}/analyses/codex-cli",
         response_model=AnalysisRun,
@@ -247,7 +300,40 @@ def create_app(
             raise HTTPException(
                 status_code=409, detail={"code": "analysis_requires_reviews"}
             ) from error
-        app.state.analysis_executor.submit(analysis_runner.run, run.id)
+        app.state.analysis_executor.submit(run_analysis, run.id)
+        return run
+
+    @app.post(
+        f"{API_PREFIX}/games/{{app_id}}/analyses/ollama",
+        response_model=AnalysisRun,
+        status_code=202,
+    )
+    def start_ollama_analysis(
+        app_id: int, request: OllamaAnalysisRequest
+    ) -> AnalysisRun:
+        status: OllamaStatus = resolved_ollama_status_source()
+        installed_names: set[str] = {model.name for model in status.models}
+        if not status.available or request.model not in installed_names:
+            raise HTTPException(
+                status_code=409, detail={"code": "ollama_model_not_installed"}
+            )
+        if load_game_dataset(resolved_settings.database_path, app_id) is None:
+            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
+        try:
+            run = create_analysis_run(
+                resolved_settings.database_path,
+                app_id=app_id,
+                provider="ollama",
+                model=request.model,
+                metric_policy=ThemeMetricPolicy.model_validate(
+                    request.model_dump(exclude={"model"})
+                ),
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "analysis_requires_reviews"}
+            ) from error
+        app.state.analysis_executor.submit(run_analysis, run.id)
         return run
 
     def existing_analysis_run(run_id: str) -> AnalysisRun:

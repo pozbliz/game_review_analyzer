@@ -108,6 +108,20 @@ export interface CodexCliProviderStatus {
   cost_basis: "subscription_quota_unknown";
 }
 
+export interface OllamaModelStatus {
+  name: string;
+  size: number | null;
+  parameter_size: string | null;
+  quantization_level: string | null;
+}
+
+export interface OllamaProviderStatus {
+  available: boolean;
+  version: string | null;
+  processing_location: "local_device";
+  models: OllamaModelStatus[];
+}
+
 export interface AnalysisRun {
   id: string;
   app_id: number;
@@ -181,6 +195,22 @@ export async function startCodexAnalysis(appId: number): Promise<AnalysisRun> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      minimum_support_count: 2,
+      minimum_support_percentage: 1,
+      technical_minimum_support_count: 2,
+      technical_minimum_support_percentage: 1,
+    }),
+  }));
+}
+
+export async function startOllamaAnalysis(
+  appId: number, model: string,
+): Promise<AnalysisRun> {
+  return parseAnalysisRun(await requestJson(`/api/games/${appId}/analyses/ollama`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
       minimum_support_count: 2,
       minimum_support_percentage: 1,
       technical_minimum_support_count: 2,
@@ -281,6 +311,20 @@ export async function getCodexCliProviderStatus(): Promise<CodexCliProviderStatu
     throw new Error("Invalid Codex CLI provider response");
   }
   return payload as unknown as CodexCliProviderStatus;
+}
+
+export async function getOllamaProviderStatus(): Promise<OllamaProviderStatus> {
+  const payload: unknown = await requestJson("/api/providers/ollama");
+  if (!isRecord(payload) || typeof payload.available !== "boolean" ||
+      !(payload.version === null || typeof payload.version === "string") ||
+      payload.processing_location !== "local_device" || !Array.isArray(payload.models) ||
+      !payload.models.every((model) => isRecord(model) && typeof model.name === "string" &&
+        (model.size === null || typeof model.size === "number") &&
+        (model.parameter_size === null || typeof model.parameter_size === "string") &&
+        (model.quantization_level === null || typeof model.quantization_level === "string"))) {
+    throw new Error("Invalid Ollama provider response");
+  }
+  return payload as unknown as OllamaProviderStatus;
 }
 
 export async function searchGames(query: string): Promise<GameSearchResult[]> {
