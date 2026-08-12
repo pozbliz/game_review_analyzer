@@ -65,6 +65,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Build isolated Research Desk, Editorial Brief, and Evidence Canvas report-exploration prototypes behind the standard visual picker.
 - [ ] Verify report variant switching, replay, filters, Theme selection, evidence overlay, history, keyboard behavior, and console output in a connected browser.
 - [ ] Review all report-exploration variants at laptop and narrow viewport widths with reduced-motion and non-color checks.
+- [ ] Restore the in-app browser controller before connected-browser acceptance; its Node runtime currently fails to start with Windows `os error 3` despite an available Node executable and installed browser helper.
 - [x] [HUMAN] Select the Research overview with lightweight inline Theme detail accordions and no separate inspector or drawer.
 - [x] Build Catalog, Guided, and Library game-selection and identity-confirmation prototypes behind the standard visual picker.
 - [x] Integrate compact recent and existing-report access into the Catalog preview without replacing game identity fields.

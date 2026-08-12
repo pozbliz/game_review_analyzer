@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-08-12 — Connected-browser acceptance blocked by controller startup
+
+**What changed:**
+
+- Started the local production-serving path for connected-browser acceptance, then stopped it after the in-app browser controller failed before opening a tab.
+- Verified Node 24.15.0 and the installed browser helper exist; repeated controller startup still returned Windows `os error 3`.
+
+**Why:**
+
+- Browser interaction, responsive layout, keyboard behavior, reduced motion, and console state cannot be accepted without the required connected browser surface.
+- Substituting a different automation mechanism would not satisfy the selected browser workflow's verification boundary.
+
+**New issues:**
+
+- Restore the in-app browser controller before connected-browser acceptance resumes.
+
+This issue is tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None unless the browser environment cannot be restored and a different acceptance surface must be approved.
+
+---
+
 ## 2026-08-12 — Codex CLI fixed overhead accepted without weakening validation
 
 **What changed:**
