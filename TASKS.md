@@ -25,11 +25,11 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Continuation checkpoint — 2026-08-11
 
-- Last production implementation commit: `5526223 feat(steam): add catalog and storefront overview`. The provider evaluation was committed as `df4ce31 docs(provider): evaluate first cloud adapter` before this documentation checkpoint.
-- Last complete code gate: 90 backend tests passed, 17 frontend tests passed, and the frontend production build passed after the Codex CLI provider foundation.
+- Last production implementation: `feat(analysis): persist Codex CLI report runs`.
+- Last complete code gate: 93 backend tests passed, 18 frontend tests passed, and the frontend production build passed after durable Codex CLI analysis integration.
 - Approved next path: automate the user's authenticated Codex CLI with `gpt-5.6-luna` and medium reasoning; the application must not read or store Codex credentials.
 - Current environment check: Codex CLI `0.147.0` is installed but `codex login status` reports `Not logged in`.
-- Implement Slice 8 tasks below using the existing provider-neutral contracts and exact-evidence validator. Transmit review text only after the user explicitly starts a disclosed Codex run.
+- Slice 8 implementation is complete except live authenticated verification and optional explicit model-selection controls. Transmit review text only after the user explicitly starts a disclosed Codex run.
 - Then implement Ollama first in Slice 9 and benchmark installed Qwen 3.5 models against the existing pilot before adding hosted API adapters. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
 - Remaining human gates are connected-browser accessibility/responsive verification, the deferred production-quality baseline, MIT copyright-holder confirmation, and source/package release approval.
 
@@ -208,11 +208,13 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Write CLI-runner tests, then implement isolated, ephemeral, read-only execution with availability checks and cancellation.
 - [ ] [HUMAN] Log in through Codex CLI before the first live end-to-end provider run.
 - [x] Implement Codex CLI against the shared Analysis Provider contract.
-- [ ] Integrate Codex CLI into a durable analysis job that creates an immutable validated Report Version.
-- [ ] Write usage-disclosure tests, then present measured CLI token use when available and explicit quota uncertainty instead of a dollar estimate.
-- [ ] Write component tests, then build provider settings, external-cloud disclosure, and explicit model selection.
-- [ ] Verify the application never reads or stores Codex credentials and that prompts, review text, and CLI output do not enter diagnostics.
-- [ ] Verify no fallback and exact provider/model provenance end to end.
+- [x] Integrate Codex CLI into a durable Analysis Run that creates an immutable validated Report Version.
+- [x] Write usage-disclosure tests, then present measured CLI token use when available and explicit quota uncertainty instead of a dollar estimate.
+- [x] Write component tests, then build explicit start, durable progress, cancellation, completion, and external-cloud disclosure.
+- [ ] Add explicit model-selection controls if more than the pinned first model is needed.
+- [x] Verify through automated tests that the application never reads or stores Codex credentials and that prompts, review text, and CLI output do not enter diagnostics.
+- [x] Verify no fallback and exact provider/model provenance through the automated seam.
+- [ ] Complete one live authenticated end-to-end run and inspect the resulting report.
 
 ### Slice 9 — Add the remaining provider choices
 

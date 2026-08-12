@@ -251,6 +251,8 @@ The analysis pipeline is provider-neutral. Initial adapters are:
 
 The automated Codex adapter runs `codex exec` non-interactively in an isolated temporary directory with an ephemeral session, read-only sandbox, explicit output schema, bounded retries, cancellation, and no provider fallback. The application supplies the analysis instructions; users do not prepare prompts or move files manually. Codex authentication remains owned by the separately installed CLI and is never read or stored by the application. Review text is processed by OpenAI under the user's Codex account and is labeled external cloud processing.
 
+Starting provider analysis creates a durable **Analysis Run** that snapshots the latest immutable Review Revision for every retained review before external processing begins. Its state, provider/model, provisional metric policy, cancellation request, measured token usage, and completed Report Version identifier are stored locally. Acquisition jobs and provider runs remain separate because their progress and recovery data are materially different.
+
 The application never downloads an Ollama model. It detects Ollama, lists installed compatible models, recommends model names, and displays copyable commands that the user chooses to run outside the app. Ollama structured output is called directly through its local API rather than through an agentic CLI. If Codex or Ollama is unavailable, Steam lookup, metadata retrieval, and review downloading still work; analysis waits for another configured provider.
 
 ### Credentials
@@ -284,6 +286,7 @@ Before export, the application labels this workflow **External/manual cloud**, i
 
 - A **Game Dataset** owns downloaded Steam reviews for one AppID and is reused across report versions. Each observed state of a Steam review is stored as an immutable **Review Revision**; refresh adds a revision instead of overwriting prior evidence.
 - An **Analysis Job** owns durable acquisition and processing checkpoints until it completes, fails, is cancelled, or is deleted.
+- An **Analysis Run** owns one exact provider request, cancellation state, measured usage, and its resulting Report Version.
 - A **Report Version** is an immutable result tied to an exact review scope, exact Review Revision membership, metadata snapshot, schema and prompt versions, pipeline configuration, provider and model identifiers, and creation time.
 - A **Cohort Analysis** is a Report Version whose scope is an explicit Review Cohort.
 - The newest Report Version opens by default; older versions remain in history until manually deleted.

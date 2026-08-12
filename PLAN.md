@@ -144,7 +144,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Provider breadth waits until one adapter has hardened the shared seam.
 
-**Status:** In progress. Shared validation, isolated CLI execution, bounded retry/cancellation, non-secret readiness diagnostics, and UI disclosure are implemented. The installed Codex CLI is not authenticated, so live verification awaits user login; durable analysis-job and report integration remains next. API-key credential storage and per-token cost estimation move to later hosted-provider work.
+**Status:** Implementation complete with shared validation, isolated CLI execution, bounded retry/cancellation, non-secret readiness diagnostics, durable exact-corpus Analysis Runs, immutable report creation, measured usage, and explicit UI start/progress/completion. The installed Codex CLI is not authenticated, so live verification awaits user login; explicit model selection remains an optional follow-up while API-key credential storage and per-token cost estimation move to later hosted-provider work.
 
 ## Slice 9 — Add the remaining provider choices
 

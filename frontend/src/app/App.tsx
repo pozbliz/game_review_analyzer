@@ -1,17 +1,21 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   AnalysisJob,
+  AnalysisRun,
   cancelJob,
+  cancelAnalysisRun,
   CodexCliProviderStatus,
   getCodexCliProviderStatus,
   getGamePreview,
   getHealth,
   getJob,
+  getAnalysisRun,
   getPublicConfig,
   GameSearchResult,
   retryJob,
   searchGames,
   startQuickImport,
+  startCodexAnalysis,
   SteamMetadata,
 } from "../api/shell";
 import ReportView from "../features/report/ReportView";
@@ -42,6 +46,8 @@ function CatalogApp(): JSX.Element {
   const [jobDeleteConfirmation, setJobDeleteConfirmation] = useState<string>("");
   const [jobDeleted, setJobDeleted] = useState<boolean>(false);
   const [codexStatus, setCodexStatus] = useState<CodexCliProviderStatus | null>(null);
+  const [analysisRun, setAnalysisRun] = useState<AnalysisRun | null>(null);
+  const [analysisError, setAnalysisError] = useState<string>("");
 
   useEffect(() => {
     let active = true;
@@ -55,6 +61,14 @@ function CatalogApp(): JSX.Element {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const runId = window.localStorage.getItem("active-analysis-run");
+    if (!runId) return;
+    getAnalysisRun(runId)
+      .then(setAnalysisRun)
+      .catch(() => window.localStorage.removeItem("active-analysis-run"));
   }, []);
 
   useEffect(() => {
@@ -99,6 +113,19 @@ function CatalogApp(): JSX.Element {
     };
   }, [job?.id, job?.state]);
 
+  useEffect(() => {
+    if (!analysisRun || !["queued", "running"].includes(analysisRun.state)) return;
+    let active = true;
+    const refresh = (): void => {
+      getAnalysisRun(analysisRun.id)
+        .then((nextRun) => { if (active) setAnalysisRun(nextRun); })
+        .catch(() => { if (active) setAnalysisError("Unable to refresh analysis progress."); });
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 500);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [analysisRun?.id, analysisRun?.state]);
+
   function submitPreview(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     loadPreview(appId);
@@ -108,7 +135,9 @@ function CatalogApp(): JSX.Element {
     setPreviewLoading(true);
     setPreviewError("");
     setJob(null);
+    setAnalysisRun(null);
     window.localStorage.removeItem("active-import-job");
+    window.localStorage.removeItem("active-analysis-run");
     getGamePreview(selectedAppId)
       .then((metadata) => setPreview(metadata))
       .catch(() => {
@@ -148,6 +177,25 @@ function CatalogApp(): JSX.Element {
   function cancelImport(): void {
     if (!job) return;
     cancelJob(job.id).then(setJob).catch(() => setJobError("Unable to cancel the import."));
+  }
+
+  function beginAnalysis(): void {
+    const selectedAppId = preview?.app_id ?? job?.app_id;
+    if (!selectedAppId) return;
+    setAnalysisError("");
+    startCodexAnalysis(selectedAppId)
+      .then((run) => {
+        window.localStorage.setItem("active-analysis-run", run.id);
+        setAnalysisRun(run);
+      })
+      .catch(() => setAnalysisError("Unable to start Codex CLI analysis."));
+  }
+
+  function cancelAnalysis(): void {
+    if (!analysisRun) return;
+    cancelAnalysisRun(analysisRun.id)
+      .then(setAnalysisRun)
+      .catch(() => setAnalysisError("Unable to cancel analysis."));
   }
 
   function retryImport(): void {
@@ -258,6 +306,42 @@ function CatalogApp(): JSX.Element {
                 </div>
               )}
               {jobDeleted && <p role="status">Incomplete job deleted</p>}
+              {job.state === "completed" && !analysisRun && (
+                <>
+                  <p>Provisional report thresholds: at least 2 reviews and 1% support.</p>
+                  <button
+                    type="button"
+                    onClick={beginAnalysis}
+                    disabled={!codexStatus?.installed || !codexStatus.authenticated}
+                  >
+                    Analyze with Codex CLI
+                  </button>
+                </>
+              )}
+              {analysisRun && (
+                <div className="analysis-progress">
+                  <p className="eyebrow">CODEX ANALYSIS</p>
+                  <h3>{
+                    analysisRun.state === "completed" ? "Report complete" :
+                    analysisRun.state === "failed" ? "Analysis failed" :
+                    analysisRun.state === "cancelled" ? "Analysis cancelled" : "Analyzing reviews"
+                  }</h3>
+                  <p>{analysisRun.review_count.toLocaleString()} reviews · {analysisRun.model}</p>
+                  {["queued", "running"].includes(analysisRun.state) && (
+                    <button type="button" onClick={cancelAnalysis}>Cancel analysis</button>
+                  )}
+                  {analysisRun.report_version_id && (
+                    <>
+                      {analysisRun.input_tokens !== null && analysisRun.output_tokens !== null && (
+                        <p>
+                          Measured usage: {analysisRun.input_tokens.toLocaleString()} input and {analysisRun.output_tokens.toLocaleString()} output tokens. Remaining subscription quota is unavailable.
+                        </p>
+                      )}
+                      <a href={`/reports/${encodeURIComponent(analysisRun.report_version_id)}`}>View report</a>
+                    </>
+                  )}
+                </div>
+              )}
             </section>
           ) : !preview ? (
             <div className="preview-empty">
@@ -317,6 +401,7 @@ function CatalogApp(): JSX.Element {
             </>
           )}
           {jobError && <p className="error" role="alert">{jobError}</p>}
+          {analysisError && <p className="error" role="alert">{analysisError}</p>}
         </aside>
       </div>
     </main>

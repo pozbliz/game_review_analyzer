@@ -3,6 +3,7 @@
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Callable
+import shutil
 from typing import AsyncIterator, Literal
 
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -35,14 +36,27 @@ from game_review_analyzer.application.storage_lifecycle import (
     get_storage_diagnostics,
     verify_database_integrity,
 )
-from game_review_analyzer.domain.reports import ReportVersion
+from game_review_analyzer.domain.reports import ReportVersion, ThemeMetricPolicy
 from game_review_analyzer.domain.game_catalog import CatalogSyncResult, GameSearchResult
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.job_runner import JobRunner, ReviewPageSource
 from game_review_analyzer.infrastructure.codex_cli import (
+    CodexCliProvider,
     CodexCliStatus,
     codex_cli_status,
+)
+from game_review_analyzer.infrastructure.analysis_runner import (
+    AnalysisProvider,
+    AnalysisRunner,
+)
+from game_review_analyzer.infrastructure.persistence.analysis_runs import (
+    AnalysisRun,
+    AnalysisRunNotFound,
+    create_analysis_run,
+    get_analysis_run,
+    recoverable_analysis_run_ids,
+    request_analysis_cancellation,
 )
 from game_review_analyzer.infrastructure.persistence.game_datasets import (
     load_game_dataset,
@@ -137,6 +151,7 @@ def create_app(
     catalog_source: CatalogSource | None = None,
     fallback_search_source: FallbackSearchSource | None = None,
     codex_status_source: Callable[[], CodexCliStatus] | None = None,
+    analysis_provider: AnalysisProvider | None = None,
 ) -> FastAPI:
     """Create an application instance, optionally using test-specific settings."""
 
@@ -147,9 +162,15 @@ def create_app(
     resolved_catalog_source = catalog_source or SteamCatalogAdapter()
     resolved_fallback_source = fallback_search_source or SteamStoreSearchAdapter()
     resolved_codex_status_source = codex_status_source or codex_cli_status
+    resolved_analysis_provider = analysis_provider or CodexCliProvider(
+        executable=shutil.which("codex") or "codex"
+    )
     runner = JobRunner(
         resolved_settings.database_path,
         review_source or SteamReviewIngestionAdapter(),
+    )
+    analysis_runner = AnalysisRunner(
+        resolved_settings.database_path, resolved_analysis_provider
     )
 
     @asynccontextmanager
@@ -157,13 +178,20 @@ def create_app(
         initialize_database(resolved_settings.database_path)
         # ponytail: one import worker; increase only after measured parallel demand.
         executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="review-import")
+        analysis_executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="provider-analysis"
+        )
         application.state.import_executor = executor
+        application.state.analysis_executor = analysis_executor
         for job_id in recoverable_job_ids(resolved_settings.database_path):
             executor.submit(runner.run, job_id)
+        for run_id in recoverable_analysis_run_ids(resolved_settings.database_path):
+            analysis_executor.submit(analysis_runner.run, run_id)
         try:
             yield
         finally:
             executor.shutdown(wait=True)
+            analysis_executor.shutdown(wait=True)
 
     app = FastAPI(title="Game Review Analyzer", lifespan=lifespan)
 
@@ -191,6 +219,56 @@ def create_app(
             processing_location="external_cloud",
             cost_basis="subscription_quota_unknown",
         )
+
+    @app.post(
+        f"{API_PREFIX}/games/{{app_id}}/analyses/codex-cli",
+        response_model=AnalysisRun,
+        status_code=202,
+    )
+    def start_codex_analysis(
+        app_id: int, metric_policy: ThemeMetricPolicy
+    ) -> AnalysisRun:
+        status = resolved_codex_status_source()
+        if not status.installed or not status.authenticated:
+            raise HTTPException(
+                status_code=409, detail={"code": "codex_cli_not_ready"}
+            )
+        if load_game_dataset(resolved_settings.database_path, app_id) is None:
+            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
+        try:
+            run = create_analysis_run(
+                resolved_settings.database_path,
+                app_id=app_id,
+                provider="codex-cli",
+                model=status.model,
+                metric_policy=metric_policy,
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "analysis_requires_reviews"}
+            ) from error
+        app.state.analysis_executor.submit(analysis_runner.run, run.id)
+        return run
+
+    def existing_analysis_run(run_id: str) -> AnalysisRun:
+        try:
+            return get_analysis_run(resolved_settings.database_path, run_id)
+        except AnalysisRunNotFound as error:
+            raise HTTPException(
+                status_code=404, detail={"code": "analysis_run_not_found"}
+            ) from error
+
+    @app.get(f"{API_PREFIX}/analysis-runs/{{run_id}}", response_model=AnalysisRun)
+    def analysis_progress(run_id: str) -> AnalysisRun:
+        return existing_analysis_run(run_id)
+
+    @app.post(
+        f"{API_PREFIX}/analysis-runs/{{run_id}}/cancel", response_model=AnalysisRun
+    )
+    def cancel_analysis(run_id: str) -> AnalysisRun:
+        existing_analysis_run(run_id)
+        request_analysis_cancellation(resolved_settings.database_path, run_id)
+        return get_analysis_run(resolved_settings.database_path, run_id)
 
     @app.post(f"{API_PREFIX}/catalog/sync", response_model=CatalogSyncResult)
     def sync_catalog() -> CatalogSyncResult:

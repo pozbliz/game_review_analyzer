@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 8
+CURRENT_SCHEMA_VERSION = 9
 
 
 def initialize_database(database_path: Path) -> None:
@@ -146,6 +146,26 @@ def initialize_database(database_path: Path) -> None:
                 "synced_at INTEGER NOT NULL CHECK (synced_at >= 0))"
             )
             connection.execute("INSERT INTO schema_migrations(version) VALUES (8)")
+        if 9 not in applied_versions:
+            connection.execute(
+                "CREATE TABLE analysis_runs ("
+                "id TEXT PRIMARY KEY, "
+                "app_id INTEGER NOT NULL REFERENCES game_datasets(app_id) ON DELETE CASCADE, "
+                "provider TEXT NOT NULL CHECK (length(provider) > 0), "
+                "model TEXT NOT NULL CHECK (length(model) > 0), "
+                "state TEXT NOT NULL CHECK (state IN "
+                "('queued', 'running', 'completed', 'failed', 'cancelled')), "
+                "review_revision_ids_json TEXT NOT NULL, "
+                "metric_policy_json TEXT NOT NULL, "
+                "cancel_requested INTEGER NOT NULL DEFAULT 0 CHECK (cancel_requested IN (0, 1)), "
+                "error_code TEXT, report_version_id TEXT REFERENCES report_versions(id), "
+                "input_tokens INTEGER CHECK (input_tokens >= 0), "
+                "cached_input_tokens INTEGER CHECK (cached_input_tokens >= 0), "
+                "output_tokens INTEGER CHECK (output_tokens >= 0), "
+                "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                "updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            connection.execute("INSERT INTO schema_migrations(version) VALUES (9)")
 
 
 def schema_version(database_path: Path) -> int:

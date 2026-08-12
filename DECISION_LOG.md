@@ -1,5 +1,31 @@
 # Decision Log
 
+## 2026-08-12 — Durable Codex CLI analysis flow completed
+
+**What changed:**
+
+- Added a separate durable Analysis Run record that snapshots exact Review Revisions, provider/model, explicit provisional metric thresholds, cancellation, usage, and the resulting Report Version.
+- Added restart recovery and a runner that reuses the shared request validator, deterministic metrics, and immutable report repository.
+- Added authenticated start, progress, cancellation, measured-token disclosure, and completed-report navigation to the local web flow.
+
+**Why:**
+
+- Acquisition jobs contain cursor and import checkpoints, while provider runs need exact corpus, token usage, and report provenance; keeping the records separate avoids ambiguous state.
+- The provisional thresholds of two reviews and one percent remain visible and uncalibrated rather than becoming a hidden reliability claim.
+
+**New issues:**
+
+- A live run still requires the user to authenticate the installed Codex CLI.
+- Explicit model selection is unnecessary while only the pinned first model is supported, but remains a task if another Codex model is needed.
+
+Both issues are tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- Log in through Codex CLI before the first live end-to-end analysis run.
+
+---
+
 ## 2026-08-12 — Codex CLI provider foundation completed
 
 **What changed:**

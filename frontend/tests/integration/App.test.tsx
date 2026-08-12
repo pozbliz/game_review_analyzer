@@ -191,6 +191,34 @@ describe("application shell", () => {
     expect(screen.getByText(/remaining subscription quota and dollar cost are unavailable/i)).toBeVisible();
   });
 
+  it("starts Codex analysis after import and links the completed report", async () => {
+    let analysisPolls = 0;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url.startsWith("/api/games/preview")) return json(metadata());
+      if (url === "/api/games/1145350/imports/quick") return json(job("completed", 5000));
+      if (url === "/api/games/1145350/analyses/codex-cli") return json(analysisRun("queued"));
+      analysisPolls += 1;
+      return json(analysisRun(analysisPolls > 1 ? "completed" : "running"));
+    });
+
+    render(<App />);
+    await previewGame();
+    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Analyze with Codex CLI" }));
+
+    const link = await screen.findByRole("link", { name: "View report" });
+    expect(link).toHaveAttribute("href", "/reports/report-1");
+    expect(screen.getByText(/120 input and 30 output tokens/i)).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/games/1145350/analyses/codex-cli",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("retries a failed Quick import", async () => {
     let progressRequests = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
@@ -304,5 +332,30 @@ function job(state: string, importedCount: number): object {
     cursor: "*",
     cancel_requested: false,
     error_code: state === "failed" ? "steam_unavailable" : null,
+  };
+}
+
+function analysisRun(state: string): object {
+  return {
+    id: "analysis-1",
+    app_id: 1145350,
+    provider: "codex-cli",
+    model: "gpt-5.6-luna",
+    state,
+    review_revision_ids: [1],
+    review_count: 1,
+    metric_policy: {
+      minimum_support_count: 2,
+      minimum_support_percentage: 1,
+      technical_minimum_support_count: 2,
+      technical_minimum_support_percentage: 1,
+      maximum_headlines_per_polarity: 10,
+    },
+    cancel_requested: false,
+    error_code: null,
+    report_version_id: state === "completed" ? "report-1" : null,
+    input_tokens: state === "completed" ? 120 : null,
+    cached_input_tokens: state === "completed" ? 20 : null,
+    output_tokens: state === "completed" ? 30 : null,
   };
 }

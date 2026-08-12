@@ -32,6 +32,21 @@ def create_manual_codex_report(
     """Validate, calculate, and append one provisional Manual Codex report."""
 
     result: AnalysisResult = validate_manual_codex_result(request, result_json)
+    return create_report(
+        database_path, report_version_id, request, result, review_revision_ids, metric_policy
+    )
+
+
+def create_report(
+    database_path: Path,
+    report_version_id: str,
+    request: AnalysisRequest,
+    result: AnalysisResult,
+    review_revision_ids: Iterable[int],
+    metric_policy: ThemeMetricPolicy,
+) -> ReportVersion:
+    """Calculate and append one immutable report from a validated provider result."""
+
     metadata = load_game_dataset(database_path, request.app_id)
     if metadata is None:
         raise ValueError("Matching Game Dataset metadata is unavailable")

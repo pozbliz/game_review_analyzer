@@ -108,6 +108,21 @@ export interface CodexCliProviderStatus {
   cost_basis: "subscription_quota_unknown";
 }
 
+export interface AnalysisRun {
+  id: string;
+  app_id: number;
+  provider: string;
+  model: string;
+  state: JobState;
+  review_count: number;
+  cancel_requested: boolean;
+  error_code: string | null;
+  report_version_id: string | null;
+  input_tokens: number | null;
+  cached_input_tokens: number | null;
+  output_tokens: number | null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -146,6 +161,42 @@ function parseJob(payload: unknown): AnalysisJob {
     throw new Error("Invalid analysis job response");
   }
   return payload as unknown as AnalysisJob;
+}
+
+function parseAnalysisRun(payload: unknown): AnalysisRun {
+  if (!isRecord(payload) || typeof payload.id !== "string" ||
+      typeof payload.app_id !== "number" || typeof payload.provider !== "string" ||
+      typeof payload.model !== "string" ||
+      !["queued", "running", "completed", "failed", "cancelled"].includes(String(payload.state)) ||
+      typeof payload.review_count !== "number" || typeof payload.cancel_requested !== "boolean" ||
+      !(payload.error_code === null || typeof payload.error_code === "string") ||
+      !(payload.report_version_id === null || typeof payload.report_version_id === "string")) {
+    throw new Error("Invalid analysis run response");
+  }
+  return payload as unknown as AnalysisRun;
+}
+
+export async function startCodexAnalysis(appId: number): Promise<AnalysisRun> {
+  return parseAnalysisRun(await requestJson(`/api/games/${appId}/analyses/codex-cli`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      minimum_support_count: 2,
+      minimum_support_percentage: 1,
+      technical_minimum_support_count: 2,
+      technical_minimum_support_percentage: 1,
+    }),
+  }));
+}
+
+export async function getAnalysisRun(runId: string): Promise<AnalysisRun> {
+  return parseAnalysisRun(await requestJson(`/api/analysis-runs/${runId}`));
+}
+
+export async function cancelAnalysisRun(runId: string): Promise<AnalysisRun> {
+  return parseAnalysisRun(await requestJson(
+    `/api/analysis-runs/${runId}/cancel`, { method: "POST" },
+  ));
 }
 
 export async function startQuickImport(appId: number, targetCount: number): Promise<AnalysisJob> {
