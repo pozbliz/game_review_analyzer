@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-08-12 — Authenticated Codex report flow verified with explicit Theme support
+
+**What changed:**
+
+- Added the existing two-distinct-review Theme-support invariant to the shared analysis instruction after a one-attempt diagnostic returned `insufficient_theme_support`.
+- Completed and inspected live run `32f549e3-0d1d-4193-8c6d-a7e67c07da89`: six exact Opinion Points, one mixed classification, no unsupported Themes, and an immutable Report Version.
+- Limited both diagnostic and verification runs to one review, one attempt, and a three-minute cancellation cap.
+
+**Why:**
+
+- The validator enforced the invariant, but the provider prompt did not state it; making both agree fixes the cause instead of weakening validation.
+- One-review verification exercises the complete durable path with minimum review-data transmission.
+
+**New issues:**
+
+- The full structured contract used 15,744 input tokens for one review, so its fixed prompt/schema overhead is not quota-efficient.
+
+This issue is tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None for the completed live gate; approve further cloud runs separately.
+
+---
+
 ## 2026-08-12 — First authenticated Codex run retained safe failure diagnostics
 
 **What changed:**

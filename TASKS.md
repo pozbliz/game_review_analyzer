@@ -34,7 +34,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - Current environment check: Ollama 0.32.8 is running with Qwen 3.5 4B and 9B installed; Ollama reports CPU-only inference and Windows exposes 15.4 GB visible memory.
 - [x] [HUMAN] Install and start Ollama without downloading a model automatically.
 - [x] [HUMAN] Approve and download Qwen 3.5 4B and 9B for local benchmarking.
-- Slice 8 live verification reached the authenticated CLI through the real durable application path with one approved Hades II review. Both allowed attempts failed result validation, so no Report Version was created. The adapter now preserves the validator's safe reason code; perform at most one fresh diagnostic run when the user approves more quota.
+- Slice 8 live verification is complete. A one-attempt diagnostic exposed missing prompt guidance for the two-review Theme-support invariant; after adding it, run `32f549e3-0d1d-4193-8c6d-a7e67c07da89` created and exposed an immutable report for one approved Hades II review. The full contract has high fixed overhead: 15,744 input and 563 output tokens for this tiny scope.
 - Ollama implementation is complete for local discovery, explicit selection, structured analysis, and external-only install guidance. Next benchmark installed Qwen 3.5 models against the existing pilot; add hosted API adapters only when requested. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
 - Remaining human gates are connected-browser accessibility/responsive verification, the deferred production-quality baseline, MIT copyright-holder confirmation, and source/package release approval.
 
@@ -219,7 +219,8 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [ ] Add explicit model-selection controls if more than the pinned first model is needed.
 - [x] Verify through automated tests that the application never reads or stores Codex credentials and that prompts, review text, and CLI output do not enter diagnostics.
 - [x] Verify no fallback and exact provider/model provenance through the automated seam.
-- [ ] Complete one live authenticated end-to-end run and inspect the resulting report. First live run `50a06381-b0cd-4d39-bb27-ffa755c29ad3` reached Codex but failed after two attempts with the formerly generic `invalid_result`; approve one fresh run to capture the now-preserved safe validation code before changing prompts.
+- [x] Complete one live authenticated end-to-end run and inspect the resulting report. Run `32f549e3-0d1d-4193-8c6d-a7e67c07da89` completed in one attempt with six exact Opinion Points, a mixed review classification, no unsupported single-review Themes, and an immutable Report Version.
+- [ ] Reduce or avoid the full-contract fixed prompt/schema overhead before advertising Codex CLI as quota-efficient; the smallest live run used 15,744 input tokens for one review.
 
 ### Slice 9 — Add the remaining provider choices
 
