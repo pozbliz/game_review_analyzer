@@ -6,7 +6,7 @@ The local application shell, keyed Steam catalog synchronization, local-first na
 
 ## Current implementation status
 
-Slices 1–8, 11, and 12 are implemented, except for Slice 8's live authenticated verification. Slice 9 is active: the app now discovers Ollama's already-installed local models and can explicitly run one through the same durable, schema-constrained report flow without downloading anything. Ollama 0.32.8 is installed and its local API is running on this machine, but no models are installed yet; Qwen 3.5 4B/9B benchmarking awaits explicit model downloads. Hosted API and Claude Code adapters remain later choices. Slice 10 remains blocked by deferred cohort-size calibration. Source and packaged release work remains in Slices 13 and 14. The exact continuation checkpoint and every open action are maintained in `TASKS.md`.
+Slices 1–8, 11, and 12 are implemented, except for Slice 8's live authenticated verification. Slice 9 is active: Ollama 0.32.8 plus Qwen 3.5 4B and 9B are installed, and the app can explicitly run either through the durable local report flow. The human-reviewed pilot found 4B invalid on all three games and 9B impractically slow on this CPU-only machine, so neither is a reliable default for full analysis here. Hosted API and Claude Code adapters remain later choices. Slice 10 remains blocked by deferred cohort-size calibration. Source and packaged release work remains in Slices 13 and 14. The exact continuation checkpoint and every open action are maintained in `TASKS.md`.
 
 ## Product goals
 
@@ -43,6 +43,7 @@ Embeddings are not required in the MVP. They remain a future enhancement for sem
 - `docs/specifications/DOMAIN_GLOSSARY.md` — canonical domain terminology
 - `docs/specifications/ANALYSIS_EVALUATION.md` — analysis-quality corpus format and scoring rules
 - `docs/evaluation/pilot-v1.md` — first human-adjudicated evaluation results and limits
+- `docs/evaluation/ollama-pilot-v1.md` — local Qwen 3.5 4B/9B contract and performance results
 - `docs/steam-data-policy.md` — validated Steam Web API and best-effort storefront obligations
 - `PLAN.md` — phased implementation sequence
 - `TASKS.md` — active work and unresolved issues

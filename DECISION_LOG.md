@@ -1,5 +1,31 @@
 # Decision Log
 
+## 2026-08-12 — Local Qwen full-analysis candidates rejected
+
+**What changed:**
+
+- Downloaded the verified Ollama Qwen 3.5 4B and 9B model tags after explicit approval.
+- Added a reproducible exact-evidence benchmark runner and tested the 18-review human-reviewed pilot with a 16,384-token context.
+- Rejected 4B as a full-analysis default after all three games failed validation, and stopped 9B after roughly 20 minutes on the first six-review game at 100% CPU.
+- Added stable local timeout handling and documented the benchmark results.
+
+**Why:**
+
+- 4B produced incomplete scopes or broken Theme references even after one retry; invalid output cannot become a report.
+- 9B consumed 6.6 GB at 100% CPU with only about 2.1 GB physical memory remaining and did not finish a practical batch.
+
+**New issues:**
+
+- A future local-model evaluation should use bounded Opinion Point extraction rather than the complete full-analysis contract.
+
+This issue is tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- Approve another local-model experiment before spending more inference time.
+
+---
+
 ## 2026-08-12 — Ollama runtime installed without models
 
 **What changed:**

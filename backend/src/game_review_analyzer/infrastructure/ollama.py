@@ -116,7 +116,11 @@ class OllamaProvider:
                     ) from error
             except OllamaError:
                 raise
-            except (OSError, URLError, TimeoutError, json.JSONDecodeError) as error:
+            except TimeoutError as error:
+                raise OllamaError(
+                    "timeout", "Local Ollama exceeded the analysis time limit"
+                ) from error
+            except (OSError, URLError, json.JSONDecodeError) as error:
                 raise OllamaError("unavailable", "Local Ollama is unavailable") from error
         raise AssertionError("unreachable")
 
@@ -131,7 +135,7 @@ class OllamaProvider:
             "format": AnalysisResult.model_json_schema(),
             "stream": True,
             "think": False,
-            "options": {"temperature": 0},
+            "options": {"temperature": 0, "num_ctx": 16_384},
         }
 
 

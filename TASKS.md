@@ -28,12 +28,12 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 ### Continuation checkpoint — 2026-08-12
 
 - Last production implementation: Ollama local-provider integration and explicit provider/model selection.
-- Last complete code gate: 100 backend tests passed, 20 frontend tests passed, and the frontend production build passed after Ollama integration.
+- Last complete code gate: 102 backend tests passed, 20 frontend tests passed, and the frontend production build passed after the local Qwen benchmark update.
 - Approved next path: automate the user's authenticated Codex CLI with `gpt-5.6-luna` and medium reasoning; the application must not read or store Codex credentials.
 - Current environment check: Codex CLI `0.147.0` is installed but `codex login status` reports `Not logged in`.
-- Current environment check: Ollama 0.32.8 is installed and the default local API is running; no model is installed.
+- Current environment check: Ollama 0.32.8 is running with Qwen 3.5 4B and 9B installed; Ollama reports CPU-only inference and Windows exposes 15.4 GB visible memory.
 - [x] [HUMAN] Install and start Ollama without downloading a model automatically.
-- [ ] [HUMAN] Approve downloading Qwen 3.5 4B and/or 9B before local benchmarking.
+- [x] [HUMAN] Approve and download Qwen 3.5 4B and 9B for local benchmarking.
 - Slice 8 implementation is complete except live authenticated verification. Transmit review text only after the user explicitly starts a disclosed Codex run.
 - Ollama implementation is complete for local discovery, explicit selection, structured analysis, and external-only install guidance. Next benchmark installed Qwen 3.5 models against the existing pilot; add hosted API adapters only when requested. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
 - Remaining human gates are connected-browser accessibility/responsive verification, the deferred production-quality baseline, MIT copyright-holder confirmation, and source/package release approval.
@@ -227,7 +227,8 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 - [ ] Apply the shared conformance suite to every remaining provider adapter.
 - [x] Implement Ollama as the next provider using its local structured-output API.
-- [ ] Benchmark installed Qwen 3.5 9B and 4B models against the human-reviewed pilot when compatible hardware is available.
+- [x] Benchmark installed Qwen 3.5 9B and 4B models against the human-reviewed pilot; record 4B contract failures and 9B CPU infeasibility.
+- [ ] Evaluate bounded Opinion Point extraction with a local model only if another local-model experiment is approved.
 - [ ] Implement evaluated OpenAI, Anthropic Claude, Google Gemini, or Claude Code adapters when requested.
 - [ ] Write Credential Store contract tests, then implement session, environment, and operating-system-vault adapters before the first API provider.
 - [ ] Write estimator tests, then implement dated pipeline-wide cost estimates for paid per-token providers.
