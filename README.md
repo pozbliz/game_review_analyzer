@@ -6,7 +6,7 @@ The local application shell, keyed Steam catalog synchronization, local-first na
 
 ## Current implementation status
 
-Slices 1–8, 11, and 12 are implemented, except for Slice 8's live authenticated verification. Slice 9 is active: the app now discovers Ollama's already-installed local models and can explicitly run one through the same durable, schema-constrained report flow without downloading anything. This machine currently has neither the Ollama CLI nor service, so Qwen 3.5 4B/9B benchmarking awaits a user-installed local runtime and models. Hosted API and Claude Code adapters remain later choices. Slice 10 remains blocked by deferred cohort-size calibration. Source and packaged release work remains in Slices 13 and 14. The exact continuation checkpoint and every open action are maintained in `TASKS.md`.
+Slices 1–8, 11, and 12 are implemented, except for Slice 8's live authenticated verification. Slice 9 is active: the app now discovers Ollama's already-installed local models and can explicitly run one through the same durable, schema-constrained report flow without downloading anything. Ollama 0.32.8 is installed and its local API is running on this machine, but no models are installed yet; Qwen 3.5 4B/9B benchmarking awaits explicit model downloads. Hosted API and Claude Code adapters remain later choices. Slice 10 remains blocked by deferred cohort-size calibration. Source and packaged release work remains in Slices 13 and 14. The exact continuation checkpoint and every open action are maintained in `TASKS.md`.
 
 ## Product goals
 

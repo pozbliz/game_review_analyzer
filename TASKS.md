@@ -31,8 +31,9 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - Last complete code gate: 100 backend tests passed, 20 frontend tests passed, and the frontend production build passed after Ollama integration.
 - Approved next path: automate the user's authenticated Codex CLI with `gpt-5.6-luna` and medium reasoning; the application must not read or store Codex credentials.
 - Current environment check: Codex CLI `0.147.0` is installed but `codex login status` reports `Not logged in`.
-- Current environment check: neither the Ollama CLI nor the default local service is available; no model was installed or downloaded.
-- [ ] [HUMAN] Install and start Ollama, then independently install Qwen 3.5 4B and/or 9B before local benchmarking.
+- Current environment check: Ollama 0.32.8 is installed and the default local API is running; no model is installed.
+- [x] [HUMAN] Install and start Ollama without downloading a model automatically.
+- [ ] [HUMAN] Approve downloading Qwen 3.5 4B and/or 9B before local benchmarking.
 - Slice 8 implementation is complete except live authenticated verification. Transmit review text only after the user explicitly starts a disclosed Codex run.
 - Ollama implementation is complete for local discovery, explicit selection, structured analysis, and external-only install guidance. Next benchmark installed Qwen 3.5 models against the existing pilot; add hosted API adapters only when requested. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
 - Remaining human gates are connected-browser accessibility/responsive verification, the deferred production-quality baseline, MIT copyright-holder confirmation, and source/package release approval.

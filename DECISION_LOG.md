@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-12 — Ollama runtime installed without models
+
+**What changed:**
+
+- Installed the verified official Ollama 0.32.8 Windows package and confirmed its local API at `127.0.0.1:11434`.
+- Kept model installation separate; the local Ollama store remains empty.
+
+**Why:**
+
+- Runtime installation makes the implemented provider path available while preserving explicit approval for multi-gigabyte model downloads.
+
+**New issues:**
+
+- Qwen 3.5 4B/9B benchmarking still requires explicit model downloads.
+
+This issue is tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- Approve which Qwen model or models to download.
+
+---
+
 ## 2026-08-12 — Ollama local-provider path implemented
 
 **What changed:**

@@ -158,7 +158,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Supporting multiple vendors increases ongoing compatibility and evaluation work.
 
-**Status:** In progress. Local Ollama availability and installed-model discovery, schema-constrained streaming analysis, cancellation, exact validation, durable report integration, measured usage, and explicit provider/model selection are implemented. This machine has no Ollama CLI or running service, so live Qwen 3.5 4B/9B benchmarking awaits a user-installed runtime and models. Hosted API and Claude Code adapters remain optional later work.
+**Status:** In progress. Local Ollama availability and installed-model discovery, schema-constrained streaming analysis, cancellation, exact validation, durable report integration, measured usage, and explicit provider/model selection are implemented. Ollama 0.32.8 and its local API are now available on this machine, with no models installed; live Qwen 3.5 4B/9B benchmarking awaits explicit model downloads. Hosted API and Claude Code adapters remain optional later work.
 
 ## Slice 10 — Filter evidence and create Cohort Analyses
 
