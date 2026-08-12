@@ -125,15 +125,31 @@ def validate_manual_codex_result(
 ) -> AnalysisResult:
     """Parse and validate a Manual Codex result against its exact request scope."""
 
+    return validate_analysis_result(
+        request,
+        result_json,
+        expected_provider="manual-codex",
+    )
+
+
+def validate_analysis_result(
+    request: AnalysisRequest,
+    result_json: str,
+    *,
+    expected_provider: str,
+) -> AnalysisResult:
+    """Parse and validate one provider result against its exact request scope."""
+
     try:
         result: AnalysisResult = AnalysisResult.model_validate_json(result_json)
     except ValidationError as error:
         raise ManualCodexValidationError(
             "malformed_result", "Result does not match analysis schema 1.0."
         ) from error
-    if result.provider != "manual-codex":
+    if result.provider != expected_provider:
         raise ManualCodexValidationError(
-            "provider_mismatch", "Result provider must be manual-codex."
+            "provider_mismatch",
+            f"Result provider must be {expected_provider}.",
         )
     if result.request_id != request.request_id:
         raise ManualCodexValidationError(

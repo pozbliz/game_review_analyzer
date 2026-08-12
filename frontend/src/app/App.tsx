@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useState } from "react";
 import {
   AnalysisJob,
   cancelJob,
+  CodexCliProviderStatus,
+  getCodexCliProviderStatus,
   getGamePreview,
   getHealth,
   getJob,
@@ -39,6 +41,7 @@ function CatalogApp(): JSX.Element {
   const [jobError, setJobError] = useState<string>("");
   const [jobDeleteConfirmation, setJobDeleteConfirmation] = useState<string>("");
   const [jobDeleted, setJobDeleted] = useState<boolean>(false);
+  const [codexStatus, setCodexStatus] = useState<CodexCliProviderStatus | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -48,6 +51,20 @@ function CatalogApp(): JSX.Element {
       })
       .catch(() => {
         if (active) setHealth("unavailable");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active: boolean = true;
+    getCodexCliProviderStatus()
+      .then((status) => {
+        if (active) setCodexStatus(status);
+      })
+      .catch(() => {
+        if (active) setCodexStatus(null);
       });
     return () => {
       active = false;
@@ -272,6 +289,18 @@ function CatalogApp(): JSX.Element {
               )}
               <div className="analysis-setup">
                 <p><strong>Quick analysis</strong><br />Latest eligible English reviews</p>
+                {codexStatus && (
+                  <div className="provider-disclosure">
+                    <strong>{
+                      codexStatus.installed && codexStatus.authenticated
+                        ? "Codex CLI ready"
+                        : "Codex CLI unavailable"
+                    }</strong>
+                    <span>GPT-5.6 Luna · {codexStatus.reasoning_effort} reasoning</span>
+                    <p>External cloud processing: review text is sent to OpenAI only when you start analysis.</p>
+                    <p>Remaining subscription quota and dollar cost are unavailable to this application.</p>
+                  </div>
+                )}
                 <label htmlFor="review-limit">Review limit</label>
                 <input
                   id="review-limit"

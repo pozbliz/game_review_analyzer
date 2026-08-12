@@ -98,6 +98,16 @@ export interface AnalysisJob {
   error_code: string | null;
 }
 
+export interface CodexCliProviderStatus {
+  installed: boolean;
+  authenticated: boolean;
+  version: string | null;
+  model: string;
+  reasoning_effort: string;
+  processing_location: "external_cloud";
+  cost_basis: "subscription_quota_unknown";
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -203,6 +213,23 @@ export async function getPublicConfig(): Promise<PublicConfigResponse> {
     steam_country_code: payload.steam_country_code,
     keyed_catalog_available: payload.keyed_catalog_available,
   };
+}
+
+export async function getCodexCliProviderStatus(): Promise<CodexCliProviderStatus> {
+  const payload: unknown = await requestJson("/api/providers/codex-cli");
+  if (
+    !isRecord(payload) ||
+    typeof payload.installed !== "boolean" ||
+    typeof payload.authenticated !== "boolean" ||
+    !(payload.version === null || typeof payload.version === "string") ||
+    typeof payload.model !== "string" ||
+    typeof payload.reasoning_effort !== "string" ||
+    payload.processing_location !== "external_cloud" ||
+    payload.cost_basis !== "subscription_quota_unknown"
+  ) {
+    throw new Error("Invalid Codex CLI provider response");
+  }
+  return payload as unknown as CodexCliProviderStatus;
 }
 
 export async function searchGames(query: string): Promise<GameSearchResult[]> {

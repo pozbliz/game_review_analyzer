@@ -11,6 +11,7 @@ from game_review_analyzer.application.manual_codex import (
     build_analysis_request,
     export_manual_codex_package,
     export_manual_codex_extraction_package,
+    validate_analysis_result,
     validate_manual_codex_result,
     validate_manual_codex_extraction_result,
 )
@@ -222,6 +223,26 @@ def test_import_rejects_malformed_and_non_manual_results() -> None:
         with pytest.raises(ManualCodexValidationError) as raised:
             validate_manual_codex_result(request, invalid_json)
         assert raised.value.code == expected_code
+
+
+def test_shared_validator_accepts_only_the_selected_provider() -> None:
+    request, result = valid_grouped_result()
+    result["provider"] = "codex-cli"
+
+    validated = validate_analysis_result(
+        request,
+        json.dumps(result),
+        expected_provider="codex-cli",
+    )
+
+    assert validated.provider == "codex-cli"
+    with pytest.raises(ManualCodexValidationError) as raised:
+        validate_analysis_result(
+            request,
+            json.dumps(result),
+            expected_provider="ollama",
+        )
+    assert raised.value.code == "provider_mismatch"
 
 
 def valid_grouped_result() -> tuple[AnalysisRequest, dict[str, Any]]:

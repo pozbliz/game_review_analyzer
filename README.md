@@ -6,7 +6,7 @@ The local application shell, keyed Steam catalog synchronization, local-first na
 
 ## Current implementation status
 
-Slices 1–7, 11, and 12 are implemented. Slice 8 is the next active slice and awaits explicit approval of OpenAI `gpt-5.6-luna` with medium reasoning as the first automated cloud provider. Slice 9 follows Slice 8; Slice 10 remains blocked by deferred cohort-size calibration. Source and packaged release work remains in Slices 13 and 14. The exact continuation checkpoint and every open action are maintained in `TASKS.md`.
+Slices 1–7, 11, and 12 are implemented. Slice 8 is active with the tested Codex CLI execution foundation using `gpt-5.6-luna` and medium reasoning. The installed CLI is not currently authenticated, so live end-to-end execution awaits user login while durable analysis-job integration continues. Ollama follows as the first local model path; hosted API and Claude Code adapters remain later provider choices. Slice 10 remains blocked by deferred cohort-size calibration. Source and packaged release work remains in Slices 13 and 14. The exact continuation checkpoint and every open action are maintained in `TASKS.md`.
 
 ## Product goals
 
@@ -31,7 +31,7 @@ GitHub hosts the source and release downloads. GitHub Pages may later host docum
 - SQLite
 - Provider-neutral structured AI analysis
 
-Initial analysis options are Ollama with a user-installed model, OpenAI API, Anthropic Claude API, Google Gemini API, and manual Codex package export/import. The application will not download AI models. API credentials will be session-only by default, with optional operating-system credential-vault and environment-variable support.
+Initial analysis options are automated Codex CLI, manual Codex package export/import, Ollama with a user-installed model, and later OpenAI, Anthropic Claude, and Google Gemini API adapters. Claude Code may be added as a separate CLI adapter. The application will not download AI models. API credentials, when API adapters are added, will be session-only by default with optional operating-system credential-vault and environment-variable support.
 
 Embeddings are not required in the MVP. They remain a future enhancement for semantic clustering.
 

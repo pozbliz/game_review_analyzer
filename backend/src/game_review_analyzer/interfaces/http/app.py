@@ -2,6 +2,7 @@
 
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
 from typing import AsyncIterator, Literal
 
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -39,6 +40,10 @@ from game_review_analyzer.domain.game_catalog import CatalogSyncResult, GameSear
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.job_runner import JobRunner, ReviewPageSource
+from game_review_analyzer.infrastructure.codex_cli import (
+    CodexCliStatus,
+    codex_cli_status,
+)
 from game_review_analyzer.infrastructure.persistence.game_datasets import (
     load_game_dataset,
     save_game_dataset,
@@ -101,6 +106,18 @@ class PublicConfigResponse(BaseModel):
     keyed_catalog_available: bool
 
 
+class CodexCliProviderResponse(BaseModel):
+    """Expose non-secret CLI readiness and processing disclosures."""
+
+    installed: bool
+    authenticated: bool
+    version: str | None
+    model: str
+    reasoning_effort: str
+    processing_location: Literal["external_cloud"]
+    cost_basis: Literal["subscription_quota_unknown"]
+
+
 class QuickImportRequest(BaseModel):
     """Validate the user-selected review cap for one Quick import."""
 
@@ -119,6 +136,7 @@ def create_app(
     review_source: ReviewPageSource | None = None,
     catalog_source: CatalogSource | None = None,
     fallback_search_source: FallbackSearchSource | None = None,
+    codex_status_source: Callable[[], CodexCliStatus] | None = None,
 ) -> FastAPI:
     """Create an application instance, optionally using test-specific settings."""
 
@@ -128,6 +146,7 @@ def create_app(
     )
     resolved_catalog_source = catalog_source or SteamCatalogAdapter()
     resolved_fallback_source = fallback_search_source or SteamStoreSearchAdapter()
+    resolved_codex_status_source = codex_status_source or codex_cli_status
     runner = JobRunner(
         resolved_settings.database_path,
         review_source or SteamReviewIngestionAdapter(),
@@ -159,6 +178,18 @@ def create_app(
             api_prefix=API_PREFIX,
             steam_country_code=resolved_settings.steam_country_code,
             keyed_catalog_available=bool(resolved_settings.steam_web_api_key),
+        )
+
+    @app.get(
+        f"{API_PREFIX}/providers/codex-cli",
+        response_model=CodexCliProviderResponse,
+    )
+    def codex_provider_status() -> CodexCliProviderResponse:
+        status: CodexCliStatus = resolved_codex_status_source()
+        return CodexCliProviderResponse(
+            **status.__dict__,
+            processing_location="external_cloud",
+            cost_basis="subscription_quota_unknown",
         )
 
     @app.post(f"{API_PREFIX}/catalog/sync", response_model=CatalogSyncResult)

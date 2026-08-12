@@ -1,5 +1,60 @@
 # Decision Log
 
+## 2026-08-12 — Codex CLI provider foundation completed
+
+**What changed:**
+
+- Generalized the exact-scope result validator so automated providers reuse the Manual Codex trust boundary.
+- Added isolated `codex exec` execution with an ephemeral session, read-only sandbox, explicit schema and model, captured output, bounded retry, cancellation, model verification, and measured token usage.
+- Added non-secret installation/login diagnostics plus external-cloud and unknown-subscription-quota disclosure in the analysis setup UI.
+
+**Why:**
+
+- One validator prevents provider-specific evidence rules from drifting.
+- A shell-free isolated process keeps review text out of command arguments and diagnostics while allowing the local web backend to automate the user's CLI.
+
+**New issues:**
+
+- Durable analysis-job and Report Version integration remains required before the UI can start a real run.
+- The installed Codex CLI is not authenticated, so live verification cannot run yet.
+
+Both issues are tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- Log in through Codex CLI before the first live end-to-end analysis run.
+
+---
+
+## 2026-08-12 — Codex CLI-first provider path approved
+
+**What changed:**
+
+- Replaced the planned first OpenAI API adapter with automated use of the user's separately installed and authenticated Codex CLI.
+- Kept the versioned Analysis Provider contract vendor-neutral and selected Ollama as the next adapter and evaluation path, followed only as needed by hosted APIs or Claude Code.
+- Replaced the inapplicable CLI dollar estimate with measured usage when available and an explicit subscription-quota uncertainty disclosure.
+- Selected Qwen 3.5 9B and 4B as initial local candidates to benchmark against the existing human-reviewed pilot without embeddings.
+
+**Why:**
+
+- The user already has Codex CLI access and does not intend to configure an OpenAI API key.
+- Automating schema-constrained CLI execution preserves the local web workflow without requiring manual prompt preparation or result-file movement.
+- Cheap models may be sufficient for bounded extraction and summaries, but paraphrase grouping and exact-evidence behavior must be measured rather than assumed.
+
+**New issues:**
+
+- CLI subscription quota and remaining allowance are not reliably available as monetary cost.
+- Local model feasibility depends on hardware that has not yet been confirmed.
+- Codex CLI `0.147.0` is installed in the current environment but is not authenticated.
+
+These issues are tracked in `TASKS.md` through the Slice 8 login and quota-disclosure tasks and the Slice 9 compatible-hardware benchmark task.
+
+**Needs human judgment:**
+
+- Log in through Codex CLI before the first live end-to-end analysis run.
+
+---
+
 ## 2026-08-11 — Implementation continuation checkpoint recorded
 
 **What changed:**

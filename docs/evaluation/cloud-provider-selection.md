@@ -1,7 +1,8 @@
 # First Cloud Provider Evaluation
 
-**Status:** Awaiting human approval  
-**Reviewed:** 2026-08-11
+**Status:** Codex CLI first path approved
+
+**Reviewed:** 2026-08-12
 
 ## Decision criteria
 
@@ -15,11 +16,11 @@ The first automated adapter must support schema-constrained output, preserve the
 
 Prices are list prices checked on 2026-08-11 and can change. The runtime estimator must display its pricing date and include reasoning/output tokens and retry risk. Batch discounts are excluded because Slice 8 requires an interactive report path.
 
-## Provisional recommendation
+## Approved first path
 
-Implement OpenAI first with `gpt-5.6-luna` and medium reasoning through the Responses API. Send only the existing privacy-minimized analysis request, use structured output without tools or embeddings, validate every response through the existing contract and exact-evidence checks, record requested and returned model identifiers, and never fall back to another provider or model.
+Automate the user's separately installed and authenticated Codex CLI first with `gpt-5.6-luna` and medium reasoning. Run non-interactively with an ephemeral session, read-only sandbox, isolated temporary directory, and explicit output schema. Send only the existing privacy-minimized analysis request, validate every result through the existing contract and exact-evidence checks, record requested model and measured usage when available, and never fall back to another provider or model.
 
-This recommendation does not approve production-quality claims. After implementation, the adapter must pass the shared conformance suite and the labeled pilot corpus before its quality can be compared fairly with later Gemini, Claude, and Ollama adapters.
+Codex subscription quota cannot be converted into a trustworthy dollar estimate, so the application must disclose quota use and uncertainty. This approval does not approve production-quality claims. After implementation, Ollama is the next evaluation path, starting with installed Qwen 3.5 9B and 4B models against the same labeled pilot; hosted APIs remain optional later adapters.
 
 ## Sources
 
@@ -29,4 +30,3 @@ This recommendation does not approve production-quality claims. After implementa
 - [Gemini structured outputs](https://ai.google.dev/gemini-api/docs/structured-output)
 - [Claude models overview](https://platform.claude.com/docs/en/about-claude/models/overview)
 - [Claude structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
-

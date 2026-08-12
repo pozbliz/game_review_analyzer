@@ -26,10 +26,11 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 ### Continuation checkpoint — 2026-08-11
 
 - Last production implementation commit: `5526223 feat(steam): add catalog and storefront overview`. The provider evaluation was committed as `df4ce31 docs(provider): evaluate first cloud adapter` before this documentation checkpoint.
-- Last complete code gate: 83 backend tests passed, 16 frontend tests passed, and the frontend production build passed after Slices 11 and 12.
-- Next required action: `[HUMAN]` approve OpenAI `gpt-5.6-luna` with medium reasoning as the first automated provider. The comparison and limitations are in `docs/evaluation/cloud-provider-selection.md`.
-- After approval, implement Slice 8 tasks below in order using the existing provider-neutral request/result contracts and exact-evidence validator. Do not send credentials or review data until the user supplies and explicitly uses a provider key.
-- Then implement Slice 9. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
+- Last complete code gate: 90 backend tests passed, 17 frontend tests passed, and the frontend production build passed after the Codex CLI provider foundation.
+- Approved next path: automate the user's authenticated Codex CLI with `gpt-5.6-luna` and medium reasoning; the application must not read or store Codex credentials.
+- Current environment check: Codex CLI `0.147.0` is installed but `codex login status` reports `Not logged in`.
+- Implement Slice 8 tasks below using the existing provider-neutral contracts and exact-evidence validator. Transmit review text only after the user explicitly starts a disclosed Codex run.
+- Then implement Ollama first in Slice 9 and benchmark installed Qwen 3.5 models against the existing pilot before adding hosted API adapters. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
 - Remaining human gates are connected-browser accessibility/responsive verification, the deferred production-quality baseline, MIT copyright-holder confirmation, and source/package release approval.
 
 ## 2026-08-09
@@ -197,18 +198,20 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Write component tests, then build refresh controls, report history, and failure recovery.
 - [x] Verify that refresh leaves historical reports, source evidence, and metadata snapshots byte-for-byte unchanged.
 
-### Slice 8 — Run one automated cloud provider securely
+### Slice 8 — Run automated Codex CLI analysis securely
 
-**Blocked by:** Explicit human approval of the first automated provider. Deferred Slice 4 calibration limits quality claims but does not block implementation.
+**Blocked by:** None. Deferred Slice 4 calibration limits quality claims but does not block implementation.
 
 - [x] Evaluate candidate cloud providers for quality, cost, schema reliability, model identification, and no-embedding behavior.
-- [ ] [HUMAN] Approve the first automated cloud provider.
-- [ ] Create a shared provider conformance suite with success, malformed-output, retry, cancellation, and no-fallback cases.
-- [ ] Write Credential Store contract tests, then implement session, environment, and operating-system-vault adapters.
-- [ ] Implement the approved provider against the shared Analysis Provider contract.
-- [ ] Write estimator tests, then implement pipeline-wide input, output, repeated-pass, retry-risk, and pricing-age cost estimates.
-- [ ] Write component tests, then build provider settings, cloud disclosure, explicit model selection, and cost presentation.
-- [ ] Verify secrets never enter SQLite, logs, exports, URLs, frontend assets, backend responses, or diagnostics and that credential submission is not logged.
+- [x] [HUMAN] Approve automated Codex CLI with `gpt-5.6-luna` and medium reasoning as the first provider path.
+- [x] Create a shared provider conformance suite with success, malformed-output, retry, cancellation, and no-fallback cases.
+- [x] Write CLI-runner tests, then implement isolated, ephemeral, read-only execution with availability checks and cancellation.
+- [ ] [HUMAN] Log in through Codex CLI before the first live end-to-end provider run.
+- [x] Implement Codex CLI against the shared Analysis Provider contract.
+- [ ] Integrate Codex CLI into a durable analysis job that creates an immutable validated Report Version.
+- [ ] Write usage-disclosure tests, then present measured CLI token use when available and explicit quota uncertainty instead of a dollar estimate.
+- [ ] Write component tests, then build provider settings, external-cloud disclosure, and explicit model selection.
+- [ ] Verify the application never reads or stores Codex credentials and that prompts, review text, and CLI output do not enter diagnostics.
 - [ ] Verify no fallback and exact provider/model provenance end to end.
 
 ### Slice 9 — Add the remaining provider choices
@@ -216,7 +219,11 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 **Blocked by:** Slice 8 and cross-provider evaluation readiness.
 
 - [ ] Apply the shared conformance suite to every remaining provider adapter.
-- [ ] Implement the remaining OpenAI, Anthropic Claude, and Google Gemini adapters not completed in Slice 8.
+- [ ] Implement Ollama as the next provider using its local structured-output API.
+- [ ] Benchmark installed Qwen 3.5 9B and 4B models against the human-reviewed pilot when compatible hardware is available.
+- [ ] Implement evaluated OpenAI, Anthropic Claude, Google Gemini, or Claude Code adapters when requested.
+- [ ] Write Credential Store contract tests, then implement session, environment, and operating-system-vault adapters before the first API provider.
+- [ ] Write estimator tests, then implement dated pipeline-wide cost estimates for paid per-token providers.
 - [ ] Write discovery fixtures and tests, then implement Ollama availability and installed-model detection.
 - [ ] Verify the application never initiates an Ollama model installation or download.
 - [ ] Add compatible-model guidance and copyable commands that run only through explicit user action outside the app.

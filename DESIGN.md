@@ -15,7 +15,7 @@ The MVP is distributed from a public GitHub repository under the MIT license and
 - Find a Steam game by name or AppID.
 - Capture a comprehensive, time-stamped Steam metadata snapshot.
 - Analyze English-language review evidence without requiring the application to download an AI model.
-- Support user-selected Ollama, OpenAI API, Anthropic Claude API, Google Gemini API, and manual Codex analysis.
+- Support user-selected Codex CLI, Ollama, OpenAI API, Anthropic Claude API, Google Gemini API, and manual Codex analysis behind one provider-neutral contract.
 - Present up to 10 reliable positive and 10 reliable negative design themes, with fewer when evidence is insufficient.
 - Support quick, full, incremental refresh, filtering, and cohort-specific analysis workflows.
 - Keep reports reproducible, inspectable, exportable, and private by default.
@@ -242,13 +242,16 @@ Steam metadata, review text, provider output, and imported analysis files are al
 
 The analysis pipeline is provider-neutral. Initial adapters are:
 
+- Codex CLI using the user's existing local installation and login
 - Ollama using a model the user installed independently
 - OpenAI API
 - Anthropic Claude API
 - Google Gemini API
 - Manual Codex analysis package export/import
 
-The application never downloads an Ollama model. It detects Ollama, lists installed compatible models, recommends model names, and displays copyable commands that the user chooses to run outside the app. If Ollama is unavailable, Steam lookup, metadata retrieval, and review downloading still work; analysis waits for another configured provider.
+The automated Codex adapter runs `codex exec` non-interactively in an isolated temporary directory with an ephemeral session, read-only sandbox, explicit output schema, bounded retries, cancellation, and no provider fallback. The application supplies the analysis instructions; users do not prepare prompts or move files manually. Codex authentication remains owned by the separately installed CLI and is never read or stored by the application. Review text is processed by OpenAI under the user's Codex account and is labeled external cloud processing.
+
+The application never downloads an Ollama model. It detects Ollama, lists installed compatible models, recommends model names, and displays copyable commands that the user chooses to run outside the app. Ollama structured output is called directly through its local API rather than through an agentic CLI. If Codex or Ollama is unavailable, Steam lookup, metadata retrieval, and review downloading still work; analysis waits for another configured provider.
 
 ### Credentials
 
@@ -263,6 +266,8 @@ After entry, the full secret is never displayed again. Secret values are redacte
 ### Cost estimate
 
 For paid providers, the UI estimates approximate total cost from selected review text, the chosen model, planned repeated passes, and expected input and output tokens. Estimates are advisory because tokenization, generated output, retry behavior, and provider pricing can vary. The estimate states what it includes and when pricing data was last updated. The app does not add mandatory spending confirmations or a local spending cap.
+
+Subscription-backed CLI providers do not receive a fabricated dollar estimate. Their disclosure states that the run consumes the user's provider quota, reports measured token usage when the CLI exposes it, and explains that remaining quota and monetary value are unavailable to the application.
 
 ### Manual Codex workflow
 
@@ -309,6 +314,7 @@ Durable module boundaries are:
 - **Analysis Provider:** versioned structured request/response independent of vendor
 - **Theme Metrics:** deterministic counts and percentages computed from stored memberships, never trusted from generated prose
 - **Credential Store:** session, operating-system vault, and environment adapters
+- **CLI Runner:** isolated non-interactive provider processes with availability checks, cancellation, bounded output, and redacted diagnostics
 - **Report Repository:** immutable report versions and evidence provenance
 - **Export/Import:** versioned schemas with strict validation
 
@@ -342,6 +348,7 @@ The React client does not own credentials, Steam integration logic, provider SDK
 ### Observable scenarios
 
 - A user enters an AppID without any keys, downloads metadata and reviews, exports a Codex package, imports valid results, and inspects evidence-backed Themes.
+- A user with an authenticated Codex CLI installation explicitly starts analysis, sees the external-cloud and quota disclosure, and receives a validated report without manually preparing instructions or moving result files.
 - A user configures a cloud provider session key, sees a cloud-processing label and approximate cost, completes analysis, and cannot retrieve the key from storage or diagnostics.
 - A Quick report starts with the latest 5,000 eligible English reviews, later refreshes with new or revised reviews, and creates a new immutable report version over the grown dataset while the old report still resolves its original Review Revisions.
 - Filtering for high-playtime reviews recalculates and reranks existing Theme metrics immediately, limits visible evidence to the filter, and marks below-threshold Themes; running a Cohort Analysis instead creates a separately scoped result that can discover new Themes.

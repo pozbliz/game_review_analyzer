@@ -2,7 +2,7 @@
 
 ## Status
 
-The product design and this strategic plan are approved. Slices 1–7, 11, and 12 are implemented, while Slice 4 retains a deferred production-quality calibration gate. Human provider approval blocks Slice 8, Slice 9 depends on Slice 8, and calibration blocks Slice 10; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
+The product design and this strategic plan are approved. Slices 1–7, 11, and 12 are implemented, while Slice 4 retains a deferred production-quality calibration gate. Slice 8 is active with Codex CLI approved as the first automated provider path, Slice 9 follows with Ollama first, and calibration blocks Slice 10; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
 
 ## Durable verification seams
 
@@ -132,27 +132,27 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Status:** Complete with append-only delta refresh, durable latest-revision reanalysis checkpoints, immutable metadata snapshots, newest-first history, and UI recovery controls.
 
-## Slice 8 — Run one automated cloud provider securely
+## Slice 8 — Run automated Codex CLI analysis securely
 
-**Outcome:** Configure and explicitly select one evaluated cloud provider, see cloud-processing disclosure and an approximate cost, and complete a report without exposing credentials.
+**Outcome:** Detect an authenticated Codex CLI installation, explicitly run schema-constrained analysis, see external-cloud and quota disclosures, and complete a validated report without handling Codex credentials.
 
-**Blocked by:** Explicit human approval of the first automated cloud provider. Slice 4's deferred production-quality gate limits reliability claims but does not block Slice 8 implementation.
+**Blocked by:** None. The user approved Codex CLI with `gpt-5.6-luna` and medium reasoning on 2026-08-12. Slice 4's deferred production-quality gate limits reliability claims but does not block implementation.
 
-**Scope:** one Analysis Provider adapter, session/environment/OS-vault Credential Store, cost estimation, provider settings, diagnostics redaction, and no-fallback behavior.
+**Scope:** shared provider conformance, isolated Codex CLI execution, availability/authentication diagnostics, cancellation and bounded retries, quota disclosure, provider settings, diagnostics redaction, and no-fallback behavior.
 
-**Acceptance:** Provider conformance and failure tests pass; invalid responses cannot create reports; no secret enters SQLite, logs, URLs, exports, diagnostics, frontend assets, backend-to-frontend responses, or errors; the dedicated local credential-submission request cannot be logged; the selected provider/model is preserved in provenance.
+**Acceptance:** Provider conformance and failure tests pass; invalid responses cannot create reports; the application never reads or stores Codex credentials; prompts and review text do not enter diagnostics; execution is ephemeral, read-only, cancellable, and isolated; no automatic provider/model fallback occurs; and the requested provider/model plus measured CLI usage are preserved in provenance when available.
 
 **Tradeoff:** Provider breadth waits until one adapter has hardened the shared seam.
 
-**Status:** Awaiting human approval of the provisional OpenAI `gpt-5.6-luna` medium recommendation. Capability, price, schema reliability, model identification, and existing project evidence are compared in `docs/evaluation/cloud-provider-selection.md`; direct API quality remains an implementation acceptance gate.
+**Status:** In progress. Shared validation, isolated CLI execution, bounded retry/cancellation, non-secret readiness diagnostics, and UI disclosure are implemented. The installed Codex CLI is not authenticated, so live verification awaits user login; durable analysis-job and report integration remains next. API-key credential storage and per-token cost estimation move to later hosted-provider work.
 
 ## Slice 9 — Add the remaining provider choices
 
-**Outcome:** Explicitly run analysis through Ollama, OpenAI API, Anthropic Claude API, or Google Gemini API using the same report contract.
+**Outcome:** Explicitly run analysis through Ollama, OpenAI API, Anthropic Claude API, Google Gemini API, or a separately installed Claude Code CLI using the same report contract.
 
 **Blocked by:** Slice 8 and cross-provider evaluation.
 
-**Scope:** remaining provider adapters, shared conformance suite, Ollama discovery and installed-model listing, and provider-selection interface.
+**Scope:** Ollama first, followed by evaluated hosted API or CLI adapters, Credential Store for API providers, cost estimation where prices are knowable, installed-model discovery, and provider selection.
 
 **Acceptance:** Every adapter passes the shared contract tests. Ollama absence leaves metadata and review acquisition usable; the app never downloads a model or silently changes providers.
 

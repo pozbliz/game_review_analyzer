@@ -132,6 +132,7 @@ describe("application shell", () => {
       const url = request.toString();
       if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
       if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url.startsWith("/api/games/preview")) return json(metadata());
       if (url === "/api/games/1145350/imports/quick") {
         expect(options).toMatchObject({ method: "POST", body: JSON.stringify({ target_count: 5000 }) });
@@ -164,12 +165,39 @@ describe("application shell", () => {
     );
   });
 
+  it("discloses Codex CLI cloud processing and unknown subscription quota", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json({
+        installed: true,
+        authenticated: true,
+        version: "codex-cli 0.147.0",
+        model: "gpt-5.6-luna",
+        reasoning_effort: "medium",
+        processing_location: "external_cloud",
+        cost_basis: "subscription_quota_unknown",
+      });
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+
+    expect(screen.getByText("Codex CLI ready")).toBeVisible();
+    expect(screen.getByText("GPT-5.6 Luna · medium reasoning")).toBeVisible();
+    expect(screen.getByText(/review text is sent to openai/i)).toBeVisible();
+    expect(screen.getByText(/remaining subscription quota and dollar cost are unavailable/i)).toBeVisible();
+  });
+
   it("retries a failed Quick import", async () => {
     let progressRequests = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url = request.toString();
       if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
       if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url.startsWith("/api/games/preview")) return json(metadata());
       if (url === "/api/games/1145350/imports/quick") return json(job("queued", 0));
       if (url === "/api/jobs/job-1/retry") return json(job("queued", 0));
@@ -220,6 +248,18 @@ function publicConfig(): object {
     api_prefix: "/api",
     steam_country_code: "US",
     keyed_catalog_available: false,
+  };
+}
+
+function codexProvider(): object {
+  return {
+    installed: true,
+    authenticated: true,
+    version: "codex-cli 0.147.0",
+    model: "gpt-5.6-luna",
+    reasoning_effort: "medium",
+    processing_location: "external_cloud",
+    cost_basis: "subscription_quota_unknown",
   };
 }
 
