@@ -220,7 +220,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Verify through automated tests that the application never reads or stores Codex credentials and that prompts, review text, and CLI output do not enter diagnostics.
 - [x] Verify no fallback and exact provider/model provenance through the automated seam.
 - [x] Complete one live authenticated end-to-end run and inspect the resulting report. Run `32f549e3-0d1d-4193-8c6d-a7e67c07da89` completed in one attempt with six exact Opinion Points, a mixed review classification, no unsupported single-review Themes, and an immutable Report Version.
-- [ ] Reduce or avoid the full-contract fixed prompt/schema overhead before advertising Codex CLI as quota-efficient; the smallest live run used 15,744 input tokens for one review.
+- [x] Measure the full-contract fixed overhead and avoid advertising Codex CLI as quota-efficient: the smallest live run used 15,744 input tokens, while the application prompt was under 1 KB and the generated schema about 4.6 KB, so weakening the strict contract would not materially address CLI overhead.
 
 ### Slice 9 — Add the remaining provider choices
 

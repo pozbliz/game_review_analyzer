@@ -144,7 +144,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Provider breadth waits until one adapter has hardened the shared seam.
 
-**Status:** Complete with shared validation, isolated CLI execution, bounded retry/cancellation, non-secret readiness diagnostics, durable exact-corpus Analysis Runs, immutable report creation, measured usage, and explicit UI start/progress/completion. Authenticated run `32f549e3-0d1d-4193-8c6d-a7e67c07da89` verified the live path with six exact Opinion Points and no unsupported single-review Themes. The full contract's measured 15,744-token input overhead for one review remains a quota-efficiency follow-up; explicit Codex model selection remains optional while only the pinned model is supported.
+**Status:** Complete with shared validation, isolated CLI execution, bounded retry/cancellation, non-secret readiness diagnostics, durable exact-corpus Analysis Runs, immutable report creation, measured usage, and explicit UI start/progress/completion. Authenticated run `32f549e3-0d1d-4193-8c6d-a7e67c07da89` verified the live path with six exact Opinion Points and no unsupported single-review Themes. Local measurement found the application prompt under 1 KB and generated schema about 4.6 KB versus 15,744 reported input tokens, so the app retains strict validation, makes no quota-efficiency claim, and expects meaningful review scopes to amortize Codex CLI's fixed context. Explicit Codex model selection remains optional while only the pinned model is supported.
 
 ## Slice 9 — Add the remaining provider choices
 

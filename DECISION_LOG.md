@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-12 — Codex CLI fixed overhead accepted without weakening validation
+
+**What changed:**
+
+- Measured the one-review application prompt at under 1 KB and the generated strict result schema at about 4.6 KB, compared with 15,744 input tokens reported by the live CLI run.
+- Closed the quota-overhead task by retaining the strict schema and explicitly avoiding quota-efficiency claims.
+
+**Why:**
+
+- The application-controlled text is too small to explain most of the measured input, so stripping schema constraints would trade evidence integrity for little likely savings.
+- Meaningful multi-review runs amortize the CLI's fixed context better than tiny diagnostic runs.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None; further cloud runs remain separately user-approved.
+
+---
+
 ## 2026-08-12 — Slice 10 release dependency made explicit
 
 **What changed:**
