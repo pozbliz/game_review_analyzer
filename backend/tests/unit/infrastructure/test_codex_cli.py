@@ -169,6 +169,32 @@ def test_codex_cli_retries_malformed_output_without_changing_provider(
     assert all("gpt-5.6-luna" in process.command for process in processes)
 
 
+def test_codex_cli_exposes_safe_validation_code_after_final_attempt(
+    monkeypatch,
+) -> None:
+    def start_process(command: list[str], **options: Any) -> CompletedProcess:
+        process = CompletedProcess(command, **options)
+
+        def malformed(
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            del input, timeout
+            output_path = Path(command[command.index("--output-last-message") + 1])
+            output_path.write_text("not json", encoding="utf-8")
+            return "", ""
+
+        process.communicate = malformed  # type: ignore[method-assign]
+        return process
+
+    monkeypatch.setattr("subprocess.Popen", start_process)
+
+    with pytest.raises(CodexCliError) as raised:
+        CodexCliProvider(executable="codex.cmd", max_attempts=1).analyze(request())
+
+    assert raised.value.code == "malformed_result"
+
+
 def test_codex_cli_cancels_running_process_without_retry(monkeypatch) -> None:
     cancel_event = Event()
     processes: list[BlockingProcess] = []

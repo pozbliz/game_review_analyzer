@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-08-12 — First authenticated Codex run retained safe failure diagnostics
+
+**What changed:**
+
+- Authenticated Codex CLI 0.147.0 through the user's ChatGPT account.
+- Ran one approved Hades II review through the real API, durable Analysis Run, and Codex CLI path; both attempts failed validation and no Report Version was created.
+- Preserved the shared validator's non-content failure code instead of collapsing every final validation failure to `invalid_result`.
+
+**Why:**
+
+- Retrying or changing prompts without knowing whether the failure is schema, scope, evidence, or relationship related would spend quota blindly.
+- Existing validator codes contain no review text or model output, so they improve diagnosis without weakening the privacy boundary.
+
+**New issues:**
+
+- One fresh live run is needed to capture the specific safe validation code before any prompt change.
+
+This issue is tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- Approve another live Codex attempt when quota is available.
+
+---
+
 ## 2026-08-12 — Local Qwen full-analysis candidates rejected
 
 **What changed:**

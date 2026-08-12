@@ -28,13 +28,13 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 ### Continuation checkpoint — 2026-08-12
 
 - Last production implementation: Ollama local-provider integration and explicit provider/model selection.
-- Last complete code gate: 102 backend tests passed, 20 frontend tests passed, and the frontend production build passed after the local Qwen benchmark update.
+- Last complete code gate: 103 backend tests passed after preserving safe Codex validation reason codes; the previous frontend gate remains 20 tests passed and production build passed.
 - Approved next path: automate the user's authenticated Codex CLI with `gpt-5.6-luna` and medium reasoning; the application must not read or store Codex credentials.
-- Current environment check: Codex CLI `0.147.0` is installed but `codex login status` reports `Not logged in`.
+- Current environment check: Codex CLI `0.147.0` is authenticated through ChatGPT in the normal user context. Sandboxed status checks cannot see the external credential store and may still report `Not logged in`.
 - Current environment check: Ollama 0.32.8 is running with Qwen 3.5 4B and 9B installed; Ollama reports CPU-only inference and Windows exposes 15.4 GB visible memory.
 - [x] [HUMAN] Install and start Ollama without downloading a model automatically.
 - [x] [HUMAN] Approve and download Qwen 3.5 4B and 9B for local benchmarking.
-- Slice 8 implementation is complete except live authenticated verification. Transmit review text only after the user explicitly starts a disclosed Codex run.
+- Slice 8 live verification reached the authenticated CLI through the real durable application path with one approved Hades II review. Both allowed attempts failed result validation, so no Report Version was created. The adapter now preserves the validator's safe reason code; perform at most one fresh diagnostic run when the user approves more quota.
 - Ollama implementation is complete for local discovery, explicit selection, structured analysis, and external-only install guidance. Next benchmark installed Qwen 3.5 models against the existing pilot; add hosted API adapters only when requested. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
 - Remaining human gates are connected-browser accessibility/responsive verification, the deferred production-quality baseline, MIT copyright-holder confirmation, and source/package release approval.
 
@@ -211,7 +211,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] [HUMAN] Approve automated Codex CLI with `gpt-5.6-luna` and medium reasoning as the first provider path.
 - [x] Create a shared provider conformance suite with success, malformed-output, retry, cancellation, and no-fallback cases.
 - [x] Write CLI-runner tests, then implement isolated, ephemeral, read-only execution with availability checks and cancellation.
-- [ ] [HUMAN] Log in through Codex CLI before the first live end-to-end provider run.
+- [x] [HUMAN] Log in through Codex CLI before the first live end-to-end provider run.
 - [x] Implement Codex CLI against the shared Analysis Provider contract.
 - [x] Integrate Codex CLI into a durable Analysis Run that creates an immutable validated Report Version.
 - [x] Write usage-disclosure tests, then present measured CLI token use when available and explicit quota uncertainty instead of a dollar estimate.
@@ -219,7 +219,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [ ] Add explicit model-selection controls if more than the pinned first model is needed.
 - [x] Verify through automated tests that the application never reads or stores Codex credentials and that prompts, review text, and CLI output do not enter diagnostics.
 - [x] Verify no fallback and exact provider/model provenance through the automated seam.
-- [ ] Complete one live authenticated end-to-end run and inspect the resulting report.
+- [ ] Complete one live authenticated end-to-end run and inspect the resulting report. First live run `50a06381-b0cd-4d39-bb27-ffa755c29ad3` reached Codex but failed after two attempts with the formerly generic `invalid_result`; approve one fresh run to capture the now-preserved safe validation code before changing prompts.
 
 ### Slice 9 — Add the remaining provider choices
 

@@ -86,7 +86,7 @@ class CodexCliProvider:
             except ManualCodexValidationError as error:
                 if attempt + 1 == self.max_attempts:
                     raise CodexCliError(
-                        "invalid_result",
+                        error.code,
                         "Codex CLI returned invalid analysis output",
                     ) from error
             except CodexCliError as error:
