@@ -2,7 +2,7 @@
 
 ## Status
 
-The product design and this strategic plan are approved. Slices 1–8, 11, and 12 are implemented apart from live Codex verification, while Slice 4 retains a deferred production-quality calibration gate. Slice 9 is active with the Ollama local adapter and model selection implemented; local Qwen benchmarking and later provider choices remain. Calibration blocks Slice 10; the concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
+The product design and this strategic plan are approved. Slices 1–8, 11, and 12 are implemented, including authenticated live Codex verification, while Slice 4 retains a deferred production-quality calibration gate. Slice 9 has the Ollama adapter, model selection, and local Qwen benchmark implemented; later provider choices remain optional. Calibration blocks Slice 10, and whether to retain it in the source MVP or defer it now requires explicit human judgment. The concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
 
 ## Durable verification seams
 
@@ -144,7 +144,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Provider breadth waits until one adapter has hardened the shared seam.
 
-**Status:** Implementation complete with shared validation, isolated CLI execution, bounded retry/cancellation, non-secret readiness diagnostics, durable exact-corpus Analysis Runs, immutable report creation, measured usage, and explicit UI start/progress/completion. The installed Codex CLI is not authenticated, so live verification awaits user login; explicit model selection remains an optional follow-up while API-key credential storage and per-token cost estimation move to later hosted-provider work.
+**Status:** Complete with shared validation, isolated CLI execution, bounded retry/cancellation, non-secret readiness diagnostics, durable exact-corpus Analysis Runs, immutable report creation, measured usage, and explicit UI start/progress/completion. Authenticated run `32f549e3-0d1d-4193-8c6d-a7e67c07da89` verified the live path with six exact Opinion Points and no unsupported single-review Themes. The full contract's measured 15,744-token input overhead for one review remains a quota-efficiency follow-up; explicit Codex model selection remains optional while only the pinned model is supported.
 
 ## Slice 9 — Add the remaining provider choices
 
@@ -172,7 +172,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Small cohorts may be rejected rather than presented with misleading findings.
 
-**Status:** Blocked.
+**Status:** Blocked by the deferred calibration work. Before source-release work can proceed, explicitly decide whether Cohort Analysis remains in the source MVP and calibration resumes, or whether Slice 10 moves to deferred scope through an approved plan/design revision.
 
 ## Slice 11 — Complete game discovery and Steam overview
 

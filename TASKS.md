@@ -27,16 +27,16 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Continuation checkpoint — 2026-08-12
 
-- Last production implementation: Ollama local-provider integration and explicit provider/model selection.
+- Last production implementation: shared minimum Theme-support prompt guidance verified through a successful authenticated Codex CLI report.
 - Last complete code gate: 103 backend tests passed after preserving safe Codex validation reason codes; the previous frontend gate remains 20 tests passed and production build passed.
-- Approved next path: automate the user's authenticated Codex CLI with `gpt-5.6-luna` and medium reasoning; the application must not read or store Codex credentials.
+- Current Codex path: authenticated `gpt-5.6-luna` with medium reasoning; the application does not read or store Codex credentials, and the live durable report path is verified.
 - Current environment check: Codex CLI `0.147.0` is authenticated through ChatGPT in the normal user context. Sandboxed status checks cannot see the external credential store and may still report `Not logged in`.
 - Current environment check: Ollama 0.32.8 is running with Qwen 3.5 4B and 9B installed; Ollama reports CPU-only inference and Windows exposes 15.4 GB visible memory.
 - [x] [HUMAN] Install and start Ollama without downloading a model automatically.
 - [x] [HUMAN] Approve and download Qwen 3.5 4B and 9B for local benchmarking.
 - Slice 8 live verification is complete. A one-attempt diagnostic exposed missing prompt guidance for the two-review Theme-support invariant; after adding it, run `32f549e3-0d1d-4193-8c6d-a7e67c07da89` created and exposed an immutable report for one approved Hades II review. The full contract has high fixed overhead: 15,744 input and 563 output tokens for this tiny scope.
-- Ollama implementation is complete for local discovery, explicit selection, structured analysis, and external-only install guidance. Next benchmark installed Qwen 3.5 models against the existing pilot; add hosted API adapters only when requested. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
-- Remaining human gates are connected-browser accessibility/responsive verification, the deferred production-quality baseline, MIT copyright-holder confirmation, and source/package release approval.
+- Ollama implementation and the installed-Qwen benchmark are complete; add hosted API adapters only when requested. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
+- Remaining human gates are the Slice 10 MVP-scope decision, connected-browser accessibility/responsive verification, the deferred production-quality baseline, MIT copyright-holder confirmation, and source/package release approval.
 
 ## 2026-08-09
 
@@ -243,6 +243,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 **Blocked by:** Slices 5 and 7 plus calibrated minimum Review Cohort sizes.
 
+- [ ] [HUMAN] Decide whether Cohort Analysis remains in the source MVP and calibration resumes, or Slice 10 moves to deferred scope through an approved plan/design revision.
 - [ ] Define the versioned Review Cohort scope contract and write contract tests.
 - [ ] Calibrate and record minimum Review Cohort sizes.
 - [ ] Write deterministic Evidence Filter metric and denominator tests.

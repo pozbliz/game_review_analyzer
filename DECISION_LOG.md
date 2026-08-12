@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-12 — Slice 10 release dependency made explicit
+
+**What changed:**
+
+- Corrected the implementation plan to record completed Codex authentication, live verification, and local Qwen benchmarking.
+- Added an explicit human gate for retaining Slice 10 in the source MVP or moving it to deferred scope through an approved plan/design revision.
+
+**Why:**
+
+- Deferred calibration blocks Slice 10, while Slice 13 still depends on Slices 5–12; the release path therefore requires a visible scope decision rather than an implied assumption.
+
+**New issues:**
+
+- Decide the source-MVP scope of Cohort Analysis before release work proceeds.
+
+This issue is tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- Keep Slice 10 in the source MVP and resume calibration, or approve moving it to deferred scope.
+
+---
+
 ## 2026-08-12 — Authenticated Codex report flow verified with explicit Theme support
 
 **What changed:**
