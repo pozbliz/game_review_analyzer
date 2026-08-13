@@ -36,7 +36,7 @@ export default function App(): JSX.Element {
 
 function CatalogApp(): JSX.Element {
   const [health, setHealth] = useState<HealthState>("loading");
-  const [catalogExpanded, setCatalogExpanded] = useState<boolean>(true);
+  const [showGameSearch, setShowGameSearch] = useState<boolean>(true);
   const [appId, setAppId] = useState<string>("");
   const [gameQuery, setGameQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<GameSearchResult[]>([]);
@@ -81,7 +81,10 @@ function CatalogApp(): JSX.Element {
     const runId = window.localStorage.getItem("active-analysis-run");
     if (!runId) return;
     getAnalysisRun(runId)
-      .then(setAnalysisRun)
+      .then((restoredRun) => {
+        setAnalysisRun(restoredRun);
+        setShowGameSearch(false);
+      })
       .catch(() => window.localStorage.removeItem("active-analysis-run"));
   }, []);
 
@@ -103,7 +106,10 @@ function CatalogApp(): JSX.Element {
     const jobId: string | null = window.localStorage.getItem("active-import-job");
     if (!jobId) return;
     getJob(jobId)
-      .then(setJob)
+      .then((restoredJob) => {
+        setJob(restoredJob);
+        setShowGameSearch(false);
+      })
       .catch(() => window.localStorage.removeItem("active-import-job"));
   }, []);
 
@@ -153,7 +159,10 @@ function CatalogApp(): JSX.Element {
     window.localStorage.removeItem("active-import-job");
     window.localStorage.removeItem("active-analysis-run");
     getGamePreview(selectedAppId)
-      .then((metadata) => setPreview(metadata))
+      .then((metadata) => {
+        setPreview(metadata);
+        setShowGameSearch(false);
+      })
       .catch(() => {
         setPreview(null);
         setPreviewError("Unable to preview that AppID. Check it and try again.");
@@ -246,12 +255,12 @@ function CatalogApp(): JSX.Element {
         </p>
       </header>
 
-      <div className={`catalog${catalogExpanded ? "" : " catalog-collapsed"}`}>
+      <div className="catalog">
         <section
           id="catalog-selection"
           className="catalog-search"
           aria-labelledby="catalog-title"
-          hidden={!catalogExpanded}
+          hidden={!showGameSearch}
         >
           <p className="eyebrow">GAME CATALOG</p>
           <h1 id="catalog-title">Select the game to analyze</h1>
@@ -296,18 +305,10 @@ function CatalogApp(): JSX.Element {
           {previewError && <p className="error" role="alert">{previewError}</p>}
         </section>
 
-        <button
-          className="catalog-toggle"
-          type="button"
-          aria-controls="catalog-selection"
-          aria-expanded={catalogExpanded}
-          aria-label={`${catalogExpanded ? "Collapse" : "Expand"} game selection`}
-          onClick={() => setCatalogExpanded(!catalogExpanded)}
-        >
-          <span aria-hidden="true">{catalogExpanded ? "‹" : "›"}</span>
-        </button>
-
-        <aside className="catalog-preview" aria-live="polite">
+        <aside className="catalog-preview" aria-live="polite" hidden={showGameSearch}>
+          <button className="game-search-back" type="button" onClick={() => setShowGameSearch(true)}>
+            <span aria-hidden="true">←</span> Game search
+          </button>
           {job ? (
             <section className="import-progress" aria-labelledby="import-title">
               <p className="eyebrow">QUICK IMPORT</p>

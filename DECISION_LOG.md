@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-13 — Game selection and details use separate full-width states
+
+**What changed:**
+
+- Replaced the collapsible catalog rail with a full-width game-search state followed by a full-width game-details state after successful preview.
+- Added a compact `Game search` back control that restores the preserved search form without browser routing or persisted UI state.
+- Kept durable import and analysis restoration on the details state.
+
+**Why:**
+
+- The permanent rail still looked like primary application navigation even though selecting a game is a setup step.
+- Separate states give dense storefront facts the full catalog width and match the natural select-then-analyze workflow.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Confirm the rebuilt two-step flow visually in Chrome after a hard reload.
+
+---
+
 ## 2026-08-13 — Collapsed catalog preserves explicit grid placement
 
 **What changed:**

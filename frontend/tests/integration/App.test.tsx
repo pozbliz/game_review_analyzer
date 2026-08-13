@@ -127,28 +127,29 @@ describe("application shell", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/games/preview?appid=1145350");
   });
 
-  it("collapses and restores the game-selection panel", async () => {
+  it("moves from game search to full-width details and back", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url = request.toString();
-      return url === "/api/health"
-        ? json({ status: "ok", service: "game-review-analyzer" })
-        : json(publicConfig());
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      return json(metadata());
     });
 
     render(<App />);
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("connected"));
 
     const selectionPanel = screen.getByRole("region", { name: /select the game to analyze/i });
-    const collapseButton = screen.getByRole("button", { name: "Collapse game selection" });
-    expect(collapseButton).toHaveAttribute("aria-expanded", "true");
+    fireEvent.change(screen.getByRole("textbox", { name: /steam appid/i }), {
+      target: { value: "1145350" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /preview game/i }));
 
-    fireEvent.click(collapseButton);
+    expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
     expect(selectionPanel).not.toBeVisible();
-    expect(screen.getByRole("button", { name: "Expand game selection" }))
-      .toHaveAttribute("aria-expanded", "false");
 
-    fireEvent.click(screen.getByRole("button", { name: "Expand game selection" }));
+    fireEvent.click(screen.getByRole("button", { name: "Game search" }));
     expect(selectionPanel).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Hades II" })).not.toBeInTheDocument();
   });
 
   it("starts a Quick import and exposes durable progress and cancellation", async () => {
