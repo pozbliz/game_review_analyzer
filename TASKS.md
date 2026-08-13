@@ -6,6 +6,7 @@
 - [x] Keep the preview pinned to the flexible grid column when the hidden selection panel leaves layout flow.
 - [x] Replace the collapsible rail with a two-step full-width game-search and game-details flow.
 - [x] Simplify storefront hierarchy with tag chips, explicit feature-status rows, normal-weight values, and fewer decorative labels.
+- [x] Replace Steam language asterisks and footnotes with labeled full-audio and interface/subtitle chip groups.
 - [ ] [HUMAN] Confirm the two-step catalog flow visually in Chrome after a hard reload.
 
 ## 2026-08-10

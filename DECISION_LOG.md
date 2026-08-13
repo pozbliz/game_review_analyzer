@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-13 — Steam language notation becomes labeled support groups
+
+**What changed:**
+
+- Parsed Steam's trailing full-audio footnote and per-language asterisks at the storefront presentation boundary.
+- Rendered full-audio and remaining interface/subtitle languages as separate labeled chip groups, with regional hyphen notation normalized to parentheses.
+
+**Why:**
+
+- The raw comma-delimited language string and trailing asterisk explanation were difficult to scan and made full-audio support easy to miss.
+- Keeping the conversion in the shared storefront component applies consistently to catalog previews and immutable report views without changing stored Steam snapshots.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Confirm the rebuilt language groups visually in Chrome after a hard reload.
+
+---
+
 ## 2026-08-13 — Storefront metadata favors scanning over decorative hierarchy
 
 **What changed:**

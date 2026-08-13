@@ -7,6 +7,7 @@ interface StorefrontOverviewProps {
 export default function StorefrontOverview({ metadata }: StorefrontOverviewProps): JSX.Element {
   const store = metadata.storefront;
   const unknown = "Unknown / unavailable";
+  const languages: LanguageGroups | null = groupLanguages(store.supported_languages);
   return (
     <section className="storefront-overview" aria-labelledby="storefront-title">
       <header>
@@ -27,7 +28,17 @@ export default function StorefrontOverview({ metadata }: StorefrontOverviewProps
             </div>
             <div><dt>Regional price</dt><dd>{store.price ? `${store.price.final_formatted} · ${store.price.currency} · ${store.price.country_code}` : unknown}</dd></div>
             <div><dt>Platforms</dt><dd>{store.platforms?.join(", ") ?? unknown}</dd></div>
-            <div><dt>Languages</dt><dd>{store.supported_languages ?? unknown}</dd></div>
+            <div>
+              <dt>Languages</dt>
+              <dd>{languages ? (
+                <div className="language-groups">
+                  {languages.fullAudio.length > 0 && <LanguageList label="Full audio" languages={languages.fullAudio} />}
+                  {languages.interfaceAndSubtitles.length > 0 && (
+                    <LanguageList label="Interface and subtitles" languages={languages.interfaceAndSubtitles} />
+                  )}
+                </div>
+              ) : unknown}</dd>
+            </div>
           </dl>
         </section>
         <section>
@@ -64,6 +75,46 @@ export default function StorefrontOverview({ metadata }: StorefrontOverviewProps
       )}
     </section>
   );
+}
+
+interface LanguageGroups {
+  fullAudio: string[];
+  interfaceAndSubtitles: string[];
+}
+
+interface LanguageListProps {
+  label: string;
+  languages: string[];
+}
+
+function LanguageList({ label, languages }: LanguageListProps): JSX.Element {
+  return (
+    <div>
+      <strong>{label}</strong>
+      <ul className="language-list" aria-label={label}>
+        {languages.map((language: string) => <li key={language}>{language}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+function groupLanguages(value: string | null): LanguageGroups | null {
+  if (!value) return null;
+  const entries: string[] = value
+    .replace(/\s*languages with full audio support\s*$/i, "")
+    .split(",")
+    .map((entry: string) => entry.trim())
+    .filter(Boolean);
+  if (entries.length === 0) return null;
+
+  const normalize = (entry: string): string => entry
+    .replace(/\*/g, "")
+    .trim()
+    .replace(/\s+-\s+(.+)$/, " ($1)");
+  return {
+    fullAudio: entries.filter((entry: string) => entry.includes("*")).map(normalize),
+    interfaceAndSubtitles: entries.filter((entry: string) => !entry.includes("*")).map(normalize),
+  };
 }
 
 function featureState(state: string): string {

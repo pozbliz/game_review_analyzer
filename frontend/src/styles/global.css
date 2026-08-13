@@ -197,7 +197,10 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .storefront-groups dt { color: var(--muted); font-size: .75rem; }
 .storefront-groups dd { margin: .15rem 0 0; overflow-wrap: anywhere; }
 .tag-list { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 0; padding: 0; list-style: none; }
-.tag-list li { padding: .3rem .55rem; border: 1px solid #b9cbbd; border-radius: 5px; color: var(--forest-dark); background: #e5eee4; font-size: .78rem; line-height: 1.2; }
+.tag-list li, .language-list li { padding: .3rem .55rem; border: 1px solid #b9cbbd; border-radius: 5px; color: var(--forest-dark); background: #e5eee4; font-size: .78rem; line-height: 1.2; }
+.language-groups { display: grid; gap: .8rem; margin-top: .5rem; }
+.language-groups strong { font-size: .72rem; }
+.language-list { display: flex; flex-wrap: wrap; gap: .35rem; margin: .35rem 0 0; padding: 0; list-style: none; }
 .feature-list { display: grid; gap: .15rem; margin: 0; padding: 0; list-style: none; }
 .feature-list li { display: flex; gap: 1rem; align-items: baseline; justify-content: space-between; padding: .5rem 0; border-bottom: 1px solid var(--line); }
 .feature-list li:last-child { border-bottom: 0; }

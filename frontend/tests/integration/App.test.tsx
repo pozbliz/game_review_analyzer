@@ -161,6 +161,7 @@ describe("application shell", () => {
       storefront: {
         ...emptyStorefront(),
         tags: ["Action", "Roguelike"],
+        supported_languages: "English *, French, Spanish - Spain, Ukrainian * languages with full audio support",
         features: [
           { name: "Windows", group: "Platforms and accessibility", state: "supported" },
           { name: "Linux", group: "Platforms and accessibility", state: "not_supported" },
@@ -176,6 +177,13 @@ describe("application shell", () => {
     expect(within(featureList).getByText("Windows")).toBeVisible();
     expect(within(featureList).getByText("Supported")).toBeVisible();
     expect(within(featureList).getByText("Not supported")).toBeVisible();
+    const fullAudio = screen.getByRole("list", { name: "Full audio" });
+    expect(within(fullAudio).getByText("English")).toBeVisible();
+    expect(within(fullAudio).getByText("Ukrainian")).toBeVisible();
+    const interfaceLanguages = screen.getByRole("list", { name: "Interface and subtitles" });
+    expect(within(interfaceLanguages).getByText("French")).toBeVisible();
+    expect(within(interfaceLanguages).getByText("Spanish (Spain)")).toBeVisible();
+    expect(screen.queryByText(/languages with full audio support/i)).not.toBeInTheDocument();
   });
 
   it("starts a Quick import and exposes durable progress and cancellation", async () => {
