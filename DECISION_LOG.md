@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-13 — Catalog selection collapses into a narrow rail
+
+**What changed:**
+
+- Increased the catalog and header maximum width from 1,180 to 1,500 CSS pixels.
+- Replaced the fixed two-column catalog with a 420-pixel selection panel, a 48-pixel native toggle rail, and a flexible details panel.
+- Kept the selection panel expanded by default and made collapse state page-local, with explicit expanded state and controls metadata on the toggle.
+
+**Why:**
+
+- The previous nested three-column storefront layout was compressed inside a details panel that received less than half of the available laptop width.
+- A user-controlled rail preserves quick access to game selection while letting dense storefront metadata use nearly the full page.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Confirm the rebuilt expanded and collapsed layouts visually in Chrome; the browser extension was unavailable for automated Chrome inspection.
+
+---
+
 ## 2026-08-13 — Source-release operation and configuration documented
 
 **What changed:**

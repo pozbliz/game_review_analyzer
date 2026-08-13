@@ -36,6 +36,7 @@ export default function App(): JSX.Element {
 
 function CatalogApp(): JSX.Element {
   const [health, setHealth] = useState<HealthState>("loading");
+  const [catalogExpanded, setCatalogExpanded] = useState<boolean>(true);
   const [appId, setAppId] = useState<string>("");
   const [gameQuery, setGameQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<GameSearchResult[]>([]);
@@ -245,8 +246,13 @@ function CatalogApp(): JSX.Element {
         </p>
       </header>
 
-      <div className="catalog">
-        <section className="catalog-search" aria-labelledby="catalog-title">
+      <div className={`catalog${catalogExpanded ? "" : " catalog-collapsed"}`}>
+        <section
+          id="catalog-selection"
+          className="catalog-search"
+          aria-labelledby="catalog-title"
+          hidden={!catalogExpanded}
+        >
           <p className="eyebrow">GAME CATALOG</p>
           <h1 id="catalog-title">Select the game to analyze</h1>
           <p className="intro">Search by name or enter an exact Steam AppID, then confirm the game before reviews are downloaded.</p>
@@ -289,6 +295,17 @@ function CatalogApp(): JSX.Element {
           </form>
           {previewError && <p className="error" role="alert">{previewError}</p>}
         </section>
+
+        <button
+          className="catalog-toggle"
+          type="button"
+          aria-controls="catalog-selection"
+          aria-expanded={catalogExpanded}
+          aria-label={`${catalogExpanded ? "Collapse" : "Expand"} game selection`}
+          onClick={() => setCatalogExpanded(!catalogExpanded)}
+        >
+          <span aria-hidden="true">{catalogExpanded ? "‹" : "›"}</span>
+        </button>
 
         <aside className="catalog-preview" aria-live="polite">
           {job ? (

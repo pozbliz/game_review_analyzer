@@ -1,5 +1,10 @@
 # Tasks
 
+## 2026-08-13
+
+- [x] Widen the game catalog and add a user-controlled collapsible selection rail so storefront details can use the full content width.
+- [ ] [HUMAN] Confirm the expanded and collapsed catalog layouts visually in Chrome after a hard reload.
+
 ## 2026-08-10
 
 - [x] Consolidate approved prototype surfaces around a shared forest-green, sage, neutral, and motion theme.

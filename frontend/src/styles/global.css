@@ -21,12 +21,14 @@ button, input { font: inherit; }
 button { cursor: pointer; }
 button:focus-visible, input:focus-visible { outline: 3px solid #84a990; outline-offset: 3px; }
 .shell { min-height: 100vh; padding: clamp(1rem, 4vw, 3.5rem); }
-.app-header { max-width: 1180px; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.app-header { max-width: 1500px; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .brand { display: flex; align-items: center; gap: .7rem; font-weight: 800; }
 .brand span { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 9px; color: white; background: var(--forest); }
-.catalog { max-width: 1180px; min-height: 650px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr); overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); box-shadow: var(--shadow); }
+.catalog { max-width: 1500px; min-height: 650px; margin: 0 auto; display: grid; grid-template-columns: minmax(340px, 420px) 48px minmax(0, 1fr); overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); box-shadow: var(--shadow); }
+.catalog-collapsed { grid-template-columns: 0 48px minmax(0, 1fr); }
 .catalog-search, .catalog-preview { padding: clamp(2rem, 5vw, 4.5rem); }
-.catalog-search { border-right: 1px solid var(--line); }
+.catalog-toggle { width: 100%; border: 0; border-right: 1px solid var(--line); color: var(--forest); background: #f8f5ed; font-size: 1.6rem; font-weight: 800; }
+.catalog-toggle:hover { background: var(--sage); }
 .catalog-preview { background: #eef3e9; }
 .eyebrow { margin: 0 0 1rem; color: #51705e; font-size: .75rem; font-weight: 800; letter-spacing: .16em; }
 h1, h2 { margin: 0; letter-spacing: -.035em; }
@@ -80,7 +82,7 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .job-deletion button:disabled { opacity: .45; }
 @media (max-width: 760px) {
   .catalog { grid-template-columns: 1fr; }
-  .catalog-search { border-right: 0; border-bottom: 1px solid var(--line); }
+  .catalog-toggle { min-height: 48px; border-right: 0; border-bottom: 1px solid var(--line); }
   .appid-row { align-items: stretch; flex-direction: column; }
   .identity-grid { grid-template-columns: 1fr; }
 }
