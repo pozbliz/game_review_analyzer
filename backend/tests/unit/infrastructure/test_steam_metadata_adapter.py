@@ -112,6 +112,10 @@ def test_adapter_normalizes_regional_storefront_and_sanitizes_content() -> None:
     assert metadata.storefront.tags == ("Action", "Roguelike")
     assert metadata.storefront.dlc_names == ("Hades II Soundtrack",)
     assert metadata.storefront.platforms == ("Windows",)
+    feature_names: tuple[str, ...] = tuple(
+        feature.name for feature in metadata.storefront.features or ()
+    )
+    assert feature_names.count("Full controller support") == 1
     assert metadata.storefront.screenshot_urls == (
         "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145350/ss_1.jpg",
     )

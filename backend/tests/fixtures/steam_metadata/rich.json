@@ -31,7 +31,8 @@
       "categories": [
         {"id": 2, "description": "Single-player"},
         {"id": 22, "description": "Steam Achievements"},
-        {"id": 28, "description": "Full controller support"}
+        {"id": 28, "description": "Full controller support"},
+        {"id": 29, "description": "Full controller support"}
       ],
       "screenshots": [
         {"path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145350/ss_1.jpg"},

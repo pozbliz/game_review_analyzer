@@ -403,7 +403,7 @@ def normalize_package_names(value: Any) -> tuple[str, ...] | None:
 def normalize_features(value: Any) -> tuple[SteamFeature, ...]:
     """Group returned Steam category descriptions without inventing absent support."""
 
-    descriptions: tuple[str, ...] = described_tuple(value) or ()
+    descriptions: tuple[str, ...] = tuple(dict.fromkeys(described_tuple(value) or ()))
     features: list[SteamFeature] = []
     for description in descriptions:
         lowered: str = description.lower()
