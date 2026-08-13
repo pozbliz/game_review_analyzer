@@ -267,6 +267,8 @@ def validate_analysis_result(
 def validate_manual_codex_extraction_result(
     request: AnalysisRequest,
     result_json: str,
+    *,
+    expected_provider: str = "manual-codex",
 ) -> OpinionExtractionResult:
     """Validate one extraction batch through the shared analysis boundary."""
 
@@ -287,5 +289,9 @@ def validate_manual_codex_extraction_result(
         themes=(),
         mechanic_classifications=(),
     )
-    validate_manual_codex_result(request, grouped_result.model_dump_json())
+    validate_analysis_result(
+        request,
+        grouped_result.model_dump_json(),
+        expected_provider=expected_provider,
+    )
     return result

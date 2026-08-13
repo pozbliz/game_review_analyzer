@@ -10,14 +10,21 @@ from tempfile import TemporaryDirectory
 from typing import Any
 
 from game_review_analyzer.application.manual_codex import (
+    MANUAL_CODEX_EXTRACTION_INSTRUCTIONS,
     MANUAL_CODEX_INSTRUCTIONS,
     ManualCodexValidationError,
     validate_analysis_result,
+    validate_manual_codex_extraction_result,
 )
-from game_review_analyzer.domain.analysis import AnalysisRequest, AnalysisResult
+from game_review_analyzer.domain.analysis import (
+    AnalysisRequest,
+    AnalysisResult,
+    OpinionExtractionResult,
+)
 from game_review_analyzer.application.provider import (
     AnalysisProviderError,
     CancellationSignal,
+    ExtractionProviderRun,
     ProviderRun,
     ProviderUsage,
 )
@@ -71,7 +78,12 @@ class CodexCliProvider:
             if cancel_event is not None and cancel_event.is_set():
                 raise CodexCliError("cancelled", "Codex CLI analysis was cancelled")
             try:
-                result_json, stdout = self._run_once(request, cancel_event)
+                result_json, stdout = self._run_once(
+                    request,
+                    cancel_event,
+                    result_schema=AnalysisResult.model_json_schema(),
+                    instructions=MANUAL_CODEX_INSTRUCTIONS,
+                )
                 result: AnalysisResult = validate_analysis_result(
                     request,
                     result_json,
@@ -94,17 +106,62 @@ class CodexCliProvider:
                     raise
         raise AssertionError("unreachable")
 
+    def extract(
+        self,
+        request: AnalysisRequest,
+        *,
+        cancel_event: CancellationSignal | None = None,
+    ) -> ExtractionProviderRun:
+        """Extract and validate Opinion Points from one bounded review batch."""
+
+        for attempt in range(self.max_attempts):
+            if cancel_event is not None and cancel_event.is_set():
+                raise CodexCliError("cancelled", "Codex CLI extraction was cancelled")
+            try:
+                result_json, stdout = self._run_once(
+                    request,
+                    cancel_event,
+                    result_schema=OpinionExtractionResult.model_json_schema(),
+                    instructions=MANUAL_CODEX_EXTRACTION_INSTRUCTIONS,
+                )
+                result: OpinionExtractionResult = (
+                    validate_manual_codex_extraction_result(
+                        request,
+                        result_json,
+                        expected_provider="codex-cli",
+                    )
+                )
+                if result.provider != "codex-cli" or result.model != self.model:
+                    raise CodexCliError(
+                        "model_mismatch",
+                        "Codex CLI extraction provenance does not match selection",
+                    )
+                return ExtractionProviderRun(result=result, usage=self._usage(stdout))
+            except ManualCodexValidationError as error:
+                if attempt + 1 == self.max_attempts:
+                    raise CodexCliError(
+                        error.code,
+                        "Codex CLI returned invalid extraction output",
+                    ) from error
+            except CodexCliError as error:
+                if error.code == "cancelled" or attempt + 1 == self.max_attempts:
+                    raise
+        raise AssertionError("unreachable")
+
     def _run_once(
         self,
         request: AnalysisRequest,
         cancel_event: CancellationSignal | None,
+        *,
+        result_schema: dict[str, Any],
+        instructions: str,
     ) -> tuple[str, str]:
         with TemporaryDirectory(prefix="game-review-analyzer-codex-") as directory:
             working_directory: Path = Path(directory)
             schema_path: Path = working_directory / "schema.json"
             output_path: Path = working_directory / "result.json"
             schema_path.write_text(
-                json.dumps(AnalysisResult.model_json_schema()),
+                json.dumps(result_schema),
                 encoding="utf-8",
             )
             command: list[str] = [
@@ -141,7 +198,7 @@ class CodexCliProvider:
             if os.name == "nt":
                 options["creationflags"] = subprocess.CREATE_NO_WINDOW
             process: subprocess.Popen[str] = subprocess.Popen(command, **options)
-            prompt: str | None = self._prompt(request)
+            prompt: str | None = self._prompt(request, instructions)
             while True:
                 try:
                     stdout, _stderr = process.communicate(
@@ -167,9 +224,9 @@ class CodexCliProvider:
             result_json: str = output_path.read_text(encoding="utf-8")
             return result_json, stdout
 
-    def _prompt(self, request: AnalysisRequest) -> str:
+    def _prompt(self, request: AnalysisRequest, instructions: str) -> str:
         return (
-            f"{MANUAL_CODEX_INSTRUCTIONS} Set provider to codex-cli and model to "
+            f"{instructions} Set provider to codex-cli and model to "
             f"{self.model}. Return only the schema-conforming JSON.\nREQUEST_JSON\n"
             f"{request.model_dump_json()}"
         )

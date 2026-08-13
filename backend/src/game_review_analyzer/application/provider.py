@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from game_review_analyzer.domain.analysis import AnalysisResult
+from game_review_analyzer.domain.analysis import AnalysisResult, OpinionExtractionResult
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,14 @@ class ProviderRun:
     """Return one validated provider result and its measured usage."""
 
     result: AnalysisResult
+    usage: ProviderUsage
+
+
+@dataclass(frozen=True)
+class ExtractionProviderRun:
+    """Return one validated bounded extraction result and measured usage."""
+
+    result: OpinionExtractionResult
     usage: ProviderUsage
 
 
