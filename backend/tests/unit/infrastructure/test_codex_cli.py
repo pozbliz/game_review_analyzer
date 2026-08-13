@@ -155,6 +155,22 @@ def test_codex_cli_extracts_one_bounded_opinion_batch(monkeypatch) -> None:
     assert "sentence- or clause-level opinions" in processes[0].prompt
 
 
+def test_codex_cli_consolidates_cached_points_with_cohort_audit(monkeypatch) -> None:
+    processes: list[CompletedProcess] = []
+
+    def start_process(command: list[str], **options: Any) -> CompletedProcess:
+        process = CompletedProcess(command, **options)
+        processes.append(process)
+        return process
+
+    monkeypatch.setattr("subprocess.Popen", start_process)
+
+    CodexCliProvider(executable="codex.cmd").consolidate(request())
+
+    assert "shared Theme system across both cohorts" in processes[0].prompt
+    assert "audit unassigned early and recent Opinion Points" in processes[0].prompt
+
+
 def test_codex_cli_retries_malformed_output_without_changing_provider(
     monkeypatch,
 ) -> None:
@@ -235,6 +251,32 @@ def test_codex_cli_cancels_running_process_without_retry(monkeypatch) -> None:
     assert raised.value.code == "cancelled"
     assert processes[0].terminated is True
     assert len(processes) == 1
+
+
+def test_codex_cli_classifies_failure_without_exposing_provider_stderr(
+    monkeypatch,
+) -> None:
+    class FailedProcess(CompletedProcess):
+        returncode: int = 1
+
+        def communicate(
+            self,
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            del input, timeout
+            return "", "429 rate limit; review text must stay private"
+
+    monkeypatch.setattr(
+        "subprocess.Popen",
+        lambda command, **options: FailedProcess(command, **options),
+    )
+
+    with pytest.raises(CodexCliError) as raised:
+        CodexCliProvider(executable="codex.cmd", max_attempts=1).extract(request())
+
+    assert raised.value.code == "provider_rate_limited"
+    assert "review text" not in str(raised.value)
 
 
 def test_codex_cli_status_reports_installation_and_login_without_credentials(

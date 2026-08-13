@@ -19,6 +19,21 @@ export interface ReportTheme {
   evidence_count: number;
   representative_evidence: RepresentativeEvidence[];
   opposes_theme_id: string | null;
+  cohort_comparison?: ThemeCohortComparison;
+}
+
+export interface ThemeCohortComparison {
+  early: { count: number; percentage: number; denominator: number };
+  recent: { count: number; percentage: number; denominator: number };
+  percentage_point_change: number;
+  direction: "appears_improved" | "mostly_unchanged" | "appears_worse" |
+    "new_in_recent_reviews" | "no_longer_prominent";
+}
+
+export interface CohortScope {
+  review_count: number;
+  source_created_from: number;
+  source_created_to: number;
 }
 
 export interface MixedReception {
@@ -40,7 +55,12 @@ export interface ReportSummary {
   report_version_id: string;
   game: { app_id: number; title: string };
   metadata: SteamMetadata;
-  scope: { review_count: number; thresholds_calibrated: boolean };
+  scope: {
+    review_count: number;
+    thresholds_calibrated: boolean;
+    early?: CohortScope;
+    recent?: CohortScope;
+  };
   provenance: { provider: string; model: string; request_id: string; scope_sha256: string };
   positive_themes: ReportTheme[];
   negative_themes: ReportTheme[];
@@ -137,6 +157,8 @@ function parseReport(payload: unknown): ReportSummary {
     scope: {
       review_count: payload.scope.review_count,
       thresholds_calibrated: payload.scope.thresholds_calibrated,
+      early: parseCohortScope(payload.scope.early),
+      recent: parseCohortScope(payload.scope.recent),
     },
     provenance: payload.provenance as ReportSummary["provenance"],
     positive_themes: payload.positive_themes.map(parseTheme),
@@ -171,7 +193,32 @@ function parseTheme(value: unknown): ReportTheme {
     evidence_count: value.evidence_count,
     representative_evidence: value.representative_evidence.map(parseRepresentativeEvidence),
     opposes_theme_id: value.opposes_theme_id,
+    cohort_comparison: parseCohortComparison(value.cohort_comparison),
   };
+}
+
+function parseCohortScope(value: unknown): CohortScope | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value) || !numbers(value, [
+    "review_count", "source_created_from", "source_created_to",
+  ])) throw new Error("Invalid cohort scope response");
+  return value as unknown as CohortScope;
+}
+
+function parseCohortComparison(value: unknown): ThemeCohortComparison | undefined {
+  if (value === undefined) return undefined;
+  const directions: string[] = [
+    "appears_improved", "mostly_unchanged", "appears_worse",
+    "new_in_recent_reviews", "no_longer_prominent",
+  ];
+  if (!isRecord(value) || !isRecord(value.early) || !isRecord(value.recent) ||
+      !numbers(value.early, ["count", "percentage", "denominator"]) ||
+      !numbers(value.recent, ["count", "percentage", "denominator"]) ||
+      typeof value.percentage_point_change !== "number" ||
+      !directions.includes(String(value.direction))) {
+    throw new Error("Invalid cohort comparison response");
+  }
+  return value as unknown as ThemeCohortComparison;
 }
 
 function parseRepresentativeEvidence(value: unknown): RepresentativeEvidence {

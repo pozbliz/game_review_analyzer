@@ -18,9 +18,13 @@ describe("report exploration", () => {
     expect(screen.getByRole("heading", { name: "Positive themes" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "Negative themes" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "Technical themes" })).toBeVisible();
+    expect(screen.getByText("Early cohort")).toBeVisible();
+    expect(screen.getByText("Recent cohort")).toBeVisible();
     expect(screen.getAllByText("2 reviews · 100% of 2")).toHaveLength(3);
 
     fireEvent.click(screen.getByRole("button", { name: /responsive combat/i }));
+    expect(screen.getByText("Appears improved")).toBeVisible();
+    expect(screen.getByText("-30.0 percentage points")).toBeVisible();
     expect(screen.getByText("Players praise immediate combat response.")).toBeVisible();
     expect(screen.getByText(/Combat is responsive/)).toBeVisible();
     expect(screen.getByText(/2 liked · 0 disliked · 0 mixed/i)).toBeVisible();
@@ -261,7 +265,12 @@ function reportPayload(): object {
     report_version_id: "report-1",
     game: { app_id: 1145350, title: "Hades II" },
     metadata: richMetadata(),
-    scope: { review_count: 2, thresholds_calibrated: false },
+    scope: {
+      review_count: 2,
+      thresholds_calibrated: false,
+      early: { review_count: 1, source_created_from: 1_600_000_000, source_created_to: 1_600_000_000 },
+      recent: { review_count: 1, source_created_from: 1_700_000_000, source_created_to: 1_700_000_000 },
+    },
     provenance: {
       provider: "manual-codex",
       model: "fixture-model",
@@ -342,6 +351,12 @@ function theme(
       sentiment: polarity,
     }],
     opposes_theme_id: opposesThemeId,
+    cohort_comparison: {
+      early: { count: 1, percentage: 80, denominator: 1 },
+      recent: { count: 1, percentage: 50, denominator: 1 },
+      percentage_point_change: -30,
+      direction: "appears_improved",
+    },
   };
 }
 

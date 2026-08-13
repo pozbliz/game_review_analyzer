@@ -109,6 +109,8 @@ class ReportVersion(ReportContractModel):
     app_id: int = Field(gt=0)
     metadata_snapshot: SteamMetadata
     review_revision_ids: tuple[int, ...] = Field(min_length=1)
+    early_review_revision_ids: tuple[int, ...] = ()
+    recent_review_revision_ids: tuple[int, ...] = ()
     analysis_result: AnalysisResult
     metric_policy: ThemeMetricPolicy
     theme_metrics: ThemeMetrics
@@ -129,4 +131,11 @@ class ReportVersion(ReportContractModel):
 
         if self.metadata_snapshot.app_id != self.app_id:
             raise ValueError("Report metadata must match the report AppID")
+        early: set[int] = set(self.early_review_revision_ids)
+        recent: set[int] = set(self.recent_review_revision_ids)
+        if early & recent or (early | recent) not in (
+            set(),
+            set(self.review_revision_ids),
+        ):
+            raise ValueError("Report cohorts must be non-overlapping and cover the scope")
         return self

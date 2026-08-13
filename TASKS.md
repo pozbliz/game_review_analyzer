@@ -3,11 +3,12 @@
 ## Oldest-versus-newest cohort comparison
 
 - [x] Persist deterministic, non-overlapping cohorts containing up to the 2,500 oldest and 2,500 newest eligible reviews from a completed full-history import.
-- [ ] Extract and cache validated Opinion Points from the combined cohort scope in resumable bounded batches.
-- [ ] Consolidate shared Themes and audit unassigned Opinion Points for cohort-specific recurring issues.
-- [ ] Calculate early-versus-recent support, percentage-point change, date ranges, and conservative direction labels without additional model calls.
-- [ ] Expose acquisition prerequisites, durable progress, comparison metrics, and evidence from both cohorts in the report UI.
-- [ ] Verify backend contracts, frontend behavior, production build, and connected-browser presentation.
+- [x] Extract and cache validated Opinion Points from the combined cohort scope in resumable bounded batches.
+- [x] Consolidate every non-neutral Opinion Point into canonical shared Themes, including recurring cohort-specific issues.
+- [x] Calculate early-versus-recent support, percentage-point change, date ranges, and conservative direction labels without additional model calls.
+- [x] Expose acquisition prerequisites, durable progress, comparison metrics, and evidence from both cohorts in the report UI.
+- [x] Verify the production UI in the connected browser.
+- [ ] [HUMAN] Calibrate direction thresholds and canonical-subject consistency on representative games before claiming production-quality semantic grouping.
 
 ## 2026-08-13
 

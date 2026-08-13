@@ -8,6 +8,7 @@ import {
   ReportHistoryEntry,
   ReportTheme,
   ThemeEvidence,
+  ThemeCohortComparison,
 } from "../../api/reports";
 import {
   AnalysisJob,
@@ -263,6 +264,8 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
 
       <section className="report-facts" aria-label="Report scope and provenance">
         <div><span>Review scope</span><strong>{report.scope.review_count.toLocaleString()} reviews</strong></div>
+        {report.scope.early && <div><span>Early cohort</span><strong>{report.scope.early.review_count.toLocaleString()} reviews</strong><small>{formatReviewDate(report.scope.early.source_created_from)}–{formatReviewDate(report.scope.early.source_created_to)}</small></div>}
+        {report.scope.recent && <div><span>Recent cohort</span><strong>{report.scope.recent.review_count.toLocaleString()} reviews</strong><small>{formatReviewDate(report.scope.recent.source_created_from)}–{formatReviewDate(report.scope.recent.source_created_to)}</small></div>}
         <div><span>Provider</span><strong>{report.provenance.provider}</strong></div>
         <div><span>Model</span><strong>{report.provenance.model}</strong></div>
         <div><span>Scope digest</span><code title={report.provenance.scope_sha256}>{report.provenance.scope_sha256.slice(0, 12)}…</code></div>
@@ -425,6 +428,14 @@ function ThemeRow({
           {theme.related_categories.length > 0 && (
             <p className="related-categories">Also relates to {theme.related_categories.join(", ")}</p>
           )}
+          {theme.cohort_comparison && (
+            <div className="cohort-comparison">
+              <strong>{comparisonLabel(theme.cohort_comparison.direction)}</strong>
+              <span>Early {formatPercent(theme.cohort_comparison.early.percentage)} ({theme.cohort_comparison.early.count}/{theme.cohort_comparison.early.denominator})</span>
+              <span>Recent {formatPercent(theme.cohort_comparison.recent.percentage)} ({theme.cohort_comparison.recent.count}/{theme.cohort_comparison.recent.denominator})</span>
+              <span>{formatSignedPercentagePoints(theme.cohort_comparison.percentage_point_change)}</span>
+            </div>
+          )}
           {mixed && (
             <div className="mixed-reception">
               <strong>Mixed reception</strong>
@@ -469,6 +480,26 @@ function ThemeRow({
       )}
     </article>
   );
+}
+
+function comparisonLabel(direction: ThemeCohortComparison["direction"]): string {
+  return ({
+    appears_improved: "Appears improved",
+    mostly_unchanged: "Mostly unchanged",
+    appears_worse: "Appears worse",
+    new_in_recent_reviews: "New in recent reviews",
+    no_longer_prominent: "No longer prominent",
+  } as Record<string, string>)[direction] ?? direction;
+}
+
+function formatSignedPercentagePoints(value: number): string {
+  const prefix: string = value > 0 ? "+" : "";
+  return `${prefix}${value.toFixed(1)} percentage points`;
+}
+
+function formatReviewDate(timestamp: number): string {
+  return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short" })
+    .format(new Date(timestamp * 1000));
 }
 
 function BooleanFilter({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }): JSX.Element {

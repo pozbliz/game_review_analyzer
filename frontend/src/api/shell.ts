@@ -135,6 +135,8 @@ export interface AnalysisRun {
   input_tokens: number | null;
   cached_input_tokens: number | null;
   output_tokens: number | null;
+  extracted_review_count: number;
+  phase: "queued" | "extracting" | "consolidating" | "completed" | "failed" | "cancelled";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -183,6 +185,8 @@ function parseAnalysisRun(payload: unknown): AnalysisRun {
       typeof payload.model !== "string" ||
       !["queued", "running", "completed", "failed", "cancelled"].includes(String(payload.state)) ||
       typeof payload.review_count !== "number" || typeof payload.cancel_requested !== "boolean" ||
+      typeof payload.extracted_review_count !== "number" ||
+      !["queued", "extracting", "consolidating", "completed", "failed", "cancelled"].includes(String(payload.phase)) ||
       !(payload.error_code === null || typeof payload.error_code === "string") ||
       !(payload.report_version_id === null || typeof payload.report_version_id === "string")) {
     throw new Error("Invalid analysis run response");
@@ -226,6 +230,12 @@ export async function getAnalysisRun(runId: string): Promise<AnalysisRun> {
 export async function cancelAnalysisRun(runId: string): Promise<AnalysisRun> {
   return parseAnalysisRun(await requestJson(
     `/api/analysis-runs/${runId}/cancel`, { method: "POST" },
+  ));
+}
+
+export async function retryAnalysisRun(runId: string): Promise<AnalysisRun> {
+  return parseAnalysisRun(await requestJson(
+    `/api/analysis-runs/${encodeURIComponent(runId)}/retry`, { method: "POST" },
   ));
 }
 

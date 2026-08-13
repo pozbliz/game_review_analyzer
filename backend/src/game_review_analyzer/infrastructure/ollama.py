@@ -3,22 +3,33 @@
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 import json
-from typing import Any
+from typing import Any, Callable, TypeVar
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from game_review_analyzer.application.manual_codex import (
+    CODEX_CONSOLIDATION_INSTRUCTIONS,
+    MANUAL_CODEX_EXTRACTION_INSTRUCTIONS,
     MANUAL_CODEX_INSTRUCTIONS,
     ManualCodexValidationError,
     validate_analysis_result,
+    validate_manual_codex_extraction_result,
 )
 from game_review_analyzer.application.provider import (
     AnalysisProviderError,
     CancellationSignal,
+    ExtractionProviderRun,
     ProviderRun,
     ProviderUsage,
 )
-from game_review_analyzer.domain.analysis import AnalysisRequest, AnalysisResult
+from game_review_analyzer.domain.analysis import (
+    AnalysisRequest,
+    AnalysisResult,
+    OpinionExtractionResult,
+)
+
+
+ProviderResult = TypeVar("ProviderResult", AnalysisResult, OpinionExtractionResult)
 
 
 @dataclass(frozen=True)
@@ -76,13 +87,75 @@ class OllamaProvider:
     ) -> ProviderRun:
         """Generate and validate one result without changing or installing models."""
 
+        result, usage = self._generate(
+            request,
+            instructions=MANUAL_CODEX_INSTRUCTIONS,
+            schema=AnalysisResult.model_json_schema(),
+            validator=lambda value, text: validate_analysis_result(
+                value, text, expected_provider="ollama"
+            ),
+            cancel_event=cancel_event,
+        )
+        return ProviderRun(result=result, usage=usage)
+
+    def extract(
+        self,
+        request: AnalysisRequest,
+        *,
+        cancel_event: CancellationSignal | None = None,
+    ) -> ExtractionProviderRun:
+        """Extract validated Opinion Points without downloading or changing models."""
+
+        result, usage = self._generate(
+            request,
+            instructions=MANUAL_CODEX_EXTRACTION_INSTRUCTIONS,
+            schema=OpinionExtractionResult.model_json_schema(),
+            validator=lambda value, text: validate_manual_codex_extraction_result(
+                value, text, expected_provider="ollama"
+            ),
+            cancel_event=cancel_event,
+        )
+        return ExtractionProviderRun(result=result, usage=usage)
+
+    def consolidate(
+        self,
+        request: AnalysisRequest,
+        *,
+        cancel_event: CancellationSignal | None = None,
+    ) -> ProviderRun:
+        """Consolidate validated Opinion Points with the selected local model."""
+
+        result, usage = self._generate(
+            request,
+            instructions=CODEX_CONSOLIDATION_INSTRUCTIONS,
+            schema=AnalysisResult.model_json_schema(),
+            validator=lambda value, text: validate_analysis_result(
+                value, text, expected_provider="ollama"
+            ),
+            cancel_event=cancel_event,
+        )
+        return ProviderRun(result=result, usage=usage)
+
+    def _generate(
+        self,
+        request: AnalysisRequest,
+        *,
+        instructions: str,
+        schema: dict[str, Any],
+        validator: Callable[[AnalysisRequest, str], "ProviderResult"],
+        cancel_event: CancellationSignal | None,
+    ) -> tuple["ProviderResult", ProviderUsage]:
+        """Run the shared schema-constrained local generation loop."""
+
         for attempt in range(self.max_attempts):
             if cancel_event is not None and cancel_event.is_set():
                 raise OllamaError("cancelled", "Ollama analysis was cancelled")
             response_text: str = ""
             final_event: dict[str, Any] = {}
             try:
-                for event in self._stream_source(self._payload(request), cancel_event):
+                for event in self._stream_source(
+                    self._payload(request, instructions, schema), cancel_event
+                ):
                     if cancel_event is not None and cancel_event.is_set():
                         raise OllamaError("cancelled", "Ollama analysis was cancelled")
                     if event.get("model") not in (None, self.model):
@@ -92,23 +165,18 @@ class OllamaProvider:
                     response_text += str(event.get("response", ""))
                     if event.get("done") is True:
                         final_event = event
-                result: AnalysisResult = validate_analysis_result(
-                    request, response_text, expected_provider="ollama"
-                )
+                result: ProviderResult = validator(request, response_text)
                 if result.model != self.model:
                     raise OllamaError(
                         "model_mismatch", "Ollama result model does not match selection"
                     )
-                return ProviderRun(
-                    result=result,
-                    usage=ProviderUsage(
+                return result, ProviderUsage(
                         input_tokens=_non_negative_int(
                             final_event.get("prompt_eval_count")
                         ),
                         cached_input_tokens=None,
                         output_tokens=_non_negative_int(final_event.get("eval_count")),
-                    ),
-                )
+                    )
             except ManualCodexValidationError as error:
                 if attempt + 1 == self.max_attempts:
                     raise OllamaError(
@@ -124,15 +192,20 @@ class OllamaProvider:
                 raise OllamaError("unavailable", "Local Ollama is unavailable") from error
         raise AssertionError("unreachable")
 
-    def _payload(self, request: AnalysisRequest) -> dict[str, Any]:
+    def _payload(
+        self,
+        request: AnalysisRequest,
+        instructions: str,
+        schema: dict[str, Any],
+    ) -> dict[str, Any]:
         return {
             "model": self.model,
             "prompt": (
-                f"{MANUAL_CODEX_INSTRUCTIONS} Set provider to ollama and model to "
+                f"{instructions} Set provider to ollama and model to "
                 f"{self.model}. Return only the schema-conforming JSON.\nREQUEST_JSON\n"
                 f"{request.model_dump_json()}"
             ),
-            "format": AnalysisResult.model_json_schema(),
+            "format": schema,
             "stream": True,
             "think": False,
             "options": {"temperature": 0, "num_ctx": 16_384},

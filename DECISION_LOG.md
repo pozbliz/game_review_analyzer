@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-08-13 — Resumable cohort analysis uses bounded extraction and deterministic consolidation
+
+**What changed:**
+
+- Added restart-safe 50-review/32,000-character extraction batches whose validated Opinion Points are cached per review and reused after failure.
+- Consolidated normalized canonical subjects locally across both cohorts, then calculated cohort support and conservative direction labels without another model request.
+- Added redacted JSON analysis events and optional OTLP/HTTP traces for HTTP requests, runs, and extraction batches.
+
+**Why:**
+
+- Bounded requests make a 5,000-review scope recoverable and prevent one failure from repeating completed Codex work.
+- Deterministic consolidation protects quota and makes metrics reproducible while preserving source evidence.
+- Safe operational metadata is sufficient to diagnose run phase, provider failures, timing, and token usage without retaining review content.
+
+**New issues:**
+
+- Differently worded canonical subjects may remain separate without embeddings or a bounded semantic merge pass.
+- Direction thresholds and canonical-subject consistency need representative-game calibration.
+
+**Needs human judgment:**
+
+- Approve production-quality thresholds after representative-game evaluation.
+
+---
+
 ## 2026-08-13 — Default reports compare the oldest and newest available reviews
 
 **What changed:**

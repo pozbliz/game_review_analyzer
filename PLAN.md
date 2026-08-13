@@ -242,7 +242,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** A true oldest cohort requires a potentially long full-history Steam scan, and the middle of corpora larger than 5,000 reviews is intentionally excluded from model analysis.
 
-**Status:** In progress after explicit user approval.
+**Status:** Implemented with resumable bounded extraction, deterministic canonical-subject consolidation, immutable cohort metrics, progress/retry controls, and report presentation. Connected-browser verification and representative-game semantic calibration remain open.
 
 ## Deferred
 

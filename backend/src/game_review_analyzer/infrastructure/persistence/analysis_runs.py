@@ -29,11 +29,23 @@ class AnalysisRun(BaseModel):
     input_tokens: int | None
     cached_input_tokens: int | None
     output_tokens: int | None
+    extracted_review_count: int
 
     @computed_field
     @property
     def review_count(self) -> int:
         return len(self.review_revision_ids)
+
+    @computed_field
+    @property
+    def phase(self) -> Literal["queued", "extracting", "consolidating", "completed", "failed", "cancelled"]:
+        if self.state != "running":
+            return self.state
+        return (
+            "consolidating"
+            if self.extracted_review_count >= self.review_count
+            else "extracting"
+        )
 
 
 class AnalysisRunNotFound(Exception):
@@ -116,7 +128,13 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
             "SELECT id, app_id, provider, model, state, review_revision_ids_json, "
             "metric_policy_json, cancel_requested, error_code, report_version_id, "
             "input_tokens, cached_input_tokens, output_tokens, "
-            "early_review_revision_ids_json, recent_review_revision_ids_json "
+            "early_review_revision_ids_json, recent_review_revision_ids_json, "
+            "(SELECT COUNT(*) FROM review_opinion_extractions extraction "
+            "WHERE extraction.provider = analysis_runs.provider "
+            "AND extraction.model = analysis_runs.model "
+            "AND extraction.contract_version = '1.0' "
+            "AND extraction.review_revision_id IN ("
+            "SELECT value FROM json_each(analysis_runs.review_revision_ids_json))) "
             "FROM analysis_runs WHERE id = ?",
             (run_id,),
         ).fetchone()
@@ -130,6 +148,7 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
         input_tokens=row[10], cached_input_tokens=row[11], output_tokens=row[12],
         early_review_revision_ids=tuple(json.loads(row[13])),
         recent_review_revision_ids=tuple(json.loads(row[14])),
+        extracted_review_count=int(row[15]),
     )
 
 
@@ -194,3 +213,18 @@ def recoverable_analysis_run_ids(database_path: Path) -> list[str]:
             "SELECT id FROM analysis_runs WHERE state = 'queued' ORDER BY created_at, id"
         ).fetchall()
     return [row[0] for row in rows]
+
+
+def retry_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
+    """Requeue failed or cancelled analysis while retaining safe cached extraction."""
+
+    with connect(database_path) as connection:
+        cursor = connection.execute(
+            "UPDATE analysis_runs SET state = 'queued', cancel_requested = 0, "
+            "error_code = NULL, updated_at = CURRENT_TIMESTAMP "
+            "WHERE id = ? AND state IN ('failed', 'cancelled')",
+            (run_id,),
+        )
+    if cursor.rowcount == 0:
+        raise ValueError("Only failed or cancelled analysis can be retried")
+    return get_analysis_run(database_path, run_id)

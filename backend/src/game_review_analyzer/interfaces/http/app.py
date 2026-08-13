@@ -63,6 +63,7 @@ from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     get_analysis_run,
     recoverable_analysis_run_ids,
     request_analysis_cancellation,
+    retry_analysis_run,
 )
 from game_review_analyzer.infrastructure.persistence.game_datasets import (
     load_game_dataset,
@@ -100,6 +101,7 @@ from game_review_analyzer.infrastructure.steam_catalog import (
 )
 from game_review_analyzer.infrastructure.steam_reviews import SteamReviewIngestionAdapter
 from game_review_analyzer.shared.config import Settings
+from game_review_analyzer.shared.telemetry import configure_telemetry
 from game_review_analyzer.interfaces.http.reports import (
     EvidenceFilterQuery,
     ReportResponse,
@@ -234,6 +236,7 @@ def create_app(
             analysis_executor.shutdown(wait=True)
 
     app = FastAPI(title="Game Review Analyzer", lifespan=lifespan)
+    configure_telemetry(app)
 
     @app.get(f"{API_PREFIX}/health", response_model=HealthResponse)
     def health() -> HealthResponse:
@@ -365,6 +368,24 @@ def create_app(
         existing_analysis_run(run_id)
         request_analysis_cancellation(resolved_settings.database_path, run_id)
         return get_analysis_run(resolved_settings.database_path, run_id)
+
+    @app.post(
+        f"{API_PREFIX}/analysis-runs/{{run_id}}/retry",
+        response_model=AnalysisRun,
+        status_code=202,
+    )
+    def retry_failed_analysis(run_id: str) -> AnalysisRun:
+        existing_analysis_run(run_id)
+        try:
+            run: AnalysisRun = retry_analysis_run(
+                resolved_settings.database_path, run_id
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "analysis_not_retryable"}
+            ) from error
+        app.state.analysis_executor.submit(run_analysis, run.id)
+        return run
 
     @app.post(f"{API_PREFIX}/catalog/sync", response_model=CatalogSyncResult)
     def sync_catalog() -> CatalogSyncResult:
@@ -523,7 +544,11 @@ def create_app(
             raise HTTPException(status_code=404, detail={"code": "game_not_found"})
         return list_report_versions(resolved_settings.database_path, app_id)
 
-    @app.get(f"{API_PREFIX}/reports/{{report_version_id}}", response_model=ReportResponse)
+    @app.get(
+        f"{API_PREFIX}/reports/{{report_version_id}}",
+        response_model=ReportResponse,
+        response_model_exclude_none=True,
+    )
     def report_summary(
         report_version_id: str,
         query: Annotated[EvidenceFilterQuery, Query()],

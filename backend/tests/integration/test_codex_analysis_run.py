@@ -16,6 +16,7 @@ from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     FullHistoryRequired,
     create_analysis_run,
     get_analysis_run,
+    retry_analysis_run,
 )
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.persistence.game_datasets import save_game_dataset
@@ -40,6 +41,26 @@ class FakeProvider:
     model = "gpt-5.6-luna"
     provider = "codex-cli"
 
+    def extract(self, request, *, cancel_event=None):
+        assert cancel_event is not None
+        from game_review_analyzer.application.provider import ExtractionProviderRun
+        from game_review_analyzer.domain.analysis import OpinionExtractionResult
+
+        return ExtractionProviderRun(
+            OpinionExtractionResult(
+                schema_version="1.0",
+                request_id=request.request_id,
+                scope_sha256=request.scope_sha256,
+                provider=self.provider,
+                model=self.model,
+                completed_review_revision_ids=tuple(
+                    review.review_revision_id for review in request.reviews
+                ),
+                opinion_points=(),
+            ),
+            CodexCliUsage(10, 0, 2),
+        )
+
     def analyze(self, request, *, cancel_event=None) -> CodexCliRun:
         assert cancel_event is not None
         result = AnalysisResult(
@@ -56,6 +77,9 @@ class FakeProvider:
             mechanic_classifications=(),
         )
         return CodexCliRun(result, CodexCliUsage(120, 20, 30))
+
+    def consolidate(self, request, *, cancel_event=None) -> CodexCliRun:
+        return self.analyze(request, cancel_event=cancel_event)
 
 
 def test_analysis_scope_selects_non_overlapping_oldest_and_newest_reviews(
@@ -121,6 +145,62 @@ def test_analysis_scope_requires_a_completed_full_history_import(tmp_path: Path)
         )
 
 
+def test_failed_extraction_resumes_without_reprocessing_cached_reviews(
+    tmp_path: Path,
+) -> None:
+    class FailsSecondBatch(FakeProvider):
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, ...]] = []
+            self.failed: bool = False
+
+        def extract(self, request, *, cancel_event=None):
+            identifiers: tuple[str, ...] = tuple(
+                review.review_revision_id for review in request.reviews
+            )
+            self.calls.append(identifiers)
+            if len(self.calls) == 2 and not self.failed:
+                self.failed = True
+                from game_review_analyzer.application.provider import AnalysisProviderError
+
+                raise AnalysisProviderError("temporary", "temporary")
+            return super().extract(request, cancel_event=cancel_event)
+
+    database_path: Path = tmp_path / "app.sqlite3"
+    initialize_database(database_path)
+    save_game_dataset(database_path, metadata())
+    save_review_revisions(
+        database_path,
+        1145350,
+        tuple(review_at(position) for position in range(1, 6)),
+    )
+    complete_full_import(database_path)
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=ThemeMetricPolicy(
+            minimum_support_count=2,
+            minimum_support_percentage=1,
+            technical_minimum_support_count=2,
+            technical_minimum_support_percentage=1,
+        ),
+    )
+    provider = FailsSecondBatch()
+
+    AnalysisRunner(database_path, provider, batch_review_limit=2).run(run.id)
+    retry_analysis_run(database_path, run.id)
+    AnalysisRunner(database_path, provider, batch_review_limit=2).run(run.id)
+
+    assert get_analysis_run(database_path, run.id).state == "completed"
+    assert provider.calls == [
+        ("1", "2"),
+        ("3", "4"),
+        ("3", "4"),
+        ("5",),
+    ]
+
+
 def test_run_snapshots_corpus_and_creates_immutable_report(tmp_path: Path) -> None:
     database_path = tmp_path / "app.sqlite3"
     initialize_database(database_path)
@@ -147,9 +227,9 @@ def test_run_snapshots_corpus_and_creates_immutable_report(tmp_path: Path) -> No
     report = load_report_version(database_path, completed.report_version_id or "")
     assert completed.state == "completed"
     assert completed.review_count == 1
-    assert completed.input_tokens == 120
-    assert completed.cached_input_tokens == 20
-    assert completed.output_tokens == 30
+    assert completed.input_tokens == 10
+    assert completed.cached_input_tokens == 0
+    assert completed.output_tokens == 2
     assert report is not None
     assert report.analysis_result.provider == "codex-cli"
     assert report.review_revision_ids == run.review_revision_ids

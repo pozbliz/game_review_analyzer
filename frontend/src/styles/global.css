@@ -117,6 +117,9 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .report-facts span, .report-facts strong, .report-facts code { display: block; overflow: hidden; text-overflow: ellipsis; }
 .report-facts span { margin-bottom: .25rem; color: var(--muted); font-size: .72rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
 .report-facts code { font-size: .82rem; }
+.report-facts small { display: block; margin-top: .2rem; color: var(--muted); }
+.cohort-comparison { display: grid; grid-template-columns: repeat(4, minmax(0, auto)); gap: .5rem 1rem; align-items: baseline; padding: .75rem; border: 1px solid var(--line); background: var(--surface); }
+.cohort-comparison strong { grid-column: 1 / -1; }
 .evidence-filters { margin-top: 1rem; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: 10px; background: rgb(255 253 247 / 70%); }
 .evidence-filters summary { padding-block: .2rem; cursor: pointer; color: var(--forest); font-weight: 800; }
 .evidence-filters form { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .8rem; margin-top: 1rem; }

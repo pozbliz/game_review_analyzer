@@ -15,8 +15,9 @@ import {
   GameSearchResult,
   OllamaProviderStatus,
   retryJob,
+  retryAnalysisRun,
   searchGames,
-  startQuickImport,
+  startFullImport,
   startCodexAnalysis,
   startOllamaAnalysis,
   SteamMetadata,
@@ -44,7 +45,6 @@ function CatalogApp(): JSX.Element {
   const [preview, setPreview] = useState<SteamMetadata | null>(null);
   const [previewError, setPreviewError] = useState<string>("");
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
-  const [targetCount, setTargetCount] = useState<number>(5000);
   const [job, setJob] = useState<AnalysisJob | null>(null);
   const [jobError, setJobError] = useState<string>("");
   const [jobDeleteConfirmation, setJobDeleteConfirmation] = useState<string>("");
@@ -189,12 +189,12 @@ function CatalogApp(): JSX.Element {
     setJobError("");
     setJobDeleted(false);
     setJobDeleteConfirmation("");
-    startQuickImport(preview.app_id, targetCount)
+    startFullImport(preview.app_id)
       .then((startedJob) => {
         window.localStorage.setItem("active-import-job", startedJob.id);
         setJob(startedJob);
       })
-      .catch(() => setJobError("Unable to start the Quick import."));
+      .catch(() => setJobError("Unable to start the full-history import."));
   }
 
   function cancelImport(): void {
@@ -225,6 +225,14 @@ function CatalogApp(): JSX.Element {
     cancelAnalysisRun(analysisRun.id)
       .then(setAnalysisRun)
       .catch(() => setAnalysisError("Unable to cancel analysis."));
+  }
+
+  function retryAnalysis(): void {
+    if (!analysisRun) return;
+    setAnalysisError("");
+    retryAnalysisRun(analysisRun.id)
+      .then(setAnalysisRun)
+      .catch(() => setAnalysisError("Unable to retry analysis."));
   }
 
   function retryImport(): void {
@@ -311,14 +319,14 @@ function CatalogApp(): JSX.Element {
           </button>
           {job ? (
             <section className="import-progress" aria-labelledby="import-title">
-              <p className="eyebrow">QUICK IMPORT</p>
+              <p className="eyebrow">FULL HISTORY IMPORT</p>
               <h2 id="import-title">{
                 job.state === "completed" ? "Import complete" :
                 job.state === "failed" ? "Import failed" :
                 job.state === "cancelled" ? "Import cancelled" : "Downloading reviews"
               }</h2>
-              <p>{job.imported_count.toLocaleString()} of {job.target_count.toLocaleString()} reviews</p>
-              <progress value={job.imported_count} max={job.target_count} />
+              <p>{job.imported_count.toLocaleString()} reviews scanned</p>
+              {job.state !== "completed" && <progress />}
               {job.state === "failed" && <button type="button" onClick={retryImport}>Retry import</button>}
               {["queued", "running"].includes(job.state) && (
                 <button type="button" onClick={cancelImport}>Cancel import</button>
@@ -372,6 +380,12 @@ function CatalogApp(): JSX.Element {
                     analysisRun.state === "cancelled" ? "Analysis cancelled" : "Analyzing reviews"
                   }</h3>
                   <p>{analysisRun.review_count.toLocaleString()} reviews · {analysisRun.model}</p>
+                  {analysisRun.state === "running" && analysisRun.phase === "extracting" && (
+                    <p>{analysisRun.extracted_review_count.toLocaleString()} of {analysisRun.review_count.toLocaleString()} reviews extracted and cached</p>
+                  )}
+                  {analysisRun.state === "running" && analysisRun.phase === "consolidating" && (
+                    <p>Consolidating shared themes and cohort comparisons</p>
+                  )}
                   {["queued", "running"].includes(analysisRun.state) && (
                     <button type="button" onClick={cancelAnalysis}>Cancel analysis</button>
                   )}
@@ -384,6 +398,9 @@ function CatalogApp(): JSX.Element {
                       )}
                       <a href={`/reports/${encodeURIComponent(analysisRun.report_version_id)}`}>View report</a>
                     </>
+                  )}
+                  {["failed", "cancelled"].includes(analysisRun.state) && (
+                    <button type="button" onClick={retryAnalysis}>Resume analysis</button>
                   )}
                 </div>
               )}
@@ -415,7 +432,7 @@ function CatalogApp(): JSX.Element {
                 <StorefrontOverview metadata={preview} />
               )}
               <div className="analysis-setup">
-                <p><strong>Quick analysis</strong><br />Latest eligible English reviews</p>
+                <p><strong>Oldest versus newest</strong><br />Scans the complete available English review history, then analyzes up to the 2,500 oldest and 2,500 newest reviews.</p>
                 <label htmlFor="analysis-provider">Analysis provider</label>
                 <select
                   id="analysis-provider"
@@ -458,15 +475,6 @@ function CatalogApp(): JSX.Element {
                     <p>Restart the app after the model download completes.</p>
                   </div>
                 )}
-                <label htmlFor="review-limit">Review limit</label>
-                <input
-                  id="review-limit"
-                  type="number"
-                  min="1"
-                  required
-                  value={targetCount}
-                  onChange={(event) => setTargetCount(event.target.valueAsNumber)}
-                />
                 <button className="create-report" type="button" onClick={beginImport}>
                   Create report
                 </button>

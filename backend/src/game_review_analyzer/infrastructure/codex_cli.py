@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 from typing import Any
 
 from game_review_analyzer.application.manual_codex import (
+    CODEX_CONSOLIDATION_INSTRUCTIONS,
     MANUAL_CODEX_EXTRACTION_INSTRUCTIONS,
     MANUAL_CODEX_INSTRUCTIONS,
     ManualCodexValidationError,
@@ -28,6 +29,7 @@ from game_review_analyzer.application.provider import (
     ProviderRun,
     ProviderUsage,
 )
+from game_review_analyzer.shared.telemetry import log_event
 
 
 CodexCliUsage = ProviderUsage
@@ -74,6 +76,26 @@ class CodexCliProvider:
     ) -> CodexCliRun:
         """Run Codex and validate its final JSON against the exact review scope."""
 
+        return self._analyze(request, MANUAL_CODEX_INSTRUCTIONS, cancel_event)
+
+    def consolidate(
+        self,
+        request: AnalysisRequest,
+        *,
+        cancel_event: CancellationSignal | None = None,
+    ) -> CodexCliRun:
+        """Consolidate cached Opinion Points into shared and cohort-specific Themes."""
+
+        return self._analyze(request, CODEX_CONSOLIDATION_INSTRUCTIONS, cancel_event)
+
+    def _analyze(
+        self,
+        request: AnalysisRequest,
+        instructions: str,
+        cancel_event: CancellationSignal | None,
+    ) -> CodexCliRun:
+        """Run one complete-result contract with explicit task instructions."""
+
         for attempt in range(self.max_attempts):
             if cancel_event is not None and cancel_event.is_set():
                 raise CodexCliError("cancelled", "Codex CLI analysis was cancelled")
@@ -82,7 +104,7 @@ class CodexCliProvider:
                     request,
                     cancel_event,
                     result_schema=AnalysisResult.model_json_schema(),
-                    instructions=MANUAL_CODEX_INSTRUCTIONS,
+                    instructions=instructions,
                 )
                 result: AnalysisResult = validate_analysis_result(
                     request,
@@ -201,7 +223,7 @@ class CodexCliProvider:
             prompt: str | None = self._prompt(request, instructions)
             while True:
                 try:
-                    stdout, _stderr = process.communicate(
+                    stdout, stderr = process.communicate(
                         input=prompt,
                         timeout=0.1,
                     )
@@ -220,7 +242,16 @@ class CodexCliProvider:
                             "Codex CLI analysis was cancelled",
                         )
             if process.returncode != 0 or not output_path.is_file():
-                raise CodexCliError("process_failed", "Codex CLI analysis failed")
+                error_code: str = _process_error_code(stderr, output_path.is_file())
+                log_event(
+                    "provider.process_failed",
+                    provider="codex-cli",
+                    model=self.model,
+                    error_code=error_code,
+                    exit_code=process.returncode,
+                    stderr_bytes=len(stderr.encode("utf-8")),
+                )
+                raise CodexCliError(error_code, "Codex CLI analysis failed")
             result_json: str = output_path.read_text(encoding="utf-8")
             return result_json, stdout
 
@@ -256,6 +287,19 @@ def _non_negative_int(value: object) -> int | None:
         if isinstance(value, int) and not isinstance(value, bool) and value >= 0
         else None
     )
+
+
+def _process_error_code(stderr: str, output_exists: bool) -> str:
+    """Classify provider failures without retaining potentially sensitive stderr."""
+
+    normalized: str = stderr.casefold()
+    if "not logged in" in normalized or "authentication" in normalized:
+        return "provider_not_authenticated"
+    if "rate limit" in normalized or "429" in normalized:
+        return "provider_rate_limited"
+    if "context length" in normalized or "token limit" in normalized:
+        return "provider_context_exceeded"
+    return "provider_nonzero_exit" if output_exists else "provider_missing_output"
 
 
 def codex_cli_status(

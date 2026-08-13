@@ -1,10 +1,12 @@
 """Public report and complete-evidence response contracts."""
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel
 
 from game_review_analyzer.application.theme_metrics import (
+    calculate_theme_metrics,
     calculate_filtered_theme_metrics,
     review_matches_filter,
 )
@@ -40,6 +42,16 @@ class ReportScopeResponse(BaseModel):
 
     review_count: int
     thresholds_calibrated: bool
+    early: "CohortScopeResponse | None" = None
+    recent: "CohortScopeResponse | None" = None
+
+
+class CohortScopeResponse(BaseModel):
+    """Expose one immutable chronological cohort and its date extent."""
+
+    review_count: int
+    source_created_from: int
+    source_created_to: int
 
 
 class ReportProvenanceResponse(BaseModel):
@@ -82,6 +94,22 @@ class ReportThemeResponse(BaseModel):
     evidence_count: int
     representative_evidence: tuple[RepresentativeEvidenceResponse, ...]
     opposes_theme_id: str | None
+    cohort_comparison: "ThemeCohortComparisonResponse | None" = None
+
+
+class ThemeCohortComparisonResponse(BaseModel):
+    """Compare one Theme over the immutable early and recent denominators."""
+
+    early: ThemeSupportResponse
+    recent: ThemeSupportResponse
+    percentage_point_change: float
+    direction: Literal[
+        "appears_improved",
+        "mostly_unchanged",
+        "appears_worse",
+        "new_in_recent_reviews",
+        "no_longer_prominent",
+    ]
 
 
 class MixedReceptionResponse(BaseModel):
@@ -173,6 +201,62 @@ def build_report_response(
     point_by_id: dict[str, OpinionPoint] = {
         point.id: point for point in report.analysis_result.opinion_points
     }
+    comparison_by_theme: dict[str, ThemeCohortComparisonResponse] = {}
+    early_scope: CohortScopeResponse | None = None
+    recent_scope: CohortScopeResponse | None = None
+    if (
+        resolved_query == EvidenceFilterQuery()
+        and report.early_review_revision_ids
+        and report.recent_review_revision_ids
+    ):
+        early_reviews: tuple[SteamReview, ...] = tuple(
+            revisions_by_id[identifier]
+            for identifier in report.early_review_revision_ids
+        )
+        recent_reviews: tuple[SteamReview, ...] = tuple(
+            revisions_by_id[identifier]
+            for identifier in report.recent_review_revision_ids
+        )
+        early_scope = cohort_scope(early_reviews)
+        recent_scope = cohort_scope(recent_reviews)
+        early_ids: set[str] = {review.review_id for review in early_reviews}
+        recent_ids: set[str] = {review.review_id for review in recent_reviews}
+        early_metrics = calculate_theme_metrics(
+            early_ids,
+            (
+                point
+                for point in report.analysis_result.opinion_points
+                if point.review_revision_id in early_ids
+            ),
+            report.analysis_result.themes,
+            report.metric_policy,
+        )
+        recent_metrics = calculate_theme_metrics(
+            recent_ids,
+            (
+                point
+                for point in report.analysis_result.opinion_points
+                if point.review_revision_id in recent_ids
+            ),
+            report.analysis_result.themes,
+            report.metric_policy,
+        )
+        early_by_id: dict[str, ThemeMetric] = {
+            metric.theme_id: metric for metric in early_metrics.all_themes
+        }
+        recent_by_id: dict[str, ThemeMetric] = {
+            metric.theme_id: metric for metric in recent_metrics.all_themes
+        }
+        comparison_by_theme = {
+            theme.id: theme_comparison(
+                theme,
+                early_by_id[theme.id],
+                recent_by_id[theme.id],
+                len(early_reviews),
+                len(recent_reviews),
+            )
+            for theme in report.analysis_result.themes
+        }
 
     filtered_metrics = calculate_filtered_theme_metrics(
         revisions_by_id.values(),
@@ -227,6 +311,7 @@ def build_report_response(
                 for point in representative_points
             ),
             opposes_theme_id=theme.opposes_theme_id,
+            cohort_comparison=comparison_by_theme.get(theme.id),
         )
 
     result = report.analysis_result
@@ -261,6 +346,8 @@ def build_report_response(
         scope=ReportScopeResponse(
             review_count=len(matching_reviews),
             thresholds_calibrated=report.thresholds_calibrated,
+            early=early_scope,
+            recent=recent_scope,
         ),
         provenance=ReportProvenanceResponse(
             provider=result.provider,
@@ -275,6 +362,56 @@ def build_report_response(
             MixedReceptionResponse(**item.model_dump())
             for item in filtered_metrics.mixed_reception
         ),
+    )
+
+
+def cohort_scope(reviews: tuple[SteamReview, ...]) -> CohortScopeResponse:
+    """Summarize the immutable date extent of one non-empty cohort."""
+
+    timestamps: tuple[int, ...] = tuple(
+        review.source_created_at for review in reviews
+    )
+    return CohortScopeResponse(
+        review_count=len(reviews),
+        source_created_from=min(timestamps),
+        source_created_to=max(timestamps),
+    )
+
+
+def theme_comparison(
+    theme: Theme,
+    early: ThemeMetric,
+    recent: ThemeMetric,
+    early_denominator: int,
+    recent_denominator: int,
+) -> ThemeCohortComparisonResponse:
+    """Calculate one conservative, polarity-aware cohort direction label."""
+
+    change: float = recent.support_percentage - early.support_percentage
+    meaningful_count: int = 2
+    if early.support_count == 0 and recent.support_count >= meaningful_count:
+        direction = "new_in_recent_reviews"
+    elif recent.support_count == 0 and early.support_count >= meaningful_count:
+        direction = "no_longer_prominent"
+    elif abs(change) < 5:
+        direction = "mostly_unchanged"
+    elif (change > 0) == (theme.polarity == ThemePolarity.NEGATIVE):
+        direction = "appears_worse"
+    else:
+        direction = "appears_improved"
+    return ThemeCohortComparisonResponse(
+        early=ThemeSupportResponse(
+            count=early.support_count,
+            percentage=early.support_percentage,
+            denominator=early_denominator,
+        ),
+        recent=ThemeSupportResponse(
+            count=recent.support_count,
+            percentage=recent.support_percentage,
+            denominator=recent_denominator,
+        ),
+        percentage_point_change=change,
+        direction=direction,
     )
 
 

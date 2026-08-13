@@ -44,6 +44,9 @@ def create_report(
     result: AnalysisResult,
     review_revision_ids: Iterable[int],
     metric_policy: ThemeMetricPolicy,
+    *,
+    early_review_revision_ids: Iterable[int] = (),
+    recent_review_revision_ids: Iterable[int] = (),
 ) -> ReportVersion:
     """Calculate and append one immutable report from a validated provider result."""
 
@@ -62,6 +65,8 @@ def create_report(
         app_id=request.app_id,
         metadata_snapshot=metadata,
         review_revision_ids=tuple(review_revision_ids),
+        early_review_revision_ids=tuple(early_review_revision_ids),
+        recent_review_revision_ids=tuple(recent_review_revision_ids),
         analysis_result=result,
         metric_policy=metric_policy,
         theme_metrics=metrics,

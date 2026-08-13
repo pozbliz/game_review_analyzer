@@ -197,7 +197,7 @@ describe("application shell", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("starts a Quick import and exposes durable progress and cancellation", async () => {
+  it("starts a Full import and exposes durable progress and cancellation", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
       const url = request.toString();
       if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
@@ -205,9 +205,9 @@ describe("application shell", () => {
       if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url === "/api/providers/ollama") return json({ ...ollamaProvider(), available: false, models: [] });
       if (url.startsWith("/api/games/preview")) return json(metadata());
-      if (url === "/api/games/1145350/imports/quick") {
-        expect(options).toMatchObject({ method: "POST", body: JSON.stringify({ target_count: 5000 }) });
-        return json(job("queued", 0));
+      if (url === "/api/games/1145350/imports/full") {
+        expect(options).toMatchObject({ method: "POST" });
+        return json(job("queued", 0, "full"));
       }
       if (url === "/api/jobs/job-1/cancel") return json(job("cancelled", 200));
       if (url === "/api/jobs/job-1/delete") return new Response(null, { status: 204 });
@@ -218,7 +218,7 @@ describe("application shell", () => {
     await previewGame();
     fireEvent.click(screen.getByRole("button", { name: "Create report" }));
 
-    expect(await screen.findByText("200 of 5,000 reviews")).toBeVisible();
+    expect(await screen.findByText("200 reviews scanned")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Cancel import" }));
     expect(await screen.findByText("Import cancelled")).toBeVisible();
     fireEvent.change(screen.getByLabelText("Type job-1 to delete this incomplete job"), {
@@ -270,7 +270,7 @@ describe("application shell", () => {
       if (url === "/api/config") return json(publicConfig());
       if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url.startsWith("/api/games/preview")) return json(metadata());
-      if (url === "/api/games/1145350/imports/quick") return json(job("completed", 5000));
+      if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
       if (url === "/api/games/1145350/analyses/codex-cli") return json(analysisRun("queued"));
       analysisPolls += 1;
       return json(analysisRun(analysisPolls > 1 ? "completed" : "running"));
@@ -298,7 +298,7 @@ describe("application shell", () => {
       if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url === "/api/providers/ollama") return json(ollamaProvider());
       if (url.startsWith("/api/games/preview")) return json(metadata());
-      if (url === "/api/games/1145350/imports/quick") return json(job("completed", 5000));
+      if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
       if (url === "/api/games/1145350/analyses/ollama") {
         expect(options).toMatchObject({
           method: "POST",
@@ -353,7 +353,7 @@ describe("application shell", () => {
       if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url === "/api/providers/ollama") return json({ ...ollamaProvider(), available: false, models: [] });
       if (url.startsWith("/api/games/preview")) return json(metadata());
-      if (url === "/api/games/1145350/imports/quick") return json(job("queued", 0));
+      if (url === "/api/games/1145350/imports/full") return json(job("queued", 0, "full"));
       if (url === "/api/jobs/job-1/retry") return json(job("queued", 0));
       progressRequests += 1;
       return json(progressRequests === 1 ? job("failed", 0) : job("completed", 5000));
@@ -461,11 +461,11 @@ function storefrontFields(): string[] {
   ];
 }
 
-function job(state: string, importedCount: number): object {
+function job(state: string, importedCount: number, scope: string = "full"): object {
   return {
     id: "job-1",
     app_id: 1145350,
-    scope: "quick",
+    scope,
     state,
     target_count: 5000,
     imported_count: importedCount,
@@ -497,5 +497,7 @@ function analysisRun(state: string): object {
     input_tokens: state === "completed" ? 120 : null,
     cached_input_tokens: state === "completed" ? 20 : null,
     output_tokens: state === "completed" ? 30 : null,
+    extracted_review_count: state === "completed" ? 1 : 0,
+    phase: state === "running" ? "extracting" : state,
   };
 }

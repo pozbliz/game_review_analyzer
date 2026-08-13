@@ -69,6 +69,38 @@ def test_report_summary_and_complete_evidence_preserve_metrics_and_context(
     assert evidence["items"][1]["review"]["playtime_at_review_minutes"] is None
 
 
+def test_report_compares_immutable_early_and_recent_cohorts_by_default(
+    tmp_path: Path,
+) -> None:
+    database_path: Path = tmp_path / "app.sqlite3"
+    seed_report(database_path)
+    with sqlite3.connect(database_path) as connection:
+        snapshot_json: str = connection.execute(
+            "SELECT snapshot_json FROM report_versions WHERE id = 'report-1'"
+        ).fetchone()[0]
+        import json
+
+        snapshot: dict[str, object] = json.loads(snapshot_json)
+        snapshot["early_review_revision_ids"] = [1]
+        snapshot["recent_review_revision_ids"] = [2]
+        connection.execute(
+            "UPDATE report_versions SET snapshot_json = ? WHERE id = 'report-1'",
+            (json.dumps(snapshot),),
+        )
+
+    with TestClient(create_app(Settings(database_path=database_path))) as client:
+        response = client.get("/api/reports/report-1")
+
+    payload = response.json()
+    comparison = payload["positive_themes"][0]["cohort_comparison"]
+    assert payload["scope"]["early"]["review_count"] == 1
+    assert payload["scope"]["recent"]["review_count"] == 1
+    assert comparison["early"] == {"count": 1, "percentage": 100.0, "denominator": 1}
+    assert comparison["recent"] == {"count": 1, "percentage": 100.0, "denominator": 1}
+    assert comparison["percentage_point_change"] == 0
+    assert comparison["direction"] == "mostly_unchanged"
+
+
 def test_report_and_evidence_apply_the_same_temporary_filter(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
     seed_report(database_path)
