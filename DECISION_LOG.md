@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-13 — Source-release operation and configuration documented
+
+**What changed:**
+
+- Added a secret-free `.env.example` covering every supported runtime setting, with an automated check that the optional Steam key remains blank.
+- Added one source-operation guide covering locked installation, production startup, configuration, Codex CLI, Ollama, Manual Codex, local storage, privacy, updates, recovery, and current release limits.
+- Corrected the README constraint: the database path is configurable through the environment, but no in-app relocation workflow exists.
+
+**Why:**
+
+- A source release needs one reliable operational path without duplicating setup details across provider-specific files.
+- Testing the example against the supported settings prevents configuration drift and accidental example secrets.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- The MIT copyright holder, assistive-technology acceptance, analysis-quality release gate, and final release approval remain human gates.
+
+---
+
 ## 2026-08-13 — Evidence Filters reuse the approved review-scope dimensions
 
 **What changed:**

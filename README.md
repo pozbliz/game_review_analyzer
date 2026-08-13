@@ -45,6 +45,7 @@ Embeddings are not required in the MVP. They remain a future enhancement for sem
 - `docs/evaluation/pilot-v1.md` — first human-adjudicated evaluation results and limits
 - `docs/evaluation/ollama-pilot-v1.md` — local Qwen 3.5 4B/9B contract and performance results
 - `docs/steam-data-policy.md` — validated Steam Web API and best-effort storefront obligations
+- `docs/source-operation.md` — source installation, configuration, providers, privacy, updates, and recovery
 - `PLAN.md` — phased implementation sequence
 - `TASKS.md` — active work and unresolved issues
 - `DECISION_LOG.md` — design-change history
@@ -76,5 +77,5 @@ The backend uses a packaged `src/game_review_analyzer/` layout with domain, appl
 - Keyed catalog synchronization requires a standard Steam Web API key supplied only to the local backend. Store country is configured with `GAME_REVIEW_ANALYZER_STEAM_COUNTRY`; returned currency and formatted prices are shown without conversion.
 - A recent-review sample represents that time-biased sample, not all historical opinion.
 - Full imports and cloud-provider analysis can be slow or costly for popular games.
-- The application data directory cannot yet be relocated. Report exports are not complete database backups.
+- The application data path can be changed only through an environment variable; there is no in-app relocation workflow. Report exports are not complete database backups.
 - AI grouping is fallible, so reports must retain inspectable evidence and deterministic metrics.

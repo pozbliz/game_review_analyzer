@@ -28,7 +28,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 ### Continuation checkpoint — 2026-08-12
 
 - Last production implementation: temporary Evidence Filters recalculate existing Theme metrics and restrict evidence without persistence or model calls.
-- Last complete code gate: 113 backend tests and 21 frontend tests passed; the production frontend build passed.
+- Last complete local release gate: locked restores, 114 backend tests, 21 frontend tests, production build, tracked-secret scan, Python and npm advisory scans, and production HTTP smoke passed. GitHub Actions has no recorded runs; connected-browser acceptance could not run because no browser instance was connected.
 - Current Codex path: authenticated `gpt-5.6-luna` with medium reasoning; the application does not read or store Codex credentials, and the live durable report path is verified.
 - Current environment check: Codex CLI `0.147.0` is authenticated through ChatGPT in the normal user context. Sandboxed status checks cannot see the external credential store and may still report `Not logged in`.
 - Current environment check: Ollama 0.32.8 is running with Qwen 3.5 4B and 9B installed; Ollama reports CPU-only inference and Windows exposes 15.4 GB visible memory.
@@ -287,10 +287,10 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 **Blocked by:** Slices 5–12, Steam-policy validation, accessibility/security gates, copyright-holder confirmation, and release approval.
 
 - [ ] Complete Steam-policy, security, privacy, accessibility, and analysis-quality release gates.
-- [ ] Add and test a secret-free `.env.example`.
+- [x] Add and test a secret-free `.env.example`.
 - [ ] [HUMAN] Confirm the copyright holder for the MIT license.
 - [ ] Add the MIT license and source-release metadata.
-- [ ] Write source installation, provider, Ollama, Codex, storage, privacy, export, update, and recovery documentation.
+- [x] Write source installation, provider, Ollama, Codex, storage, privacy, export, update, and recovery documentation.
 - [ ] Run a clean-Windows source installation through representative AppID, Codex/cloud, refresh, filtering, history, and export workflows.
 - [ ] Run full CI, dependency, secret-leak, sanitization, accessibility, and release-artifact checks.
 - [ ] [HUMAN] Review and approve the source-release candidate.
