@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 10
+CURRENT_SCHEMA_VERSION = 11
 
 
 def initialize_database(database_path: Path) -> None:
@@ -176,6 +176,17 @@ def initialize_database(database_path: Path) -> None:
                 "recent_review_revision_ids_json TEXT NOT NULL DEFAULT '[]'"
             )
             connection.execute("INSERT INTO schema_migrations(version) VALUES (10)")
+        if 11 not in applied_versions:
+            connection.execute(
+                "CREATE TABLE review_opinion_extractions ("
+                "review_revision_id INTEGER NOT NULL "
+                "REFERENCES review_revisions(id) ON DELETE CASCADE, "
+                "provider TEXT NOT NULL, model TEXT NOT NULL, "
+                "contract_version TEXT NOT NULL, opinion_points_json TEXT NOT NULL, "
+                "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                "PRIMARY KEY(review_revision_id, provider, model, contract_version))"
+            )
+            connection.execute("INSERT INTO schema_migrations(version) VALUES (11)")
 
 
 def schema_version(database_path: Path) -> int:
