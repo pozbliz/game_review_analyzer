@@ -9,3 +9,8 @@
 - The latest report tile should be visually prominent enough to draw attention, while still using the Catalog's restrained green palette; `Create report` may remain a primary CTA.
 - The analysis-configuration direction should keep scope controls and processing disclosure visible together; the user selected the Split variant.
 - Durable progress should communicate checkpointed stage completion calmly; the user selected the Timeline variant over the denser Command Center and Activity Log directions.
+
+## 2026-08-14
+
+- Returning users want saved reports surfaced before creation controls, with visible dates in report history and **Open latest report** as the primary action.
+- The normal workflow is download and prepare once, then create another immutable report only when explicitly requested; Dataset maintenance and the scope digest should not occupy the report view.

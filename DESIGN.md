@@ -37,7 +37,7 @@ The MVP is distributed from a public GitHub repository under the MIT license and
 
 ### Approved workflow sequence
 
-The approved prototype directions form one continuous flow: Catalog finds or confirms the game; Split configures the review scope, provider, processing location, and estimate; Timeline shows durable acquisition and report-generation progress; Research presents the resulting evidence-backed report. Returning users can open the latest report directly from Catalog, while new or refreshed reports proceed through configuration and progress before opening Research.
+The approved prototype directions form one continuous flow: Catalog finds or confirms the game; Split configures the review scope, provider, processing location, and estimate; Timeline shows durable acquisition and report-generation progress; Research presents the resulting evidence-backed report. Returning users open the latest saved report directly from Catalog. Creating another report is a separate explicit action that reuses the retained local Game Dataset unless the user explicitly requests new review acquisition.
 
 The individual prototypes use deliberately different visual treatments to make direction selection clear. Production integration must consolidate them into one shared token system for color, typography, spacing, radii, and motion while preserving each approved interaction model.
 
@@ -47,9 +47,9 @@ The approved game-selection direction uses the Catalog's dense search-and-previe
 
 The home view provides game-name search, direct AppID entry, recent reports, and access to the complete report library. Direct AppID entry and review retrieval work without a Steam Web API key. A securely configured Steam Web API key enables synchronization of Valve's official game catalog for more reliable name search. Best-effort public store search may supplement it but must never be the only way to select a game.
 
-Selecting a game first shows enough identity information to prevent mistakes: title, capsule artwork, developer, release date/status, AppID, and review availability. These fields remain visible when report history exists. A prominent latest-report card appears beneath them, while `Create report` remains the primary action for generating another version; it does not replace the identity information. Games without history show identity confirmation and the `Create report` action.
+Selecting a game first shows enough identity information to prevent mistakes: title, capsule artwork, developer, release date/status, AppID, and review availability. These fields remain visible when report history exists. A prominent **Open latest report** action appears beneath them, followed by older reports labeled with creation date and provider/model. **Create new report** is separate and secondary. Games without history show identity confirmation and **Create report** as the primary action.
 
-The report action is labeled **Create report** in the game-selection flow. It means generating a new immutable Report Version, whether it is the first result or a later result for an existing game. The latest report is the prominent entry point; older versions are selected through a lightweight report-history dialog. “Update report” is avoided because it implies mutating an existing result, and “Compare reports” remains reserved for a future comparison feature.
+**Create report** generates the first immutable Report Version. **Create new report** generates a later version from retained local reviews without automatically repeating a Full download. New review acquisition is a separate explicit choice and also creates a new immutable report rather than changing an old one. “Update report” is avoided because it implies mutation, and “Compare reports” remains reserved for a future comparison feature.
 
 ### Configure an analysis
 
@@ -89,9 +89,9 @@ The report prioritizes review analysis, then supporting game information:
 4. Game metadata and feature overview
 5. Steam-hosted media
 6. Review evidence browser
-7. Report history and refresh controls
+7. Dated report history
 
-On wider screens, positive and negative headline themes appear side by side and stack on narrow screens. Reports are immutable: refreshing or rerunning creates a new report version instead of rewriting the old result.
+On wider screens, positive and negative headline themes appear side by side and stack on narrow screens. Reports are immutable: rerunning creates a new report version instead of rewriting the old result. The report view does not expose general Dataset maintenance or update controls; new-report acquisition starts from the game flow. The internal scope digest remains stored and exportable for provenance but is not shown in the normal report summary.
 
 The approved report-exploration direction uses a dense research-workspace overview with positive and negative Theme rankings visible together. Each complete Theme row is an expandable control with a down-arrow indicator. Selecting it opens a lightweight, neutral detail region directly beneath that Theme with its summary, support metrics, category, representative excerpts, and complete-evidence action. Only one Theme detail region is open at a time. Selecting the open Theme again collapses it. The report does not use a separate drawer or compact always-visible Theme inspector.
 

@@ -1,5 +1,15 @@
 # Tasks
 
+## Simplify saved-report workflow
+
+- [ ] After game selection, load its saved report history and make **Open latest report** the primary action when history exists.
+- [ ] Show older reports with their creation date and provider/model; keep **Create new report** visually separate and secondary.
+- [ ] Create another report from the retained local Game Dataset without automatically repeating a Full review download.
+- [ ] Replace report-view **Dataset maintenance** controls with an explicit new-report flow outside the immutable report; keep low-level maintenance only where required for recovery or storage management.
+- [ ] Remove **Scope digest** from the visible report summary while retaining it in stored/exported provenance.
+- [ ] Investigate why the Minishoot Ollama runs produced zero Themes, define when an empty Theme result is legitimate, and prevent misleading empty reports without weakening evidence validation.
+- [ ] Add API, component, and connected-browser coverage for saved-report discovery, dated history, retained-dataset reuse, and the simplified report header.
+
 ## Oldest-versus-newest cohort comparison
 
 - [x] Persist deterministic, non-overlapping cohorts containing up to the 2,500 oldest and 2,500 newest eligible reviews from a completed full-history import.

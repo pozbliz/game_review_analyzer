@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-08-14 — Saved reports lead a one-time preparation workflow
+
+**What changed:**
+
+- Approved a catalog flow that shows the latest saved report first, dates every history entry, and separates **Create new report** as a secondary action.
+- New reports reuse retained local reviews by default; acquiring newer reviews is explicit rather than an automatic Full download.
+- Removed Dataset maintenance and the scope digest from the normal report-view specification while retaining recovery/storage controls and stored provenance outside that view.
+- Recorded the zero-Theme Minishoot Ollama result as an analysis-quality defect requiring a bounded follow-up.
+
+**Why:**
+
+- Existing immutable reports and local reviews should be discoverable before the application offers duplicate acquisition work.
+- The intended use is prepare once and read the report; maintenance terminology and internal digests add clutter without helping that workflow.
+
+**New issues:**
+
+- The current production UI does not yet implement this simplified flow.
+- Empty Theme reports need an explicit validity rule and user-facing failure behavior.
+
+**Needs human judgment:**
+
+- Calibrate when a genuinely sparse review scope may validly contain zero Themes.
+
+---
+
 ## 2026-08-14 — Direct report URLs fall back to the React application
 
 **What changed:**
