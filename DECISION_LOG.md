@@ -1,5 +1,25 @@
 # Decision Log
 
+## 2026-08-13 — Collapsed catalog preserves explicit grid placement
+
+**What changed:**
+
+- Pinned the selection panel, toggle rail, and preview panel to their intended grid columns, with a one-column override at the existing mobile breakpoint.
+
+**Why:**
+
+- The hidden selection panel leaves CSS grid layout flow. Automatic placement then moved the toggle into the zero-width column and the preview into the 48-pixel rail instead of the flexible details column.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Confirm the rebuilt collapsed layout visually in Chrome after a hard reload.
+
+---
+
 ## 2026-08-13 — Catalog selection collapses into a narrow rail
 
 **What changed:**
