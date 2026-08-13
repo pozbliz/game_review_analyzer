@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-13 — Evidence Filters reuse the approved review-scope dimensions
+
+**What changed:**
+
+- Added one strict, immutable Evidence Filter query contract covering Steam recommendation, Steam purchase, received-free and Early Access state, playtime range and basis, and review-created date range.
+- Defined absent optional values as no restriction, kept playtime-at-review as the default basis, and rejected unknown fields, negative bounds, and inverted ranges.
+- Kept relative date presets out of the backend contract; clients resolve them to explicit inclusive timestamps before querying.
+
+**Why:**
+
+- Reusing the already approved review-scope dimensions avoids an immediately incomplete high-playtime-only API and a later breaking contract expansion.
+- Explicit timestamps make repeated filter requests deterministic and remove backend clock behavior from the contract.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-13 — Browser acceptance findings fixed at shared boundaries
 
 **What changed:**
