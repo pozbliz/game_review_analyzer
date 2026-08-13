@@ -17,7 +17,7 @@ The MVP is distributed from a public GitHub repository under the MIT license and
 - Analyze English-language review evidence without requiring the application to download an AI model.
 - Support user-selected Codex CLI, Ollama, OpenAI API, Anthropic Claude API, Google Gemini API, and manual Codex analysis behind one provider-neutral contract.
 - Present up to 10 reliable positive and 10 reliable negative design themes, with fewer when evidence is insufficient.
-- Support quick, full, incremental refresh, filtering, and cohort-specific analysis workflows.
+- Support quick, full, incremental refresh, and deterministic evidence-filtering workflows.
 - Keep reports reproducible, inspectable, exportable, and private by default.
 
 ### Non-goals for the MVP
@@ -157,11 +157,11 @@ The analysis scope can restrict:
 
 Review date is evidence timing, not proof of the exact game version the reviewer played.
 
-### Evidence Filter and Cohort Analysis
+### Evidence Filter and deferred Cohort Analysis
 
-An **Evidence Filter** temporarily restricts an existing report and recalculates metrics only for already discovered Themes. It reranks those Themes, hides Themes with zero support, marks Themes that fall below the report's headline thresholds, and limits excerpts and evidence drill-down to reviews inside the filter. It never discovers a new Theme. It is resettable and is not saved automatically.
+An **Evidence Filter** temporarily restricts an existing report and recalculates metrics only for already discovered Themes. It reranks those Themes, hides Themes with zero support, marks Themes that fall below the report's headline thresholds, and limits excerpts, raw review evidence, and evidence drill-down to reviews inside the filter. It never discovers a new Theme, requires no model call, is resettable, and is not saved automatically.
 
-A **Cohort Analysis** intentionally reruns theme discovery for a selected Review Cohort. It is stored as a separate immutable result with its exact scope. Minimum cohort-size rules must be calibrated before release.
+A **Cohort Analysis** intentionally reruns theme discovery for a selected Review Cohort and stores a separate immutable result with its exact scope. It is deferred until minimum cohort-size rules and the additional model-run workflow are calibrated.
 
 ## Analysis and evidence rules
 
@@ -288,7 +288,7 @@ Before export, the application labels this workflow **External/manual cloud**, i
 - An **Analysis Job** owns durable acquisition and processing checkpoints until it completes, fails, is cancelled, or is deleted.
 - An **Analysis Run** owns one exact provider request, cancellation state, measured usage, and its resulting Report Version.
 - A **Report Version** is an immutable result tied to an exact review scope, exact Review Revision membership, metadata snapshot, schema and prompt versions, pipeline configuration, provider and model identifiers, and creation time.
-- A **Cohort Analysis** is a Report Version whose scope is an explicit Review Cohort.
+- A future **Cohort Analysis** is a Report Version whose scope is an explicit Review Cohort.
 - The newest Report Version opens by default; older versions remain in history until manually deleted.
 - Refresh creates a new Report Version after adding reviews, recording new Review Revisions for changed reviews, and reclustering the relevant stored corpus. Historical reports continue to resolve their original Review Revisions.
 
@@ -354,13 +354,14 @@ The React client does not own credentials, Steam integration logic, provider SDK
 - A user with an authenticated Codex CLI installation explicitly starts analysis, sees the external-cloud and quota disclosure, and receives a validated report without manually preparing instructions or moving result files.
 - A user configures a cloud provider session key, sees a cloud-processing label and approximate cost, completes analysis, and cannot retrieve the key from storage or diagnostics.
 - A Quick report starts with the latest 5,000 eligible English reviews, later refreshes with new or revised reviews, and creates a new immutable report version over the grown dataset while the old report still resolves its original Review Revisions.
-- Filtering for high-playtime reviews recalculates and reranks existing Theme metrics immediately, limits visible evidence to the filter, and marks below-threshold Themes; running a Cohort Analysis instead creates a separately scoped result that can discover new Themes.
+- Filtering for high-playtime reviews recalculates and reranks existing Theme metrics immediately, limits visible raw reviews and other evidence to the filter, and marks below-threshold Themes without a model call.
 - Missing screenshots or feature metadata appear as unknown while the review report still completes.
 - A mixed mechanic displays the agreed sentiment/prevalence line and every percentage reproduces from distinct-review evidence.
 
 ## Deferred work
 
 - Embedding-assisted semantic matching and clustering
+- Cohort Analysis that reruns theme discovery for a selected Review Cohort
 - Cross-game and cross-version comparison views
 - Automated translation and multilingual analysis with original-text provenance
 - PDF export
@@ -374,7 +375,7 @@ The React client does not own credentials, Steam integration logic, provider SDK
 ## Open questions requiring evidence or later judgment
 
 - What support and coherence thresholds produce reliable design Themes across games of different sizes?
-- What minimum cohort size supports meaningful recalculation and new discovery?
+- What minimum cohort size supports meaningful future cohort-specific discovery?
 - What threshold makes technical feedback genuinely frequent enough for the secondary section?
 - How accurately does the no-embedding pipeline group paraphrases across the initial AI providers?
 - How should future taxonomy revisions be exposed while preserving immutable historical reports?

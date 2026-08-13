@@ -2,7 +2,7 @@
 
 ## Status
 
-The product design and this strategic plan are approved. Slices 1–8, 11, and 12 are implemented, including authenticated live Codex verification, while Slice 4 retains a deferred production-quality calibration gate. Slice 9 has the Ollama adapter, model selection, and local Qwen benchmark implemented; later provider choices remain optional. Calibration blocks Slice 10, and whether to retain it in the source MVP or defer it now requires explicit human judgment. The concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
+The product design and this strategic plan are approved. Slices 1–8, 11, and 12 are implemented, including authenticated live Codex verification, while Slice 4 retains a deferred production-quality calibration gate. Slice 9 has the Ollama adapter, model selection, and local Qwen benchmark implemented; later provider choices remain optional. Slice 10 retains deterministic Evidence Filters without model calls and is ready for implementation; Cohort Analysis is deferred. The concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
 
 ## Durable verification seams
 
@@ -160,19 +160,19 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Status:** In progress. Local Ollama availability and installed-model discovery, schema-constrained streaming analysis, cancellation, exact validation, durable report integration, measured usage, and explicit provider/model selection are implemented. Qwen 3.5 4B failed the full-analysis trust boundary for all three pilot games, while 9B was stopped after about 20 minutes on the first six-review game because this machine is CPU-only. Neither is a reliable full-analysis default here; bounded extraction remains the sensible future local experiment. Hosted API and Claude Code adapters remain optional later work.
 
-## Slice 10 — Filter evidence and create Cohort Analyses
+## Slice 10 — Filter report evidence
 
-**Outcome:** Apply temporary Evidence Filters with immediate deterministic recalculation or deliberately create a separately scoped Cohort Analysis that can discover new Themes.
+**Outcome:** Apply temporary Evidence Filters that narrow raw review evidence and immediately recalculate metrics for existing Themes without a model call.
 
-**Blocked by:** Slices 5, 7, and calibrated minimum cohort sizes.
+**Blocked by:** None; Slices 5 and 7 are complete.
 
-**Scope:** Theme Metrics, Review Cohort scope contracts, Analysis Provider reuse, Report Repository, and filter/cohort interface.
+**Scope:** Theme Metrics, filter query contracts, report evidence APIs, and the filter interface.
 
-**Acceptance:** Tests distinguish temporary filters from saved analyses, reproduce every denominator, rerank discovered Themes, hide zero-support Themes, mark below-threshold Themes, constrain excerpts and drill-down to the filter, preserve report immutability, reset unsaved filters, and enforce minimum cohort requirements.
+**Acceptance:** Tests reproduce every denominator, rerank discovered Themes, hide zero-support Themes, mark below-threshold Themes, constrain raw reviews, excerpts, and drill-down to the filter, preserve report immutability, and reset unsaved filters.
 
-**Tradeoff:** Small cohorts may be rejected rather than presented with misleading findings.
+**Tradeoff:** Filters cannot discover Themes that were absent from the original report; Cohort Analysis remains deferred until its reliability and model-run cost are calibrated.
 
-**Status:** Blocked by the deferred calibration work. Before source-release work can proceed, explicitly decide whether Cohort Analysis remains in the source MVP and calibration resumes, or whether Slice 10 moves to deferred scope through an approved plan/design revision.
+**Status:** Approved and ready for implementation.
 
 ## Slice 11 — Complete game discovery and Steam overview
 
@@ -233,6 +233,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 ## Deferred
 
 - Embedding-assisted semantic grouping
+- Cohort Analysis that reruns theme discovery for a selected Review Cohort
 - Cross-game and cross-version comparison
 - Automated translation and multilingual analysis
 - PDF export

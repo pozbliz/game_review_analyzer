@@ -35,8 +35,8 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] [HUMAN] Install and start Ollama without downloading a model automatically.
 - [x] [HUMAN] Approve and download Qwen 3.5 4B and 9B for local benchmarking.
 - Slice 8 live verification is complete. A one-attempt diagnostic exposed missing prompt guidance for the two-review Theme-support invariant; after adding it, run `32f549e3-0d1d-4193-8c6d-a7e67c07da89` created and exposed an immutable report for one approved Hades II review. The full contract has high fixed overhead: 15,744 input and 563 output tokens for this tiny scope.
-- Ollama implementation and the installed-Qwen benchmark are complete; add hosted API adapters only when requested. Slice 10 remains blocked by deferred minimum-cohort calibration; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
-- Remaining human gates are the Slice 10 MVP-scope decision, connected-browser accessibility/responsive verification, the deferred production-quality baseline, MIT copyright-holder confirmation, and source/package release approval.
+- Ollama implementation and the installed-Qwen benchmark are complete; add hosted API adapters only when requested. Slice 10 retains deterministic Evidence Filters without model calls, while Cohort Analysis and its minimum-size calibration are deferred; do not resume the 60-batch stability experiment unless the user explicitly approves a bulk-inference path.
+- Remaining human gates are connected-browser accessibility/responsive verification, the deferred production-quality baseline, MIT copyright-holder confirmation, and source/package release approval.
 
 ## 2026-08-09
 
@@ -63,21 +63,22 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 - [x] Prepare realistic synthetic content for report Themes, mixed reception, Technical Themes, evidence, filtering, metadata identity, and report history.
 - [x] Build isolated Research Desk, Editorial Brief, and Evidence Canvas report-exploration prototypes behind the standard visual picker.
-- [ ] Verify report variant switching, replay, filters, Theme selection, evidence overlay, history, keyboard behavior, and console output in a connected browser.
-- [ ] Review all report-exploration variants at laptop and narrow viewport widths with reduced-motion and non-color checks.
-- [ ] Restore the in-app browser controller before connected-browser acceptance; its Node runtime currently fails to start with Windows `os error 3` despite an available Node executable and installed browser helper.
+- [x] Verify report variant switching, replay, filters, Theme selection, evidence overlay, history, Escape dismissal, and console output in a connected browser.
+- [x] Review all report-exploration variants at laptop and narrow viewport widths with reduced-motion and non-color checks.
+- [x] Start a new conversation without quitting Codex after restoring `args = ["--disable-sandbox"]`, then open the built-in Browser at the app URL and retry connected-browser acceptance; Codex 26.803.81509 regenerates the plugin-owned argument on full app launch.
+- [ ] Verify native Tab traversal and Enter/Space activation manually; the connected-browser controller dispatches key events but does not reproduce those browser default actions.
 - [x] [HUMAN] Select the Research overview with lightweight inline Theme detail accordions and no separate inspector or drawer.
 - [x] Build Catalog, Guided, and Library game-selection and identity-confirmation prototypes behind the standard visual picker.
 - [x] Integrate compact recent and existing-report access into the Catalog preview without replacing game identity fields.
 - [x] Make the latest report the primary Catalog action, add lightweight report history, and standardize the creation action as `Create report`.
 - [x] Increase latest-report visual emphasis and restore `Create report` as the primary creation CTA.
-- [ ] Verify game-selection variant switching, name/AppID search, result filtering, identity confirmation, library actions, keyboard behavior, console output, and responsive layouts in a connected browser.
+- [x] Verify game-selection variant switching, name/AppID search, result filtering, identity confirmation, library actions, console output, and responsive layouts in a connected browser.
 - [x] [HUMAN] Select the Catalog direction with Library-style report access integrated into the preview panel.
 - [x] Build at least three genuinely different analysis-configuration and processing-disclosure prototypes.
 - [x] [HUMAN] Select the Split analysis-configuration direction with side-by-side configuration and processing disclosure.
 - [x] Build at least three genuinely different durable progress, cancellation, retry, and resume prototypes.
 - [x] [HUMAN] Select the Timeline durable-progress direction with checkpointed stage visibility and calm recovery controls.
-- [ ] Review the combined approved workflow at laptop and narrow viewport widths.
+- [x] Review the combined approved workflow at laptop and narrow viewport widths.
 - [ ] Review keyboard access, non-color communication, reduced motion, and information hierarchy across the combined workflow.
 - [x] [HUMAN] Approve the combined workflow as an implementation-ready direction.
 - [x] Record the approved prototype direction and update affected design documentation before scaffolding production code.
@@ -240,20 +241,16 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Test explicit provider/model selection and no-fallback behavior across the implemented Codex CLI and Ollama adapters.
 - [ ] Evaluate no-embedding quality, token use, and pipeline-wide approximate cost across the initial providers.
 
-### Slice 10 — Filter evidence and create Cohort Analyses
+### Slice 10 — Filter report evidence
 
-**Blocked by:** Slices 5 and 7 plus calibrated minimum Review Cohort sizes.
+**Blocked by:** None; Slices 5 and 7 are complete.
 
-- [ ] [HUMAN] Decide whether Cohort Analysis remains in the source MVP and calibration resumes, or Slice 10 moves to deferred scope through an approved plan/design revision.
-- [ ] Define the versioned Review Cohort scope contract and write contract tests.
-- [ ] Calibrate and record minimum Review Cohort sizes.
+- [x] [HUMAN] Retain deterministic Evidence Filters in the source MVP and defer Cohort Analysis plus minimum-size calibration.
+- [ ] Define the Evidence Filter query contract and write contract tests.
 - [ ] Write deterministic Evidence Filter metric and denominator tests.
-- [ ] Implement reranking, zero-support hiding, below-threshold markers, and evidence restriction without new Theme discovery.
+- [ ] Implement reranking, zero-support hiding, below-threshold markers, and raw review/evidence restriction without new Theme discovery or model calls.
 - [ ] Write component tests, then build resettable Evidence Filter controls.
-- [ ] Write failing minimum-size and scope tests, then implement Cohort Analysis validation.
-- [ ] Implement Cohort Analysis jobs and immutable, explicitly scoped Report Versions.
-- [ ] Write interaction tests, then build clearly differentiated filter and Cohort Analysis actions.
-- [ ] Verify that Evidence Filters never discover Themes and Cohort Analyses can discover cohort-specific Themes.
+- [ ] Verify that Evidence Filters never discover Themes, persist automatically, or invoke an analysis provider.
 
 ### Slice 11 — Complete game discovery and Steam overview
 
@@ -317,6 +314,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 **Blocked by:** Promotion through design and implementation planning after the single-game MVP is reliable.
 
 - [ ] Explore embeddings as an optional semantic-grouping enhancement.
+- [ ] Add Cohort Analysis after minimum-size calibration and explicit implementation planning.
 - [ ] Add cross-game and cross-version comparison.
 - [ ] Add automated translation and multilingual analysis with original-text provenance.
 - [ ] Add PDF export.

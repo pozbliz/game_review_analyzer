@@ -1,5 +1,113 @@
 # Decision Log
 
+## 2026-08-13 — Browser acceptance findings fixed at shared boundaries
+
+**What changed:**
+
+- Deduplicated repeated Steam category descriptions in first-seen order at the shared metadata normalizer.
+- Added narrowly scoped padding and minimum-height rules so measured production links, disclosure summaries, and provider controls meet the 24 CSS-pixel minimum target size.
+- Rechecked live Hades II metadata and fixture-backed reports at 390px: controller labels appear once, every visible interactive target is at least 24 pixels, no horizontal overflow occurs, and browser consoles remain clean.
+
+**Why:**
+
+- Normalizing repeated source descriptions once prevents every UI and export consumer from needing its own duplicate guard.
+- Styling only the measured selectors preserves the dense research layout while meeting the accessibility baseline.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Native keyboard and screen-reader acceptance remain tracked separately.
+
+---
+
+## 2026-08-12 — Connected-browser acceptance resumed with two follow-ups
+
+**What changed:**
+
+- Restored the required built-in browser connection in the fresh conversation and completed the executable production and prototype acceptance matrix at laptop and 390px widths.
+- Verified variant switching, filters, Theme disclosure, evidence and history flows, name/AppID selection, provider/scope disclosure, progress cancellation/resume, semantic labels, non-color text, reduced-motion CSS branches, and clean browser consoles.
+- Kept the overall accessibility gate open because several production links, disclosure summaries, and the provider selector render between 17.6 and 21.6 CSS pixels tall, below the 24-pixel minimum target size.
+- Kept native Tab and Enter/Space verification open because the connected-browser controller dispatches key events but does not reproduce those browser default actions; Escape dismissal was verified.
+- Traced duplicate Hades II DualShock and DualSense feature rows to `normalize_features`, which preserves repeated Steam category descriptions.
+
+**Why:**
+
+- Restoring browser registration clears the environment blocker, but connected-browser acceptance cannot close while a measured accessibility failure remains.
+- Feature descriptions should be deduplicated once at the shared Steam normalization boundary instead of hidden by individual frontend consumers.
+
+**New issues:**
+
+- Increase undersized production interaction targets and recheck at 390px width.
+- Deduplicate repeated Steam category descriptions and recheck the live controller-feature list.
+- Complete native Tab and Enter/Space verification manually.
+
+All three issues are tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-08-12 — Evidence Filters retained and Cohort Analysis deferred
+
+**What changed:**
+
+- Retained temporary Evidence Filters in the source MVP for raw review evidence and deterministic recalculation of existing Theme metrics without model calls.
+- Deferred Cohort Analysis, its minimum-size calibration, and cohort-specific Theme discovery.
+- Revised Slice 10 to contain only the approved Evidence Filter behavior.
+
+**Why:**
+
+- Filtering and reranking already discovered Themes is deterministic, useful for raw-review exploration, and does not spend provider quota.
+- Cohort-specific discovery requires additional model runs and minimum-size calibration that are not justified for the source MVP.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None; the user explicitly approved this scope revision.
+
+---
+
+## 2026-08-12 — Connected-browser registration remains unavailable
+
+**What changed:**
+
+- Retried the required in-app browser controller twice after confirming the installed helper exists and its Node runtime starts.
+- Replaced the stale `os error 3` task diagnosis with the current failure: both connections report `Browser is not available: iab`.
+- Recorded the independently reproduced Windows Codex sandbox failure, `CreateRestrictedToken failed: 87`, which matches open OpenAI Codex issue #18451.
+- Recorded the user's explicit approval to run the `node_repl` MCP server with `args = ["--disable-sandbox"]`; `codex mcp list` validates the saved configuration.
+- Retried after a full Codex restart: `node_repl` runs, but browser discovery returns an empty list and the required `iab` surface remains unavailable.
+- Confirmed the browser plugin is enabled and configured for `iab`, but the installed native computer-use broker is not running and its configured named pipe does not exist; the `node_repl` request consequently contains no browser registration metadata.
+- Confirmed the local app URL had been opened in Chrome rather than Codex's built-in Browser; Chrome correctly did not launch the required in-app-browser broker. The built-in Browser activation path remains untested.
+- After updating to Codex 26.803.81509 and opening the built-in Browser, found that Codex regenerates the plugin-owned MCP configuration as `args = []` on full app launch, removing the approved `--disable-sandbox` workaround.
+- Restored the argument after startup; because the running MCP process cannot hot-reload it, the next retry must use a new conversation without quitting the desktop app.
+- Kept every connected-browser acceptance task open.
+
+**Why:**
+
+- The sandbox failure occurs outside this repository. The approved workaround restores the execution surface, but the desktop app regenerates its plugin-owned configuration at launch and the running MCP process cannot hot-reload edits.
+- Disabling the `node_repl` sandbox gives its browser automation the current Windows user's permissions rather than restricted-token isolation; the user explicitly approved that security tradeoff to restore the required acceptance surface.
+- Substituting another browser would not verify the previously approved acceptance boundary.
+
+**New issues:**
+
+- Start a new conversation without quitting Codex so a fresh MCP process reads the restored argument, open the built-in Browser at the local app URL, verify broker registration, and complete the pending acceptance flow.
+
+This issue remains tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None; the sandbox-disable workaround is explicitly approved.
+
+---
+
 ## 2026-08-12 — Connected-browser acceptance blocked by controller startup
 
 **What changed:**

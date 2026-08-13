@@ -10,7 +10,7 @@ _Avoid:_ Segment when the selection criteria are not defined
 
 **Evidence Filter**
 
-A temporary restriction applied to an existing analysis that recalculates support and sentiment metrics for already discovered themes without discovering new themes.
+A temporary restriction applied to an existing analysis that limits visible raw review evidence and recalculates support and sentiment metrics for already discovered themes without discovering new themes.
 
 _Avoid:_ Cohort analysis, reanalysis
 
