@@ -41,7 +41,13 @@ def test_report_summary_and_complete_evidence_preserve_metrics_and_context(
     assert report["game"] == {"app_id": 1145350, "title": "Hades II"}
     assert report["metadata"]["storefront_source_status"] == "unavailable"
     assert "tags" in report["metadata"]["storefront_missing_fields"]
-    assert report["scope"] == {"review_count": 2, "thresholds_calibrated": False}
+    assert report["metadata"]["storefront"]["price"] is None
+    assert report["scope"] == {
+        "review_count": 2,
+        "thresholds_calibrated": False,
+        "early": None,
+        "recent": None,
+    }
     assert report["provenance"] == {
         "provider": "manual-codex",
         "model": "fixture-model",

@@ -8,6 +8,28 @@ afterEach(() => {
 });
 
 describe("report exploration", () => {
+  it("loads a report without cohort comparisons", async () => {
+    const payload = reportPayload() as Record<string, unknown>;
+    payload.scope = {
+      review_count: 2,
+      thresholds_calibrated: false,
+      early: null,
+      recent: null,
+    };
+    payload.positive_themes = [];
+    payload.negative_themes = [];
+    payload.technical_themes = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => (
+      request.toString().endsWith("/games/1145350/reports")
+        ? json(historyPayload())
+        : json(payload)
+    ));
+
+    render(<ReportView reportId="report-1" />);
+
+    expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
+  });
+
   it("shows ranked design and Technical Themes with one inline detail at a time", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(reportFetch);
 

@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-14 — Direct report URLs fall back to the React application
+
+**What changed:**
+
+- Made the production static-file host return `index.html` for missing client-side routes such as `/reports/{id}` while preserving normal static assets and API routes.
+- Kept explicit `null` values in report metadata and accepted `null` for optional cohort comparisons in the frontend report parser.
+
+**Why:**
+
+- Report links use browser navigation, and Starlette's default HTML static-file mode returns a JSON 404 for nested React routes instead of bootstrapping the client application.
+- The report endpoint had stripped unknown metadata fields that the shared Steam metadata parser requires explicitly, so the React page failed after its API request succeeded.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-14 — Analysis controls survive import recovery
 
 **What changed:**

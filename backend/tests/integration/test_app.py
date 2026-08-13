@@ -136,11 +136,18 @@ def test_compiled_frontend_is_served_without_shadowing_api_routes(tmp_path: Path
 
     with TestClient(create_app(settings)) as client:
         index_response = client.get("/")
+        report_route_response = client.get("/reports/report-1")
         asset_response = client.get("/assets/app.js")
+        missing_asset_response = client.get("/assets/missing.js")
         health_response = client.get("/api/health")
+        missing_api_response = client.get("/api/missing")
 
     assert index_response.status_code == 200
     assert index_response.text == "<h1>Compiled frontend</h1>"
+    assert report_route_response.status_code == 200
+    assert report_route_response.text == "<h1>Compiled frontend</h1>"
     assert asset_response.status_code == 200
     assert asset_response.text == "window.ready = true;"
+    assert missing_asset_response.status_code == 404
     assert health_response.json()["status"] == "ok"
+    assert missing_api_response.status_code == 404

@@ -3,12 +3,15 @@
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Callable
+from pathlib import PurePosixPath
 import shutil
 from typing import Annotated, AsyncIterator, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.types import Scope
 
 from game_review_analyzer.application.game_preview import (
     InvalidAppId,
@@ -111,6 +114,22 @@ from game_review_analyzer.interfaces.http.reports import (
 )
 
 API_PREFIX = "/api"
+
+
+class SinglePageApplicationFiles(StaticFiles):
+    """Serve static assets and return index.html for client-side application routes."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as error:
+            if (
+                error.status_code != 404
+                or str(scope.get("path", "")).startswith(f"{API_PREFIX}/")
+                or PurePosixPath(path).suffix
+            ):
+                raise
+            return await super().get_response("index.html", scope)
 
 
 class HealthResponse(BaseModel):
@@ -549,7 +568,6 @@ def create_app(
     @app.get(
         f"{API_PREFIX}/reports/{{report_version_id}}",
         response_model=ReportResponse,
-        response_model_exclude_none=True,
     )
     def report_summary(
         report_version_id: str,
@@ -717,7 +735,10 @@ def create_app(
     if resolved_settings.frontend_dist_path.is_dir():
         app.mount(
             "/",
-            StaticFiles(directory=resolved_settings.frontend_dist_path, html=True),
+            SinglePageApplicationFiles(
+                directory=resolved_settings.frontend_dist_path,
+                html=True,
+            ),
             name="frontend",
         )
 

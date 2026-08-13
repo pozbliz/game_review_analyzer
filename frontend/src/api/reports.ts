@@ -198,7 +198,7 @@ function parseTheme(value: unknown): ReportTheme {
 }
 
 function parseCohortScope(value: unknown): CohortScope | undefined {
-  if (value === undefined) return undefined;
+  if (value === undefined || value === null) return undefined;
   if (!isRecord(value) || !numbers(value, [
     "review_count", "source_created_from", "source_created_to",
   ])) throw new Error("Invalid cohort scope response");
@@ -206,7 +206,7 @@ function parseCohortScope(value: unknown): CohortScope | undefined {
 }
 
 function parseCohortComparison(value: unknown): ThemeCohortComparison | undefined {
-  if (value === undefined) return undefined;
+  if (value === undefined || value === null) return undefined;
   const directions: string[] = [
     "appears_improved", "mostly_unchanged", "appears_worse",
     "new_in_recent_reviews", "no_longer_prominent",
