@@ -2,7 +2,7 @@
 
 ## Status
 
-The product design and this strategic plan are approved. Slices 1–8 and 10–12 are implemented, including authenticated live Codex verification, while Slice 4 retains a deferred production-quality calibration gate. Slice 9 has the Ollama adapter, model selection, and local Qwen benchmark implemented; later provider choices remain optional. Slice 10 provides deterministic Evidence Filters without model calls; Cohort Analysis is deferred. The concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
+The product design and this strategic plan are approved. Slices 1–8 and 10–12 are implemented, including authenticated live Codex verification, while Slice 4 retains a deferred production-quality calibration gate. Slice 9 has the Ollama adapter, model selection, and local Qwen benchmark implemented; later provider choices remain optional. Slice 10 provides deterministic Evidence Filters without model calls. Oldest-versus-newest Cohort Comparison is approved as Slice 15. The concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
 
 ## Durable verification seams
 
@@ -170,7 +170,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Acceptance:** Tests reproduce every denominator, rerank discovered Themes, hide zero-support Themes, mark below-threshold Themes, constrain raw reviews, excerpts, and drill-down to the filter, preserve report immutability, and reset unsaved filters.
 
-**Tradeoff:** Filters cannot discover Themes that were absent from the original report; Cohort Analysis remains deferred until its reliability and model-run cost are calibrated.
+**Tradeoff:** Filters cannot discover Themes that were absent from the original report; Slice 15 adds a fixed default cohort comparison with a bounded residual discovery audit.
 
 **Status:** Complete with strict query validation, deterministic response-time metric recalculation, shared report/evidence restriction, below-threshold markers, and resettable non-persistent controls.
 
@@ -230,10 +230,23 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Status:** Blocked.
 
+## Slice 15 — Compare the oldest and newest available reviews
+
+**Outcome:** Default reports compare issues in up to the 2,500 oldest and 2,500 newest eligible reviews from a completed full-history Steam import.
+
+**Blocked by:** Slices 4, 8, and 12. Production-quality direction labels remain subject to the analysis-quality gate.
+
+**Scope:** deterministic cohort selection, immutable cohort membership, resumable cached Opinion Point extraction, shared Theme consolidation, bounded residual cohort audits, deterministic comparison metrics, progress disclosure, and report presentation.
+
+**Acceptance:** Tests prove non-overlapping chronological selection, smaller-corpus splitting, exact review completion and evidence validation, checkpoint reuse after failure, cohort-specific residual discovery, distinct-review denominators, percentage-point changes, immutable date ranges, and no additional model calls for comparison metrics. The report shows early and recent evidence without claiming that review changes prove causation or a software fix.
+
+**Tradeoff:** A true oldest cohort requires a potentially long full-history Steam scan, and the middle of corpora larger than 5,000 reviews is intentionally excluded from model analysis.
+
+**Status:** In progress after explicit user approval.
+
 ## Deferred
 
 - Embedding-assisted semantic grouping
-- Cohort Analysis that reruns theme discovery for a selected Review Cohort
 - Cross-game and cross-version comparison
 - Automated translation and multilingual analysis
 - PDF export

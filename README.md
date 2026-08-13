@@ -75,7 +75,7 @@ The backend uses a packaged `src/game_review_analyzer/` layout with domain, appl
 
 - Rich Steam storefront metadata relies partly on best-effort public storefront sources and may be incomplete.
 - Keyed catalog synchronization requires a standard Steam Web API key supplied only to the local backend. Store country is configured with `GAME_REVIEW_ANALYZER_STEAM_COUNTRY`; returned currency and formatted prices are shown without conversion.
-- A recent-review sample represents that time-biased sample, not all historical opinion.
+- Quick imports remain time-biased recent samples. Default cohort reports require a completed Full import, then bind up to the 2,500 oldest and 2,500 newest eligible reviews as explicit non-overlapping scopes.
 - Full imports and cloud-provider analysis can be slow or costly for popular games.
 - The application data path can be changed only through an environment variable; there is no in-app relocation workflow. Report exports are not complete database backups.
 - AI grouping is fallible, so reports must retain inspectable evidence and deterministic metrics.

@@ -20,6 +20,8 @@ class AnalysisRun(BaseModel):
     model: str
     state: Literal["queued", "running", "completed", "failed", "cancelled"]
     review_revision_ids: tuple[int, ...]
+    early_review_revision_ids: tuple[int, ...]
+    recent_review_revision_ids: tuple[int, ...]
     metric_policy: ThemeMetricPolicy
     cancel_requested: bool
     error_code: str | None
@@ -38,6 +40,10 @@ class AnalysisRunNotFound(Exception):
     """Tell callers that an analysis run is not stored locally."""
 
 
+class FullHistoryRequired(ValueError):
+    """Require a completed Full import before chronological cohort selection."""
+
+
 def create_analysis_run(
     database_path: Path,
     *,
@@ -46,34 +52,56 @@ def create_analysis_run(
     model: str,
     metric_policy: ThemeMetricPolicy,
 ) -> AnalysisRun:
-    """Queue a provider run over the latest immutable revision of every review."""
+    """Queue a provider run over non-overlapping oldest and newest review cohorts."""
 
     with connect(database_path) as connection:
-        revision_ids = tuple(
-            row[0]
+        completed_full_import: tuple[int] | None = connection.execute(
+            "SELECT 1 FROM analysis_jobs WHERE app_id = ? AND scope = 'full' "
+            "AND state = 'completed' LIMIT 1",
+            (app_id,),
+        ).fetchone()
+        if completed_full_import is None:
+            raise FullHistoryRequired(
+                "Analysis requires a completed full-history import"
+            )
+        ordered_revision_ids: tuple[int, ...] = tuple(
+            int(row[0])
             for row in connection.execute(
                 "SELECT review_revisions.id FROM review_revisions "
                 "JOIN reviews ON reviews.id = review_revisions.review_id "
                 "WHERE reviews.app_id = ? AND NOT EXISTS ("
                 "SELECT 1 FROM review_revisions newer "
                 "WHERE newer.review_id = review_revisions.review_id "
-                "AND newer.id > review_revisions.id) ORDER BY review_revisions.id",
+                "AND newer.id > review_revisions.id) "
+                "ORDER BY json_extract(review_revisions.content_json, '$.source_created_at'), "
+                "reviews.id, review_revisions.id",
                 (app_id,),
             )
         )
-        if not revision_ids:
+        if not ordered_revision_ids:
             raise ValueError("Analysis requires an existing review dataset")
+        if len(ordered_revision_ids) <= 5_000:
+            midpoint: int = len(ordered_revision_ids) // 2
+            early_revision_ids: tuple[int, ...] = ordered_revision_ids[:midpoint]
+            recent_revision_ids: tuple[int, ...] = ordered_revision_ids[midpoint:]
+        else:
+            early_revision_ids = ordered_revision_ids[:2_500]
+            recent_revision_ids = ordered_revision_ids[-2_500:]
+        revision_ids: tuple[int, ...] = early_revision_ids + recent_revision_ids
         run_id = str(uuid4())
         connection.execute(
             "INSERT INTO analysis_runs("
-            "id, app_id, provider, model, state, review_revision_ids_json, metric_policy_json"
-            ") VALUES (?, ?, ?, ?, 'queued', ?, ?)",
+            "id, app_id, provider, model, state, review_revision_ids_json, "
+            "early_review_revision_ids_json, recent_review_revision_ids_json, "
+            "metric_policy_json) VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?)",
             (
                 run_id,
                 app_id,
                 provider,
                 model,
                 json.dumps(revision_ids),
+                json.dumps(early_revision_ids),
+                json.dumps(recent_revision_ids),
                 metric_policy.model_dump_json(),
             ),
         )
@@ -87,7 +115,8 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
         row = connection.execute(
             "SELECT id, app_id, provider, model, state, review_revision_ids_json, "
             "metric_policy_json, cancel_requested, error_code, report_version_id, "
-            "input_tokens, cached_input_tokens, output_tokens "
+            "input_tokens, cached_input_tokens, output_tokens, "
+            "early_review_revision_ids_json, recent_review_revision_ids_json "
             "FROM analysis_runs WHERE id = ?",
             (run_id,),
         ).fetchone()
@@ -99,6 +128,8 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
         metric_policy=ThemeMetricPolicy.model_validate_json(row[6]),
         cancel_requested=bool(row[7]), error_code=row[8], report_version_id=row[9],
         input_tokens=row[10], cached_input_tokens=row[11], output_tokens=row[12],
+        early_review_revision_ids=tuple(json.loads(row[13])),
+        recent_review_revision_ids=tuple(json.loads(row[14])),
     )
 
 

@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-13 — Default reports compare the oldest and newest available reviews
+
+**What changed:**
+
+- Approved a default report scope of up to the 2,500 oldest and 2,500 newest eligible reviews selected from a completed full-history Steam import.
+- Approved one shared Theme system over the combined scope, followed by a bounded audit of unassigned cohort-specific Opinion Points and deterministic cohort comparison metrics.
+
+**Why:**
+
+- The comparison should reveal issues prominent near the beginning that appear improved, persistent, or worse in recent reviews.
+- Reading each review once and reusing validated extraction preserves completeness while limiting repeated Codex quota use.
+
+**New issues:**
+
+- A full-history Steam scan is required before the app can identify the genuinely oldest available reviews.
+- Direction labels require calibrated thresholds and must not claim causation or a proven software fix.
+
+**Needs human judgment:**
+
+- Confirm calibrated direction-label thresholds after representative-game evaluation.
+
+---
+
 ## 2026-08-13 — Steam screenshots open in a native lightbox
 
 **What changed:**

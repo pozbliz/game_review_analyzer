@@ -157,11 +157,13 @@ The analysis scope can restrict:
 
 Review date is evidence timing, not proof of the exact game version the reviewer played.
 
-### Evidence Filter and deferred Cohort Analysis
+### Evidence Filter and oldest-versus-newest Cohort Comparison
 
 An **Evidence Filter** temporarily restricts an existing report and recalculates metrics only for already discovered Themes. It reranks those Themes, hides Themes with zero support, marks Themes that fall below the report's headline thresholds, and limits excerpts, raw review evidence, and evidence drill-down to reviews inside the filter. It never discovers a new Theme, requires no model call, is resettable, and is not saved automatically.
 
-A **Cohort Analysis** intentionally reruns theme discovery for a selected Review Cohort and stores a separate immutable result with its exact scope. It is deferred until minimum cohort-size rules and the additional model-run workflow are calibrated.
+The default report compares two non-overlapping Review Cohorts selected from a completed full-history import: up to the 2,500 reviews with the earliest source creation times and up to the 2,500 with the latest. When fewer than 5,000 eligible reviews exist, all available reviews are split chronologically into non-overlapping early and recent halves. The immutable report records both exact memberships and date ranges.
+
+The provider extracts Opinion Points from the combined scope once and discovers a shared Theme system so support remains comparable. A bounded residual audit examines unassigned Opinion Points from each cohort for recurring cohort-specific Themes. Early and recent support, percentage-point change, and evidence are then calculated deterministically without another model call. Directional labels describe review evidence as appearing improved, unchanged, worsened, newly prominent, or no longer prominent; they do not claim that a software defect was conclusively fixed.
 
 ## Analysis and evidence rules
 

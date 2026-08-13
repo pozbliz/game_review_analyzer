@@ -1,5 +1,14 @@
 # Tasks
 
+## Oldest-versus-newest cohort comparison
+
+- [x] Persist deterministic, non-overlapping cohorts containing up to the 2,500 oldest and 2,500 newest eligible reviews from a completed full-history import.
+- [ ] Extract and cache validated Opinion Points from the combined cohort scope in resumable bounded batches.
+- [ ] Consolidate shared Themes and audit unassigned Opinion Points for cohort-specific recurring issues.
+- [ ] Calculate early-versus-recent support, percentage-point change, date ranges, and conservative direction labels without additional model calls.
+- [ ] Expose acquisition prerequisites, durable progress, comparison metrics, and evidence from both cohorts in the report UI.
+- [ ] Verify backend contracts, frontend behavior, production build, and connected-browser presentation.
+
 ## 2026-08-13
 
 - [x] Widen the game catalog and add a user-controlled collapsible selection rail so storefront details can use the full content width.

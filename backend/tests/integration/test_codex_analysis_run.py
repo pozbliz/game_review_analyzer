@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from game_review_analyzer.domain.analysis import AnalysisResult, AnalysisSourceReview
 from game_review_analyzer.domain.reports import ThemeMetricPolicy
 from game_review_analyzer.domain.reviews import SteamReview
@@ -11,13 +13,22 @@ from game_review_analyzer.infrastructure.codex_cli import CodexCliRun, CodexCliU
 from game_review_analyzer.infrastructure.codex_cli import CodexCliStatus
 from game_review_analyzer.infrastructure.ollama import OllamaModel, OllamaStatus
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
+    FullHistoryRequired,
     create_analysis_run,
     get_analysis_run,
 )
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.persistence.game_datasets import save_game_dataset
+from game_review_analyzer.infrastructure.persistence.jobs import (
+    create_full_job,
+    finish_job,
+    start_job,
+)
 from game_review_analyzer.infrastructure.persistence.report_versions import load_report_version
-from game_review_analyzer.infrastructure.persistence.review_revisions import save_review_revisions
+from game_review_analyzer.infrastructure.persistence.review_revisions import (
+    load_review_revisions_by_ids,
+    save_review_revisions,
+)
 from game_review_analyzer.interfaces.http.app import create_app
 from game_review_analyzer.shared.config import Settings
 from fastapi.testclient import TestClient
@@ -47,11 +58,75 @@ class FakeProvider:
         return CodexCliRun(result, CodexCliUsage(120, 20, 30))
 
 
+def test_analysis_scope_selects_non_overlapping_oldest_and_newest_reviews(
+    tmp_path: Path,
+) -> None:
+    database_path: Path = tmp_path / "app.sqlite3"
+    initialize_database(database_path)
+    save_game_dataset(database_path, metadata())
+    reviews: tuple[SteamReview, ...] = tuple(
+        review_at(position) for position in range(1, 5_003)
+    )
+    save_review_revisions(database_path, 1145350, reviews)
+    complete_full_import(database_path)
+
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=ThemeMetricPolicy(
+            minimum_support_count=2,
+            minimum_support_percentage=1,
+            technical_minimum_support_count=2,
+            technical_minimum_support_percentage=1,
+        ),
+    )
+
+    assert run.review_count == 5_000
+    assert len(run.early_review_revision_ids) == 2_500
+    assert len(run.recent_review_revision_ids) == 2_500
+    assert set(run.early_review_revision_ids).isdisjoint(run.recent_review_revision_ids)
+    selected_reviews = load_review_revisions_by_ids(
+        database_path, run.review_revision_ids
+    )
+    assert [
+        selected_reviews[identifier].source_created_at
+        for identifier in run.early_review_revision_ids
+    ] == list(range(1, 2_501))
+    assert [
+        selected_reviews[identifier].source_created_at
+        for identifier in run.recent_review_revision_ids
+    ] == list(range(2_503, 5_003))
+
+
+def test_analysis_scope_requires_a_completed_full_history_import(tmp_path: Path) -> None:
+    database_path: Path = tmp_path / "app.sqlite3"
+    initialize_database(database_path)
+    save_game_dataset(database_path, metadata())
+    save_review_revisions(database_path, 1145350, (review_at(1), review_at(2)))
+
+    with pytest.raises(FullHistoryRequired):
+        create_analysis_run(
+            database_path,
+            app_id=1145350,
+            provider="codex-cli",
+            model="gpt-5.6-luna",
+            metric_policy=ThemeMetricPolicy(
+                minimum_support_count=2,
+                minimum_support_percentage=1,
+                technical_minimum_support_count=2,
+                technical_minimum_support_percentage=1,
+            ),
+        )
+
+
 def test_run_snapshots_corpus_and_creates_immutable_report(tmp_path: Path) -> None:
     database_path = tmp_path / "app.sqlite3"
     initialize_database(database_path)
     save_game_dataset(database_path, metadata())
     save_review_revisions(database_path, 1145350, (review("First version", 100),))
+    complete_full_import(database_path)
     run = create_analysis_run(
         database_path,
         app_id=1145350,
@@ -94,6 +169,7 @@ def test_api_starts_and_exposes_completed_codex_analysis(tmp_path: Path) -> None
     ) as client:
         save_game_dataset(database_path, metadata())
         save_review_revisions(database_path, 1145350, (review("Good game", 100),))
+        complete_full_import(database_path)
         started = client.post(
             "/api/games/1145350/analyses/codex-cli",
             json={
@@ -157,6 +233,7 @@ def test_api_runs_only_an_explicitly_installed_ollama_model(tmp_path: Path) -> N
     )) as client:
         save_game_dataset(database_path, metadata())
         save_review_revisions(database_path, 1145350, (review("Good game", 100),))
+        complete_full_import(database_path)
         started = client.post(
             "/api/games/1145350/analyses/ollama",
             json={
@@ -216,3 +293,15 @@ def review(text: str, updated_at: int) -> SteamReview:
         playtime_forever_minutes=10,
         playtime_at_review_minutes=10,
     )
+
+
+def review_at(position: int) -> SteamReview:
+    return review(f"Review {position}", position).model_copy(
+        update={"review_id": str(position), "source_created_at": position}
+    )
+
+
+def complete_full_import(database_path: Path) -> None:
+    job = create_full_job(database_path, 1145350)
+    assert start_job(database_path, job.id) is not None
+    finish_job(database_path, job.id, "completed")

@@ -58,6 +58,7 @@ from game_review_analyzer.infrastructure.ollama import (
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     AnalysisRun,
     AnalysisRunNotFound,
+    FullHistoryRequired,
     create_analysis_run,
     get_analysis_run,
     recoverable_analysis_run_ids,
@@ -297,6 +298,10 @@ def create_app(
                 model=status.model,
                 metric_policy=metric_policy,
             )
+        except FullHistoryRequired as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "analysis_requires_full_history"}
+            ) from error
         except ValueError as error:
             raise HTTPException(
                 status_code=409, detail={"code": "analysis_requires_reviews"}
@@ -330,6 +335,10 @@ def create_app(
                     request.model_dump(exclude={"model"})
                 ),
             )
+        except FullHistoryRequired as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "analysis_requires_full_history"}
+            ) from error
         except ValueError as error:
             raise HTTPException(
                 status_code=409, detail={"code": "analysis_requires_reviews"}

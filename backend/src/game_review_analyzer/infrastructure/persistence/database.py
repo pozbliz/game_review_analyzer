@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 9
+CURRENT_SCHEMA_VERSION = 10
 
 
 def initialize_database(database_path: Path) -> None:
@@ -166,6 +166,16 @@ def initialize_database(database_path: Path) -> None:
                 "updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
             )
             connection.execute("INSERT INTO schema_migrations(version) VALUES (9)")
+        if 10 not in applied_versions:
+            connection.execute(
+                "ALTER TABLE analysis_runs ADD COLUMN "
+                "early_review_revision_ids_json TEXT NOT NULL DEFAULT '[]'"
+            )
+            connection.execute(
+                "ALTER TABLE analysis_runs ADD COLUMN "
+                "recent_review_revision_ids_json TEXT NOT NULL DEFAULT '[]'"
+            )
+            connection.execute("INSERT INTO schema_migrations(version) VALUES (10)")
 
 
 def schema_version(database_path: Path) -> int:
