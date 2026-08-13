@@ -27,8 +27,8 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Continuation checkpoint — 2026-08-12
 
-- Last production implementation: shared minimum Theme-support prompt guidance verified through a successful authenticated Codex CLI report.
-- Last complete code gate: 103 backend tests passed after preserving safe Codex validation reason codes; the previous frontend gate remains 20 tests passed and production build passed.
+- Last production implementation: temporary Evidence Filters recalculate existing Theme metrics and restrict evidence without persistence or model calls.
+- Last complete code gate: 113 backend tests and 21 frontend tests passed; the production frontend build passed.
 - Current Codex path: authenticated `gpt-5.6-luna` with medium reasoning; the application does not read or store Codex credentials, and the live durable report path is verified.
 - Current environment check: Codex CLI `0.147.0` is authenticated through ChatGPT in the normal user context. Sandboxed status checks cannot see the external credential store and may still report `Not logged in`.
 - Current environment check: Ollama 0.32.8 is running with Qwen 3.5 4B and 9B installed; Ollama reports CPU-only inference and Windows exposes 15.4 GB visible memory.
@@ -249,8 +249,8 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Define the Evidence Filter query contract and write contract tests.
 - [x] Write deterministic Evidence Filter metric and denominator tests.
 - [x] Implement reranking, zero-support hiding, below-threshold markers, and raw review/evidence restriction without new Theme discovery or model calls.
-- [ ] Write component tests, then build resettable Evidence Filter controls.
-- [ ] Verify that Evidence Filters never discover Themes, persist automatically, or invoke an analysis provider.
+- [x] Write component tests, then build resettable Evidence Filter controls.
+- [x] Verify that Evidence Filters never discover Themes, persist automatically, or invoke an analysis provider.
 
 ### Slice 11 — Complete game discovery and Steam overview
 

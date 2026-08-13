@@ -25,6 +25,30 @@ interface ReportViewProps {
   reportId: string;
 }
 
+interface EvidenceFilterDraft {
+  recommendation: string;
+  steamPurchase: string;
+  receivedForFree: string;
+  earlyAccess: string;
+  playtimeBasis: string;
+  minimumHours: string;
+  maximumHours: string;
+  reviewCreatedFrom: string;
+  reviewCreatedTo: string;
+}
+
+const EMPTY_FILTER: EvidenceFilterDraft = {
+  recommendation: "all",
+  steamPurchase: "",
+  receivedForFree: "",
+  earlyAccess: "",
+  playtimeBasis: "at_review",
+  minimumHours: "",
+  maximumHours: "",
+  reviewCreatedFrom: "",
+  reviewCreatedTo: "",
+};
+
 export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
   const [report, setReport] = useState<ReportSummary | null>(null);
   const [error, setError] = useState<string>("");
@@ -35,10 +59,14 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
   const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
   const [refreshJob, setRefreshJob] = useState<AnalysisJob | null>(null);
   const [refreshError, setRefreshError] = useState<string>("");
+  const [filterDraft, setFilterDraft] = useState<EvidenceFilterDraft>(EMPTY_FILTER);
+  const [filterQuery, setFilterQuery] = useState<string>("");
+  const [filterError, setFilterError] = useState<string>("");
 
   useEffect(() => {
     let active: boolean = true;
-    getReport(reportId)
+    setFilterError("");
+    getReport(reportId, filterQuery)
       .then((value) => {
         if (!active) return;
         setReport(value);
@@ -47,10 +75,12 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
           .catch(() => { if (active) setRefreshError("Unable to load report history."); });
       })
       .catch(() => {
-        if (active) setError("Unable to load this report.");
+        if (!active) return;
+        if (filterQuery) setFilterError("These filters are invalid or unavailable.");
+        else setError("Unable to load this report.");
       });
     return () => { active = false; };
-  }, [reportId]);
+  }, [reportId, filterQuery]);
 
   useEffect(() => {
     if (!refreshJob || !["queued", "running"].includes(refreshJob.state)) return;
@@ -90,7 +120,9 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
     if (evidence[theme.theme_id]) return;
     setEvidenceLoading(theme.theme_id);
     try {
-      const result: ThemeEvidence = await getThemeEvidence(reportId, theme.theme_id);
+      const result: ThemeEvidence = await getThemeEvidence(
+        reportId, theme.theme_id, filterQuery,
+      );
       setEvidence((current) => ({ ...current, [theme.theme_id]: result }));
     } catch {
       setError("Unable to load complete evidence.");
@@ -133,6 +165,23 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
     startReconciliation(appId)
       .then(setRefreshJob)
       .catch(() => setRefreshError("Unable to start reconciliation."));
+  }
+
+  function applyFilters(): void {
+    setFilterError("");
+    setEvidence({});
+    setOpenThemeId(null);
+    setCategory("All categories");
+    setFilterQuery(buildEvidenceFilterQuery(filterDraft));
+  }
+
+  function resetFilters(): void {
+    setFilterError("");
+    setFilterDraft(EMPTY_FILTER);
+    setEvidence({});
+    setOpenThemeId(null);
+    setCategory("All categories");
+    setFilterQuery("");
   }
 
   const activeJob: boolean = Boolean(
@@ -218,6 +267,35 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
         <div><span>Model</span><strong>{report.provenance.model}</strong></div>
         <div><span>Scope digest</span><code title={report.provenance.scope_sha256}>{report.provenance.scope_sha256.slice(0, 12)}…</code></div>
       </section>
+
+      <details className="evidence-filters">
+        <summary>Evidence filters{filterQuery ? " (active)" : ""}</summary>
+        <form onSubmit={(event) => { event.preventDefault(); applyFilters(); }}>
+          <label>Recommendation
+            <select value={filterDraft.recommendation} onChange={(event) => setFilterDraft({ ...filterDraft, recommendation: event.target.value })}>
+              <option value="all">All</option><option value="recommended">Recommended</option><option value="not_recommended">Not recommended</option>
+            </select>
+          </label>
+          <BooleanFilter label="Steam purchase" value={filterDraft.steamPurchase} onChange={(value) => setFilterDraft({ ...filterDraft, steamPurchase: value })} />
+          <BooleanFilter label="Received free" value={filterDraft.receivedForFree} onChange={(value) => setFilterDraft({ ...filterDraft, receivedForFree: value })} />
+          <BooleanFilter label="Early Access" value={filterDraft.earlyAccess} onChange={(value) => setFilterDraft({ ...filterDraft, earlyAccess: value })} />
+          <label>Playtime basis
+            <select value={filterDraft.playtimeBasis} onChange={(event) => setFilterDraft({ ...filterDraft, playtimeBasis: event.target.value })}>
+              <option value="at_review">At review</option><option value="current">Current total</option>
+            </select>
+          </label>
+          <label>Minimum hours<input type="number" min="0" step="0.1" value={filterDraft.minimumHours} onChange={(event) => setFilterDraft({ ...filterDraft, minimumHours: event.target.value })} /></label>
+          <label>Maximum hours<input type="number" min="0" step="0.1" value={filterDraft.maximumHours} onChange={(event) => setFilterDraft({ ...filterDraft, maximumHours: event.target.value })} /></label>
+          <label>Reviewed from<input type="date" value={filterDraft.reviewCreatedFrom} onChange={(event) => setFilterDraft({ ...filterDraft, reviewCreatedFrom: event.target.value })} /></label>
+          <label>Reviewed to<input type="date" value={filterDraft.reviewCreatedTo} onChange={(event) => setFilterDraft({ ...filterDraft, reviewCreatedTo: event.target.value })} /></label>
+          <div className="filter-actions">
+            <button type="submit">Apply filters</button>
+            <button type="button" onClick={resetFilters}>Reset filters</button>
+          </div>
+        </form>
+        {filterError && <p role="alert">{filterError}</p>}
+        <p>Filters recalculate existing Themes only. They are not saved and do not run analysis.</p>
+      </details>
 
       <div className="report-toolbar">
         <div>
@@ -337,6 +415,7 @@ function ThemeRow({
         <span className="theme-support">
           <strong>{formatPercent(theme.support.percentage)}</strong>
           <small>{theme.support.count} reviews · {formatPercent(theme.support.percentage)} of {theme.support.denominator}</small>
+          {theme.below_threshold && <small className="threshold-note">Below original threshold</small>}
         </span>
         <span className="chevron" aria-hidden="true">⌄</span>
       </button>
@@ -392,11 +471,38 @@ function ThemeRow({
   );
 }
 
+function BooleanFilter({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }): JSX.Element {
+  return (
+    <label>{label}
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Any</option><option value="true">Yes</option><option value="false">No</option>
+      </select>
+    </label>
+  );
+}
+
+function buildEvidenceFilterQuery(filter: EvidenceFilterDraft): string {
+  const query = new URLSearchParams();
+  if (filter.recommendation !== "all") query.set("recommendation", filter.recommendation);
+  for (const [name, value] of [
+    ["steam_purchase", filter.steamPurchase],
+    ["received_for_free", filter.receivedForFree],
+    ["written_during_early_access", filter.earlyAccess],
+  ]) if (value) query.set(name, value);
+  if (filter.playtimeBasis !== "at_review") query.set("playtime_basis", filter.playtimeBasis);
+  if (filter.minimumHours) query.set("minimum_playtime_minutes", String(Math.round(Number(filter.minimumHours) * 60)));
+  if (filter.maximumHours) query.set("maximum_playtime_minutes", String(Math.round(Number(filter.maximumHours) * 60)));
+  if (filter.reviewCreatedFrom) query.set("review_created_from", String(Date.parse(`${filter.reviewCreatedFrom}T00:00:00Z`) / 1000));
+  if (filter.reviewCreatedTo) query.set("review_created_to", String(Date.parse(`${filter.reviewCreatedTo}T00:00:00Z`) / 1000 + 86_399));
+  return query.toString();
+}
+
 function formatPercent(value: number): string {
   return `${Number.isInteger(value) ? value : value.toFixed(1)}%`;
 }
 
-function formatHours(minutes: number): string {
+function formatHours(minutes: number | null): string {
+  if (minutes === null) return "Unknown";
   const hours: number = minutes / 60;
   return `${Number.isInteger(hours) ? hours : hours.toFixed(1)}h`;
 }

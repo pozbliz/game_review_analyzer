@@ -116,6 +116,15 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .report-facts span, .report-facts strong, .report-facts code { display: block; overflow: hidden; text-overflow: ellipsis; }
 .report-facts span { margin-bottom: .25rem; color: var(--muted); font-size: .72rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
 .report-facts code { font-size: .82rem; }
+.evidence-filters { margin-top: 1rem; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: 10px; background: rgb(255 253 247 / 70%); }
+.evidence-filters summary { padding-block: .2rem; cursor: pointer; color: var(--forest); font-weight: 800; }
+.evidence-filters form { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .8rem; margin-top: 1rem; }
+.evidence-filters label { display: grid; gap: .3rem; color: var(--muted); font-size: .75rem; font-weight: 750; }
+.evidence-filters select, .evidence-filters input { min-width: 0; padding: .55rem; border: 1px solid #aaa99f; border-radius: 7px; background: var(--paper); }
+.evidence-filters > p { margin-bottom: 0; color: var(--muted); font-size: .78rem; }
+.filter-actions { display: flex; gap: .5rem; align-items: end; }
+.filter-actions button { min-height: 2.25rem; padding: .5rem .7rem; border: 1px solid var(--forest); border-radius: 7px; color: var(--forest); background: transparent; font-weight: 750; }
+.filter-actions button:first-child { color: var(--paper); background: var(--forest); }
 .report-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 2rem; padding: 2.5rem 0 1.4rem; }
 .report-toolbar h2 { font-size: clamp(1.7rem, 3vw, 2.7rem); }
 .report-toolbar label { display: grid; gap: .4rem; color: var(--muted); font-size: .78rem; font-weight: 750; }
@@ -141,6 +150,7 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .theme-title small, .theme-support small { color: var(--muted); font-size: .73rem; font-weight: 600; }
 .theme-support { min-width: 8.5rem; text-align: right; }
 .theme-support > strong { font-size: 1.15rem; }
+.theme-support .threshold-note { color: #765821; }
 .chevron { transition: transform var(--motion); }
 .theme-detail { padding: 0 1.15rem 1.3rem 4.65rem; background: #eef3e9; }
 .theme-detail > p { max-width: 70ch; margin: 0 0 .75rem; line-height: 1.55; }

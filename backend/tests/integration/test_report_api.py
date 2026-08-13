@@ -6,13 +6,17 @@ import sqlite3
 from fastapi.testclient import TestClient
 
 from game_review_analyzer.application.theme_metrics import calculate_theme_metrics
-from game_review_analyzer.domain.analysis import AnalysisResult, OpinionPoint, Theme
+from game_review_analyzer.application.provider import CancellationSignal, ProviderRun
+from game_review_analyzer.domain.analysis import AnalysisRequest, AnalysisResult, OpinionPoint, Theme
 from game_review_analyzer.domain.reports import ReportVersion, ThemeMetricPolicy
 from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.persistence.game_datasets import save_game_dataset
-from game_review_analyzer.infrastructure.persistence.report_versions import save_report_version
+from game_review_analyzer.infrastructure.persistence.report_versions import (
+    load_report_version,
+    save_report_version,
+)
 from game_review_analyzer.infrastructure.persistence.review_revisions import (
     save_review_revisions,
 )
@@ -62,18 +66,23 @@ def test_report_summary_and_complete_evidence_preserve_metrics_and_context(
     assert evidence["items"][0]["review"]["recommended"] is True
     assert evidence["items"][0]["review"]["playtime_at_review_minutes"] == 120
     assert evidence["items"][0]["review"]["votes_helpful"] == 3
+    assert evidence["items"][1]["review"]["playtime_at_review_minutes"] is None
 
 
 def test_report_and_evidence_apply_the_same_temporary_filter(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
     seed_report(database_path)
+    provider = ForbiddenProvider()
+    stored_before: ReportVersion | None = load_report_version(database_path, "report-1")
     query: dict[str, str] = {
         "recommendation": "recommended",
         "minimum_playtime_minutes": "100",
         "maximum_playtime_minutes": "180",
     }
 
-    with TestClient(create_app(Settings(database_path=database_path))) as client:
+    with TestClient(
+        create_app(Settings(database_path=database_path), analysis_provider=provider)
+    ) as client:
         report_response = client.get("/api/reports/report-1", params=query)
         evidence_response = client.get(
             "/api/reports/report-1/themes/responsive-combat/evidence", params=query
@@ -96,6 +105,26 @@ def test_report_and_evidence_apply_the_same_temporary_filter(tmp_path: Path) -> 
     assert [item["review"]["review_revision_id"] for item in evidence["items"]] == [
         "review-1"
     ]
+    assert provider.calls == 0
+    assert load_report_version(database_path, "report-1") == stored_before
+
+
+class ForbiddenProvider:
+    """Fail if a read-only Evidence Filter reaches provider execution."""
+
+    model: str = "forbidden"
+
+    def __init__(self) -> None:
+        self.calls: int = 0
+
+    def analyze(
+        self,
+        request: AnalysisRequest,
+        *,
+        cancel_event: CancellationSignal,
+    ) -> ProviderRun:
+        self.calls += 1
+        raise AssertionError("Evidence Filters must not invoke an analysis provider")
 
 
 def seed_report(database_path: Path) -> None:
@@ -119,7 +148,7 @@ def seed_report(database_path: Path) -> None:
     )
     reviews: tuple[SteamReview, ...] = (
         review("review-1", "Combat is responsive.", True, 120, 3),
-        review("review-2", "Fights feel responsive.", False, 240, 5),
+        review("review-2", "Fights feel responsive.", False, None, 5),
     )
     save_review_revisions(database_path, 1145350, reviews)
     with sqlite3.connect(database_path) as connection:
@@ -199,7 +228,7 @@ def review(
     review_id: str,
     text: str,
     recommended: bool,
-    playtime_at_review_minutes: int,
+    playtime_at_review_minutes: int | None,
     votes_helpful: int,
 ) -> SteamReview:
     return SteamReview(
@@ -215,6 +244,6 @@ def review(
         steam_purchase=True,
         received_for_free=False,
         written_during_early_access=False,
-        playtime_forever_minutes=playtime_at_review_minutes + 60,
+        playtime_forever_minutes=(playtime_at_review_minutes or 0) + 60,
         playtime_at_review_minutes=playtime_at_review_minutes,
     )

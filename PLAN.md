@@ -2,7 +2,7 @@
 
 ## Status
 
-The product design and this strategic plan are approved. Slices 1–8, 11, and 12 are implemented, including authenticated live Codex verification, while Slice 4 retains a deferred production-quality calibration gate. Slice 9 has the Ollama adapter, model selection, and local Qwen benchmark implemented; later provider choices remain optional. Slice 10 retains deterministic Evidence Filters without model calls and is ready for implementation; Cohort Analysis is deferred. The concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
+The product design and this strategic plan are approved. Slices 1–8 and 10–12 are implemented, including authenticated live Codex verification, while Slice 4 retains a deferred production-quality calibration gate. Slice 9 has the Ollama adapter, model selection, and local Qwen benchmark implemented; later provider choices remain optional. Slice 10 provides deterministic Evidence Filters without model calls; Cohort Analysis is deferred. The concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
 
 ## Durable verification seams
 
@@ -172,7 +172,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Filters cannot discover Themes that were absent from the original report; Cohort Analysis remains deferred until its reliability and model-run cost are calibrated.
 
-**Status:** Approved and ready for implementation.
+**Status:** Complete with strict query validation, deterministic response-time metric recalculation, shared report/evidence restriction, below-threshold markers, and resettable non-persistent controls.
 
 ## Slice 11 — Complete game discovery and Steam overview
 

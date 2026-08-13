@@ -15,6 +15,7 @@ export interface ReportTheme {
   primary_category: string;
   related_categories: string[];
   support: { count: number; percentage: number; denominator: number };
+  below_threshold: boolean;
   evidence_count: number;
   representative_evidence: RepresentativeEvidence[];
   opposes_theme_id: string | null;
@@ -58,7 +59,7 @@ export interface EvidenceReview {
   received_for_free: boolean;
   written_during_early_access: boolean;
   playtime_forever_minutes: number;
-  playtime_at_review_minutes: number;
+  playtime_at_review_minutes: number | null;
 }
 
 export interface ThemeEvidenceItem {
@@ -86,17 +87,23 @@ export interface ReportHistoryEntry {
   created_at: string;
 }
 
-export async function getReport(reportId: string): Promise<ReportSummary> {
-  return parseReport(await requestJson(`/api/reports/${encodeURIComponent(reportId)}`));
+export async function getReport(reportId: string, query: string = ""): Promise<ReportSummary> {
+  return parseReport(await requestJson(reportPath(reportId, query)));
 }
 
 export async function getThemeEvidence(
   reportId: string,
   themeId: string,
+  query: string = "",
 ): Promise<ThemeEvidence> {
   return parseThemeEvidence(await requestJson(
-    `/api/reports/${encodeURIComponent(reportId)}/themes/${encodeURIComponent(themeId)}/evidence`,
+    `${reportPath(reportId, "")}/themes/${encodeURIComponent(themeId)}/evidence${query ? `?${query}` : ""}`,
   ));
+}
+
+function reportPath(reportId: string, query: string): string {
+  const path: string = `/api/reports/${encodeURIComponent(reportId)}`;
+  return query ? `${path}?${query}` : path;
 }
 
 export async function getReportHistory(appId: number): Promise<ReportHistoryEntry[]> {
@@ -146,6 +153,7 @@ function parseTheme(value: unknown): ReportTheme {
       !Array.isArray(value.related_categories) ||
       !value.related_categories.every((item) => typeof item === "string") ||
       !numbers(value.support, ["count", "percentage", "denominator"]) ||
+      typeof value.below_threshold !== "boolean" ||
       typeof value.evidence_count !== "number" ||
       !Array.isArray(value.representative_evidence) ||
       !(value.opposes_theme_id === null || typeof value.opposes_theme_id === "string")) {
@@ -159,6 +167,7 @@ function parseTheme(value: unknown): ReportTheme {
     primary_category: value.primary_category as string,
     related_categories: value.related_categories as string[],
     support: value.support as ReportTheme["support"],
+    below_threshold: value.below_threshold,
     evidence_count: value.evidence_count,
     representative_evidence: value.representative_evidence.map(parseRepresentativeEvidence),
     opposes_theme_id: value.opposes_theme_id,
@@ -206,8 +215,9 @@ function parseEvidenceItem(value: unknown): ThemeEvidenceItem {
       !strings(value.review, ["review_revision_id", "text"]) ||
       !numbers(value.review, [
         "source_created_at", "source_updated_at", "votes_helpful",
-        "playtime_forever_minutes", "playtime_at_review_minutes",
-      ]) || !booleans(value.review, [
+        "playtime_forever_minutes",
+      ]) || !(value.review.playtime_at_review_minutes === null ||
+        typeof value.review.playtime_at_review_minutes === "number") || !booleans(value.review, [
         "recommended", "steam_purchase", "received_for_free", "written_during_early_access",
       ])) {
     throw new Error("Invalid complete evidence response");

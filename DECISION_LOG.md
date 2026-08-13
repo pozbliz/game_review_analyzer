@@ -10,6 +10,8 @@
 - Reused the existing Theme Metrics calculator over matching reviews and Opinion Points; a valid zero-match filter returns zero-support metrics and empty presentation groups without weakening the non-empty immutable-report invariant.
 - Applied the same query parameters to the existing report-summary and Theme-evidence endpoints instead of creating parallel filtered resources; response-time recalculation never writes a Report Version or other state.
 - Filtered presentation reranks matching Themes, hides zero-support Themes, marks those below the immutable report's thresholds, and restricts representative and complete review evidence to the same matching set.
+- Added native resettable report controls that serialize only active values and clear cached evidence whenever membership changes.
+- Aligned the evidence HTTP and frontend contracts with the existing nullable playtime-at-review domain value, displaying it as unknown instead of failing or inventing zero hours.
 
 **Why:**
 

@@ -53,9 +53,41 @@ describe("report exploration", () => {
 
     expect(await screen.findByText("Combat is responsive.")).toBeVisible();
     expect(screen.getByText("Recommended · 2h at review · 3 helpful votes")).toBeVisible();
+    expect(screen.getByText("Not recommended · Unknown at review · 0 helpful votes")).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/reports/report-1/themes/responsive-combat/evidence",
     );
+  });
+
+  it("applies and resets temporary Evidence Filters", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => (
+      request.toString().includes("/evidence") ? json(evidencePayload()) : reportFetch(request)
+    ));
+    render(<ReportView reportId="report-1" />);
+    await screen.findByRole("heading", { name: "Hades II" });
+
+    fireEvent.click(screen.getByText("Evidence filters"));
+    fireEvent.change(screen.getByRole("combobox", { name: "Recommendation" }), {
+      target: { value: "recommended" },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Minimum hours" }), {
+      target: { value: "2" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/reports/report-1?recommendation=recommended&minimum_playtime_minutes=120",
+    ));
+
+    fireEvent.click(screen.getByRole("button", { name: /responsive combat/i }));
+    fireEvent.click(screen.getByRole("button", { name: /view all 2 evidence/i }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/reports/report-1/themes/responsive-combat/evidence?recommendation=recommended&minimum_playtime_minutes=120",
+    ));
+
+    fetchMock.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/reports/report-1"));
   });
 
   it("starts refresh and exposes immutable report history with failure recovery", async () => {
@@ -299,6 +331,7 @@ function theme(
     primary_category: primaryCategory,
     related_categories: [],
     support: { count: 2, percentage: 100, denominator: 2 },
+    below_threshold: false,
     evidence_count: 2,
     representative_evidence: [{
       opinion_point_id: `${themeId}-point-1`,
@@ -331,6 +364,24 @@ function evidencePayload(): object {
         written_during_early_access: false,
         playtime_forever_minutes: 180,
         playtime_at_review_minutes: 120,
+      },
+    }, {
+      opinion_point_id: "responsive-combat-point-2",
+      excerpt: "Still responsive",
+      sentiment: "positive",
+      subject: "combat response",
+      review: {
+        review_revision_id: "review-2",
+        text: "Still responsive.",
+        source_created_at: 101,
+        source_updated_at: 101,
+        recommended: false,
+        votes_helpful: 0,
+        steam_purchase: true,
+        received_for_free: false,
+        written_during_early_access: false,
+        playtime_forever_minutes: 60,
+        playtime_at_review_minutes: null,
       },
     }],
   };

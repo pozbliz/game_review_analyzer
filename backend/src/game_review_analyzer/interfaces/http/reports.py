@@ -128,7 +128,7 @@ class EvidenceReviewResponse(BaseModel):
     received_for_free: bool
     written_during_early_access: bool
     playtime_forever_minutes: int
-    playtime_at_review_minutes: int
+    playtime_at_review_minutes: int | None
 
 
 class ThemeEvidenceItemResponse(BaseModel):
