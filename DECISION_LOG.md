@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-13 — Steam screenshots open in a native lightbox
+
+**What changed:**
+
+- Made Steam screenshot thumbnails explicit buttons that open the selected image in a native dialog.
+- Added cyclic previous/next controls, image position, close and backdrop dismissal, Escape support through the dialog, and an original-image link.
+
+**Why:**
+
+- The responsive thumbnail grid is useful for browsing but too small for inspecting screenshot detail.
+- A native dialog provides the required large view and modal behavior without adding a lightbox dependency.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Confirm image sizing, backdrop dismissal, and Escape behavior visually in Chrome after a hard reload.
+
+---
+
 ## 2026-08-13 — Steam language notation becomes labeled support groups
 
 **What changed:**

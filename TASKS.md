@@ -7,6 +7,7 @@
 - [x] Replace the collapsible rail with a two-step full-width game-search and game-details flow.
 - [x] Simplify storefront hierarchy with tag chips, explicit feature-status rows, normal-weight values, and fewer decorative labels.
 - [x] Replace Steam language asterisks and footnotes with labeled full-audio and interface/subtitle chip groups.
+- [x] Open Steam screenshots in a native large-image lightbox with navigation, close controls, and original-image access.
 - [ ] [HUMAN] Confirm the two-step catalog flow visually in Chrome after a hard reload.
 
 ## 2026-08-10

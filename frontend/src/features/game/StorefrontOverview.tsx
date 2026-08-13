@@ -1,3 +1,4 @@
+import { MouseEvent, useEffect, useRef, useState } from "react";
 import { SteamMetadata } from "../../api/shell";
 
 interface StorefrontOverviewProps {
@@ -8,6 +9,32 @@ export default function StorefrontOverview({ metadata }: StorefrontOverviewProps
   const store = metadata.storefront;
   const unknown = "Unknown / unavailable";
   const languages: LanguageGroups | null = groupLanguages(store.supported_languages);
+  const screenshots: string[] = store.screenshot_urls ?? [];
+  const [selectedScreenshot, setSelectedScreenshot] = useState<number | null>(null);
+  const lightboxRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const lightbox: HTMLDialogElement | null = lightboxRef.current;
+    if (selectedScreenshot === null || !lightbox || lightbox.open) return;
+    if (typeof lightbox.showModal === "function") lightbox.showModal();
+    else lightbox.setAttribute("open", "");
+  }, [selectedScreenshot]);
+
+  function closeLightbox(): void {
+    const lightbox: HTMLDialogElement | null = lightboxRef.current;
+    if (lightbox && typeof lightbox.close === "function") lightbox.close();
+    setSelectedScreenshot(null);
+  }
+
+  function closeFromBackdrop(event: MouseEvent<HTMLDialogElement>): void {
+    if (event.target === event.currentTarget) closeLightbox();
+  }
+
+  function moveScreenshot(offset: number): void {
+    setSelectedScreenshot((current: number | null) => current === null
+      ? null
+      : (current + offset + screenshots.length) % screenshots.length);
+  }
   return (
     <section className="storefront-overview" aria-labelledby="storefront-title">
       <header>
@@ -63,7 +90,17 @@ export default function StorefrontOverview({ metadata }: StorefrontOverviewProps
         <section className="store-media" aria-labelledby="media-title">
           <h3 id="media-title">Steam-hosted media</h3>
           <div>
-            {store.screenshot_urls?.map((url, index) => <img key={url} src={url} alt={`${metadata.title} Steam screenshot ${index + 1}`} />)}
+            {screenshots.map((url: string, index: number) => (
+              <button
+                className="screenshot-thumbnail"
+                key={url}
+                type="button"
+                aria-label={`Enlarge ${metadata.title} Steam screenshot ${index + 1}`}
+                onClick={() => setSelectedScreenshot(index)}
+              >
+                <img src={url} alt={`${metadata.title} Steam screenshot ${index + 1}`} />
+              </button>
+            ))}
             {store.trailers?.map((trailer) => (
               <a key={trailer.video_url} href={trailer.video_url} target="_blank" rel="noreferrer">
                 <img src={trailer.thumbnail_url} alt="" />
@@ -72,6 +109,28 @@ export default function StorefrontOverview({ metadata }: StorefrontOverviewProps
             ))}
           </div>
         </section>
+      )}
+      {selectedScreenshot !== null && (
+        <dialog
+          className="screenshot-lightbox"
+          ref={lightboxRef}
+          aria-label={`${metadata.title} screenshot ${selectedScreenshot + 1} of ${screenshots.length}`}
+          onCancel={() => setSelectedScreenshot(null)}
+          onClick={closeFromBackdrop}
+        >
+          <div>
+            <button type="button" className="lightbox-close" aria-label="Close screenshot" onClick={closeLightbox}>×</button>
+            <img src={screenshots[selectedScreenshot]} alt={`${metadata.title} Steam screenshot ${selectedScreenshot + 1}`} />
+            {screenshots.length > 1 && (
+              <nav aria-label="Screenshot navigation">
+                <button type="button" aria-label="Previous screenshot" onClick={() => moveScreenshot(-1)}>←</button>
+                <span>{selectedScreenshot + 1} / {screenshots.length}</span>
+                <button type="button" aria-label="Next screenshot" onClick={() => moveScreenshot(1)}>→</button>
+              </nav>
+            )}
+            <a href={screenshots[selectedScreenshot]} target="_blank" rel="noreferrer">Open original</a>
+          </div>
+        </dialog>
       )}
     </section>
   );

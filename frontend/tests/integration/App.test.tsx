@@ -162,6 +162,7 @@ describe("application shell", () => {
         ...emptyStorefront(),
         tags: ["Action", "Roguelike"],
         supported_languages: "English *, French, Spanish - Spain, Ukrainian * languages with full audio support",
+        screenshot_urls: ["https://example.com/one.jpg", "https://example.com/two.jpg"],
         features: [
           { name: "Windows", group: "Platforms and accessibility", state: "supported" },
           { name: "Linux", group: "Platforms and accessibility", state: "not_supported" },
@@ -184,6 +185,16 @@ describe("application shell", () => {
     expect(within(interfaceLanguages).getByText("French")).toBeVisible();
     expect(within(interfaceLanguages).getByText("Spanish (Spain)")).toBeVisible();
     expect(screen.queryByText(/languages with full audio support/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Enlarge Hades II Steam screenshot 1" }));
+    const firstDialog = screen.getByRole("dialog", { name: "Hades II screenshot 1 of 2" });
+    expect(firstDialog).toBeVisible();
+    expect(within(firstDialog).getByRole("img", { name: "Hades II Steam screenshot 1" }))
+      .toHaveAttribute("src", "https://example.com/one.jpg");
+    fireEvent.click(screen.getByRole("button", { name: "Next screenshot" }));
+    expect(screen.getByRole("dialog", { name: "Hades II screenshot 2 of 2" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Close screenshot" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("starts a Quick import and exposes durable progress and cancellation", async () => {

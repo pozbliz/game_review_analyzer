@@ -211,6 +211,17 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .store-media > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .8rem; }
 .store-media img { width: 100%; border-radius: 8px; }
 .store-media a { display: grid; gap: .4rem; }
+.screenshot-thumbnail { padding: 0; border: 0; border-radius: 8px; background: transparent; }
+.screenshot-thumbnail img { display: block; }
+.screenshot-lightbox { width: min(1200px, calc(100vw - 2rem)); max-width: none; padding: 0; border: 0; border-radius: 12px; background: #101713; box-shadow: 0 24px 80px rgb(0 0 0 / 45%); }
+.screenshot-lightbox::backdrop { background: rgb(10 17 13 / 82%); }
+.screenshot-lightbox > div { position: relative; display: grid; justify-items: center; gap: 1rem; padding: 3rem 1rem 1rem; }
+.screenshot-lightbox img { display: block; width: auto; max-width: 100%; max-height: calc(100vh - 10rem); margin: 0; object-fit: contain; }
+.screenshot-lightbox button { min-width: 2.5rem; min-height: 2.5rem; border: 0; border-radius: 999px; color: white; background: rgb(255 255 255 / 15%); font-weight: 800; }
+.screenshot-lightbox button:hover { background: rgb(255 255 255 / 25%); }
+.screenshot-lightbox .lightbox-close { position: absolute; top: .5rem; right: .5rem; font-size: 1.4rem; }
+.screenshot-lightbox nav { display: flex; align-items: center; gap: 1rem; color: white; }
+.screenshot-lightbox a { min-height: 24px; color: white; }
 
 @media (max-width: 900px) {
   .report-facts { grid-template-columns: 1fr 1fr; }
