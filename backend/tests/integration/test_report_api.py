@@ -64,6 +64,40 @@ def test_report_summary_and_complete_evidence_preserve_metrics_and_context(
     assert evidence["items"][0]["review"]["votes_helpful"] == 3
 
 
+def test_report_and_evidence_apply_the_same_temporary_filter(tmp_path: Path) -> None:
+    database_path: Path = tmp_path / "app.sqlite3"
+    seed_report(database_path)
+    query: dict[str, str] = {
+        "recommendation": "recommended",
+        "minimum_playtime_minutes": "100",
+        "maximum_playtime_minutes": "180",
+    }
+
+    with TestClient(create_app(Settings(database_path=database_path))) as client:
+        report_response = client.get("/api/reports/report-1", params=query)
+        evidence_response = client.get(
+            "/api/reports/report-1/themes/responsive-combat/evidence", params=query
+        )
+
+    assert report_response.status_code == 200
+    report = report_response.json()
+    assert report["scope"]["review_count"] == 1
+    assert report["positive_themes"][0]["support"] == {
+        "count": 1,
+        "percentage": 100.0,
+        "denominator": 1,
+    }
+    assert report["positive_themes"][0]["below_threshold"] is True
+    assert len(report["positive_themes"][0]["representative_evidence"]) == 1
+    assert report["positive_themes"][0]["evidence_count"] == 1
+
+    assert evidence_response.status_code == 200
+    evidence = evidence_response.json()
+    assert [item["review"]["review_revision_id"] for item in evidence["items"]] == [
+        "review-1"
+    ]
+
+
 def seed_report(database_path: Path) -> None:
     initialize_database(database_path)
     game_metadata = SteamMetadata(

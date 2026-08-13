@@ -4,6 +4,10 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from game_review_analyzer.application.theme_metrics import (
+    calculate_filtered_theme_metrics,
+    review_matches_filter,
+)
 from game_review_analyzer.domain.analysis import (
     OpinionPoint,
     OpinionSentiment,
@@ -74,6 +78,7 @@ class ReportThemeResponse(BaseModel):
     primary_category: ThemeCategory
     related_categories: tuple[ThemeCategory, ...]
     support: ThemeSupportResponse
+    below_threshold: bool
     evidence_count: int
     representative_evidence: tuple[RepresentativeEvidenceResponse, ...]
     opposes_theme_id: str | None
@@ -147,9 +152,20 @@ class ThemeEvidenceResponse(BaseModel):
 def build_report_response(
     database_path: Path,
     report: ReportVersion,
+    query: EvidenceFilterQuery | None = None,
 ) -> ReportResponse:
     """Build a bounded report summary from one typed snapshot."""
 
+    resolved_query: EvidenceFilterQuery = query or EvidenceFilterQuery()
+    revisions_by_id: dict[int, SteamReview] = load_review_revisions_by_ids(
+        database_path, report.review_revision_ids
+    )
+    matching_reviews: tuple[SteamReview, ...] = tuple(
+        review
+        for review in revisions_by_id.values()
+        if review_matches_filter(review, resolved_query)
+    )
+    matching_review_ids: set[str] = {review.review_id for review in matching_reviews}
     metadata = report.metadata_snapshot
     theme_by_id: dict[str, Theme] = {
         theme.id: theme for theme in report.analysis_result.themes
@@ -158,11 +174,35 @@ def build_report_response(
         point.id: point for point in report.analysis_result.opinion_points
     }
 
+    filtered_metrics = calculate_filtered_theme_metrics(
+        revisions_by_id.values(),
+        report.analysis_result.opinion_points,
+        report.analysis_result.themes,
+        report.metric_policy,
+        resolved_query,
+    )
+    filtered: bool = resolved_query != EvidenceFilterQuery()
+
+    def below_threshold(metric: ThemeMetric) -> bool:
+        if metric.technical:
+            return (
+                metric.support_count < report.metric_policy.technical_minimum_support_count
+                or metric.support_percentage
+                < report.metric_policy.technical_minimum_support_percentage
+            )
+        return (
+            metric.support_count < report.metric_policy.minimum_support_count
+            or metric.support_percentage < report.metric_policy.minimum_support_percentage
+        )
+
     def present(metric: ThemeMetric) -> ReportThemeResponse:
         theme: Theme = theme_by_id[metric.theme_id]
-        representative_points: tuple[OpinionPoint, ...] = tuple(
-            point_by_id[point_id] for point_id in theme.opinion_point_ids[:5]
+        matching_points: tuple[OpinionPoint, ...] = tuple(
+            point_by_id[point_id]
+            for point_id in theme.opinion_point_ids
+            if point_by_id[point_id].review_revision_id in matching_review_ids
         )
+        representative_points: tuple[OpinionPoint, ...] = matching_points[:5]
         return ReportThemeResponse(
             theme_id=theme.id,
             title=theme.title,
@@ -173,9 +213,10 @@ def build_report_response(
             support=ThemeSupportResponse(
                 count=metric.support_count,
                 percentage=metric.support_percentage,
-                denominator=len(report.review_revision_ids),
+                denominator=len(matching_reviews),
             ),
-            evidence_count=len(theme.opinion_point_ids),
+            below_threshold=below_threshold(metric),
+            evidence_count=len(matching_points),
             representative_evidence=tuple(
                 RepresentativeEvidenceResponse(
                     opinion_point_id=point.id,
@@ -189,12 +230,36 @@ def build_report_response(
         )
 
     result = report.analysis_result
+    if filtered:
+        ranked: tuple[ThemeMetric, ...] = tuple(
+            sorted(
+                (metric for metric in filtered_metrics.all_themes if metric.support_count),
+                key=lambda metric: (-metric.support_count, metric.theme_id),
+            )
+        )
+        positive_metrics: tuple[ThemeMetric, ...] = tuple(
+            metric
+            for metric in ranked
+            if not metric.technical and metric.polarity == ThemePolarity.POSITIVE
+        )[: report.metric_policy.maximum_headlines_per_polarity]
+        negative_metrics: tuple[ThemeMetric, ...] = tuple(
+            metric
+            for metric in ranked
+            if not metric.technical and metric.polarity == ThemePolarity.NEGATIVE
+        )[: report.metric_policy.maximum_headlines_per_polarity]
+        technical_metrics: tuple[ThemeMetric, ...] = tuple(
+            metric for metric in ranked if metric.technical
+        )
+    else:
+        positive_metrics = report.theme_metrics.positive_headlines
+        negative_metrics = report.theme_metrics.negative_headlines
+        technical_metrics = report.theme_metrics.technical_themes
     return ReportResponse(
         report_version_id=report.report_version_id,
         game=ReportGameResponse(app_id=report.app_id, title=metadata.title),
         metadata=metadata,
         scope=ReportScopeResponse(
-            review_count=len(report.review_revision_ids),
+            review_count=len(matching_reviews),
             thresholds_calibrated=report.thresholds_calibrated,
         ),
         provenance=ReportProvenanceResponse(
@@ -203,12 +268,12 @@ def build_report_response(
             request_id=result.request_id,
             scope_sha256=result.scope_sha256,
         ),
-        positive_themes=tuple(present(item) for item in report.theme_metrics.positive_headlines),
-        negative_themes=tuple(present(item) for item in report.theme_metrics.negative_headlines),
-        technical_themes=tuple(present(item) for item in report.theme_metrics.technical_themes),
+        positive_themes=tuple(present(item) for item in positive_metrics),
+        negative_themes=tuple(present(item) for item in negative_metrics),
+        technical_themes=tuple(present(item) for item in technical_metrics),
         mixed_reception=tuple(
             MixedReceptionResponse(**item.model_dump())
-            for item in report.theme_metrics.mixed_reception
+            for item in filtered_metrics.mixed_reception
         ),
     )
 
@@ -217,6 +282,7 @@ def build_theme_evidence_response(
     database_path: Path,
     report: ReportVersion,
     theme_id: str,
+    query: EvidenceFilterQuery | None = None,
 ) -> ThemeEvidenceResponse | None:
     """Join all Theme Opinion Points to their exact stored review context."""
 
@@ -229,7 +295,9 @@ def build_theme_evidence_response(
         database_path, report.review_revision_ids
     )
     review_by_source_id: dict[str, SteamReview] = {
-        review.review_id: review for review in revisions_by_id.values()
+        review.review_id: review
+        for review in revisions_by_id.values()
+        if review_matches_filter(review, query or EvidenceFilterQuery())
     }
     point_by_id: dict[str, OpinionPoint] = {
         point.id: point for point in report.analysis_result.opinion_points
@@ -240,6 +308,7 @@ def build_theme_evidence_response(
         items=tuple(
             evidence_item(point_by_id[point_id], review_by_source_id)
             for point_id in theme.opinion_point_ids
+            if point_by_id[point_id].review_revision_id in review_by_source_id
         ),
     )
 

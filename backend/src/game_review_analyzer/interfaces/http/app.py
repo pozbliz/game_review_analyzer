@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Callable
 import shutil
-from typing import AsyncIterator, Literal
+from typing import Annotated, AsyncIterator, Literal
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -100,6 +100,7 @@ from game_review_analyzer.infrastructure.steam_catalog import (
 from game_review_analyzer.infrastructure.steam_reviews import SteamReviewIngestionAdapter
 from game_review_analyzer.shared.config import Settings
 from game_review_analyzer.interfaces.http.reports import (
+    EvidenceFilterQuery,
     ReportResponse,
     ThemeEvidenceResponse,
     build_report_response,
@@ -514,11 +515,14 @@ def create_app(
         return list_report_versions(resolved_settings.database_path, app_id)
 
     @app.get(f"{API_PREFIX}/reports/{{report_version_id}}", response_model=ReportResponse)
-    def report_summary(report_version_id: str) -> ReportResponse:
+    def report_summary(
+        report_version_id: str,
+        query: Annotated[EvidenceFilterQuery, Query()],
+    ) -> ReportResponse:
         report = load_report_version(resolved_settings.database_path, report_version_id)
         if report is None:
             raise HTTPException(status_code=404, detail={"code": "report_not_found"})
-        return build_report_response(resolved_settings.database_path, report)
+        return build_report_response(resolved_settings.database_path, report, query)
 
     @app.get(
         f"{API_PREFIX}/reports/{{report_version_id}}/themes/{{theme_id}}/evidence",
@@ -527,12 +531,13 @@ def create_app(
     def theme_evidence(
         report_version_id: str,
         theme_id: str,
+        query: Annotated[EvidenceFilterQuery, Query()],
     ) -> ThemeEvidenceResponse:
         report = load_report_version(resolved_settings.database_path, report_version_id)
         if report is None:
             raise HTTPException(status_code=404, detail={"code": "report_not_found"})
         response: ThemeEvidenceResponse | None = build_theme_evidence_response(
-            resolved_settings.database_path, report, theme_id
+            resolved_settings.database_path, report, theme_id, query
         )
         if response is None:
             raise HTTPException(status_code=404, detail={"code": "theme_not_found"})
