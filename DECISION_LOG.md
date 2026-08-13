@@ -7,6 +7,7 @@
 - Added one strict, immutable Evidence Filter query contract covering Steam recommendation, Steam purchase, received-free and Early Access state, playtime range and basis, and review-created date range.
 - Defined absent optional values as no restriction, kept playtime-at-review as the default basis, and rejected unknown fields, negative bounds, and inverted ranges.
 - Kept relative date presets out of the backend contract; clients resolve them to explicit inclusive timestamps before querying.
+- Reused the existing Theme Metrics calculator over matching reviews and Opinion Points; a valid zero-match filter returns zero-support metrics and empty presentation groups without weakening the non-empty immutable-report invariant.
 
 **Why:**
 

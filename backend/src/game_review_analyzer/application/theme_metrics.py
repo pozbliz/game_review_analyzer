@@ -9,11 +9,91 @@ from game_review_analyzer.domain.analysis import (
     ThemePolarity,
 )
 from game_review_analyzer.domain.reports import (
+    EvidenceFilterQuery,
     MixedReceptionMetric,
     ThemeMetric,
     ThemeMetricPolicy,
     ThemeMetrics,
 )
+from game_review_analyzer.domain.reviews import SteamReview
+
+
+def calculate_filtered_theme_metrics(
+    reviews: Iterable[SteamReview],
+    opinion_points: Iterable[OpinionPoint],
+    themes: Iterable[Theme],
+    policy: ThemeMetricPolicy,
+    query: EvidenceFilterQuery,
+) -> ThemeMetrics:
+    """Recalculate existing Theme metrics over reviews matching a temporary filter."""
+
+    matching_ids: set[str] = {
+        review.review_id for review in reviews if review_matches_filter(review, query)
+    }
+    theme_items: tuple[Theme, ...] = tuple(themes)
+    if not matching_ids:
+        return ThemeMetrics(
+            all_themes=tuple(
+                ThemeMetric(
+                    theme_id=theme.id,
+                    polarity=theme.polarity,
+                    primary_category=theme.primary_category,
+                    related_categories=theme.related_categories,
+                    technical=theme.technical,
+                    support_count=0,
+                    support_percentage=0,
+                )
+                for theme in theme_items
+            ),
+            positive_headlines=(),
+            negative_headlines=(),
+            technical_themes=(),
+            mixed_reception=(),
+        )
+    matching_points: tuple[OpinionPoint, ...] = tuple(
+        point for point in opinion_points if point.review_revision_id in matching_ids
+    )
+    return calculate_theme_metrics(
+        matching_ids, matching_points, theme_items, policy
+    )
+
+
+def review_matches_filter(review: SteamReview, query: EvidenceFilterQuery) -> bool:
+    """Return whether one review satisfies every explicit Evidence Filter bound."""
+
+    if query.recommendation != "all" and review.recommended != (
+        query.recommendation == "recommended"
+    ):
+        return False
+    for actual, required in (
+        (review.steam_purchase, query.steam_purchase),
+        (review.received_for_free, query.received_for_free),
+        (review.written_during_early_access, query.written_during_early_access),
+    ):
+        if required is not None and actual != required:
+            return False
+    playtime: int | None = (
+        review.playtime_at_review_minutes
+        if query.playtime_basis == "at_review"
+        else review.playtime_forever_minutes
+    )
+    if query.minimum_playtime_minutes is not None and (
+        playtime is None or playtime < query.minimum_playtime_minutes
+    ):
+        return False
+    if query.maximum_playtime_minutes is not None and (
+        playtime is None or playtime > query.maximum_playtime_minutes
+    ):
+        return False
+    if (
+        query.review_created_from is not None
+        and review.source_created_at < query.review_created_from
+    ):
+        return False
+    return not (
+        query.review_created_to is not None
+        and review.source_created_at > query.review_created_to
+    )
 
 
 def calculate_theme_metrics(

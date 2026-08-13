@@ -20,6 +20,38 @@ class ReportContractModel(ContractModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+class EvidenceFilterQuery(ReportContractModel):
+    """Define temporary restrictions applied while exploring one report."""
+
+    recommendation: Literal["all", "recommended", "not_recommended"] = "all"
+    steam_purchase: bool | None = None
+    received_for_free: bool | None = None
+    written_during_early_access: bool | None = None
+    playtime_basis: Literal["at_review", "current"] = "at_review"
+    minimum_playtime_minutes: int | None = Field(default=None, ge=0)
+    maximum_playtime_minutes: int | None = Field(default=None, ge=0)
+    review_created_from: int | None = Field(default=None, ge=0)
+    review_created_to: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def require_ordered_ranges(self) -> "EvidenceFilterQuery":
+        """Reject bounds that cannot match a review."""
+
+        if (
+            self.minimum_playtime_minutes is not None
+            and self.maximum_playtime_minutes is not None
+            and self.minimum_playtime_minutes > self.maximum_playtime_minutes
+        ):
+            raise ValueError("minimum playtime cannot exceed maximum playtime")
+        if (
+            self.review_created_from is not None
+            and self.review_created_to is not None
+            and self.review_created_from > self.review_created_to
+        ):
+            raise ValueError("review start date cannot exceed end date")
+        return self
+
+
 class ThemeMetricPolicy(ReportContractModel):
     """Supply explicit thresholds and headline caps for one calculation."""
 

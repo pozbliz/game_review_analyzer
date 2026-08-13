@@ -247,7 +247,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 - [x] [HUMAN] Retain deterministic Evidence Filters in the source MVP and defer Cohort Analysis plus minimum-size calibration.
 - [x] Define the Evidence Filter query contract and write contract tests.
-- [ ] Write deterministic Evidence Filter metric and denominator tests.
+- [x] Write deterministic Evidence Filter metric and denominator tests.
 - [ ] Implement reranking, zero-support hiding, below-threshold markers, and raw review/evidence restriction without new Theme discovery or model calls.
 - [ ] Write component tests, then build resettable Evidence Filter controls.
 - [ ] Verify that Evidence Filters never discover Themes, persist automatically, or invoke an analysis provider.
