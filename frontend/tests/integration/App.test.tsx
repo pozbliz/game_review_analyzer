@@ -326,6 +326,40 @@ describe("application shell", () => {
     );
   });
 
+  it("cancels a running analysis from the progress view", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url.startsWith("/api/games/preview")) return json(metadata());
+      if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
+      if (url === "/api/games/1145350/analyses/ollama") {
+        return json({ ...analysisRun("running"), provider: "ollama", model: "qwen3.5:4b" });
+      }
+      if (url === "/api/analysis-runs/analysis-1/cancel") {
+        return json({ ...analysisRun("cancelled"), provider: "ollama", model: "qwen3.5:4b" });
+      }
+      return json({ ...analysisRun("running"), provider: "ollama", model: "qwen3.5:4b" });
+    });
+
+    render(<App />);
+    await previewGame();
+    fireEvent.change(screen.getByLabelText("Analysis provider"), {
+      target: { value: "ollama::qwen3.5:4b" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Run Ollama pilot" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel analysis" }));
+
+    expect(await screen.findByRole("heading", { name: "Analysis cancelled" })).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/analysis-runs/analysis-1/cancel",
+      { method: "POST" },
+    );
+  });
+
   it("shows external-only model commands when Ollama has no installed models", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url = request.toString();
@@ -382,6 +416,23 @@ describe("application shell", () => {
 
     expect(await screen.findByText("Downloading reviews")).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1");
+  });
+
+  it("preserves the selected Ollama provider across an import-page reload", async () => {
+    localStorage.setItem("active-import-job", "job-1");
+    localStorage.setItem("analysis-provider", "ollama::qwen3.5:4b");
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      return json(job("completed", 100));
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole("button", { name: "Run Ollama pilot" })).toBeEnabled();
   });
 });
 

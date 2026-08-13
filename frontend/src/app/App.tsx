@@ -51,7 +51,9 @@ function CatalogApp(): JSX.Element {
   const [jobDeleted, setJobDeleted] = useState<boolean>(false);
   const [codexStatus, setCodexStatus] = useState<CodexCliProviderStatus | null>(null);
   const [ollamaStatus, setOllamaStatus] = useState<OllamaProviderStatus | null>(null);
-  const [providerSelection, setProviderSelection] = useState<string>("codex-cli");
+  const [providerSelection, setProviderSelection] = useState<string>(
+    () => window.localStorage.getItem("analysis-provider") ?? "codex-cli",
+  );
   const [analysisRun, setAnalysisRun] = useState<AnalysisRun | null>(null);
   const [analysisError, setAnalysisError] = useState<string>("");
 
@@ -441,7 +443,10 @@ function CatalogApp(): JSX.Element {
                 <select
                   id="analysis-provider"
                   value={providerSelection}
-                  onChange={(event) => setProviderSelection(event.target.value)}
+                  onChange={(event) => {
+                    window.localStorage.setItem("analysis-provider", event.target.value);
+                    setProviderSelection(event.target.value);
+                  }}
                 >
                   <option value="codex-cli">Codex CLI · GPT-5.6 Luna</option>
                   {ollamaStatus?.models.map((model) => (

@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-08-14 — Analysis controls survive import recovery
+
+**What changed:**
+
+- Persisted the selected analysis provider in browser-local state so a Full-import reload cannot silently switch an Ollama pilot back to Codex.
+- Added direct UI coverage proving a running analysis exposes **Cancel analysis**, calls the run cancellation endpoint, and renders the cancelled state.
+
+**Why:**
+
+- Provider selection and cancellation are safety controls: losing either across a long import can start the wrong compute path or make expensive work appear unstoppable.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-13 — Ollama testing uses a 25-plus-25 pilot scope
 
 **What changed:**
