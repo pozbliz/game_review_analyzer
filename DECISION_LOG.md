@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-08-13 — Storefront metadata favors scanning over decorative hierarchy
+
+**What changed:**
+
+- Removed the `STEAM SNAPSHOT` and `CONFIRM IDENTITY` decorative labels.
+- Changed store-fact values to normal weight, rendered tags as compact Steam-like chips, and separated feature names from explicit support-status badges.
+- Hid the successful backend status visually while preserving its live status announcement; loading and unavailable states remain visible.
+
+**Why:**
+
+- Dense bold values, comma-delimited tags, and punctuation-delimited feature states made the full-width details harder to scan than necessary.
+- Successful connectivity is background system state, while loading or failure still needs visible explanation.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- Confirm the rebuilt storefront hierarchy visually in Chrome after a hard reload.
+
+---
+
 ## 2026-08-13 — Game selection and details use separate full-width states
 
 **What changed:**

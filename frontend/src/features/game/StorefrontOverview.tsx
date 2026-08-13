@@ -10,10 +10,7 @@ export default function StorefrontOverview({ metadata }: StorefrontOverviewProps
   return (
     <section className="storefront-overview" aria-labelledby="storefront-title">
       <header>
-        <div>
-          <p className="eyebrow">STEAM SNAPSHOT</p>
-          <h2 id="storefront-title">Storefront overview</h2>
-        </div>
+        <h2 id="storefront-title">Storefront overview</h2>
         <a href={`https://store.steampowered.com/app/${metadata.app_id}`} target="_blank" rel="noreferrer">View on Steam</a>
       </header>
       <p>{store.short_description ?? unknown}</p>
@@ -24,7 +21,10 @@ export default function StorefrontOverview({ metadata }: StorefrontOverviewProps
           <dl>
             <div><dt>Publishers</dt><dd>{store.publishers?.join(", ") ?? unknown}</dd></div>
             <div><dt>Genres</dt><dd>{store.genres?.join(", ") ?? unknown}</dd></div>
-            <div><dt>Tags</dt><dd>{store.tags?.join(", ") ?? unknown}</dd></div>
+            <div>
+              <dt>Tags</dt>
+              <dd>{store.tags ? <ul className="tag-list" aria-label="Tags">{store.tags.map((tag) => <li key={tag}>{tag}</li>)}</ul> : unknown}</dd>
+            </div>
             <div><dt>Regional price</dt><dd>{store.price ? `${store.price.final_formatted} · ${store.price.currency} · ${store.price.country_code}` : unknown}</dd></div>
             <div><dt>Platforms</dt><dd>{store.platforms?.join(", ") ?? unknown}</dd></div>
             <div><dt>Languages</dt><dd>{store.supported_languages ?? unknown}</dd></div>
@@ -33,7 +33,12 @@ export default function StorefrontOverview({ metadata }: StorefrontOverviewProps
         <section>
           <h3>Features</h3>
           {store.features ? (
-            <ul>{store.features.map((feature) => <li key={`${feature.group}-${feature.name}`}>{feature.name} · {featureState(feature.state)}</li>)}</ul>
+            <ul className="feature-list" aria-label="Features">{store.features.map((feature) => (
+              <li key={`${feature.group}-${feature.name}`}>
+                <span>{feature.name}</span>
+                <strong className={`feature-state feature-state-${feature.state}`}>{featureState(feature.state)}</strong>
+              </li>
+            ))}</ul>
           ) : <p>{unknown}</p>}
         </section>
         <section>

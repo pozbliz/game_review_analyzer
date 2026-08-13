@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ReportView from "../../src/features/report/ReportView";
 
@@ -178,7 +178,9 @@ describe("report exploration", () => {
     expect(await screen.findByRole("heading", { name: "Storefront overview" })).toBeVisible();
     expect(screen.getByText("¥ 3,600 · JPY · JP")).toBeVisible();
     expect(screen.getByRole("heading", { name: "Features" })).toBeVisible();
-    expect(screen.getByText("Single-player · Supported")).toBeVisible();
+    const featureList = screen.getByRole("list", { name: "Features" });
+    expect(within(featureList).getByText("Single-player")).toBeVisible();
+    expect(within(featureList).getByText("Supported")).toBeVisible();
     const trailer = screen.getByRole("link", { name: "Play Early Access Showcase on Steam" });
     expect(trailer).toHaveAttribute("target", "_blank");
     expect(trailer).toHaveAttribute("rel", "noreferrer");

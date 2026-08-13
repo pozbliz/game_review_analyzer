@@ -1,6 +1,8 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/app/App";
+import { SteamMetadata } from "../../src/api/shell";
+import StorefrontOverview from "../../src/features/game/StorefrontOverview";
 
 afterEach(() => {
   cleanup();
@@ -145,11 +147,35 @@ describe("application shell", () => {
     fireEvent.click(screen.getByRole("button", { name: /preview game/i }));
 
     expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
+    expect(screen.queryByText("CONFIRM IDENTITY")).not.toBeInTheDocument();
     expect(selectionPanel).not.toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Game search" }));
     expect(selectionPanel).toBeVisible();
     expect(screen.queryByRole("heading", { name: "Hades II" })).not.toBeInTheDocument();
+  });
+
+  it("presents storefront tags and feature support as scan-friendly lists", () => {
+    const richMetadata: SteamMetadata = {
+      ...metadata(),
+      storefront: {
+        ...emptyStorefront(),
+        tags: ["Action", "Roguelike"],
+        features: [
+          { name: "Windows", group: "Platforms and accessibility", state: "supported" },
+          { name: "Linux", group: "Platforms and accessibility", state: "not_supported" },
+        ],
+      },
+    } as SteamMetadata;
+
+    render(<StorefrontOverview metadata={richMetadata} />);
+
+    expect(screen.queryByText("STEAM SNAPSHOT")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "Tags" })).getByText("Action")).toBeVisible();
+    const featureList = screen.getByRole("list", { name: "Features" });
+    expect(within(featureList).getByText("Windows")).toBeVisible();
+    expect(within(featureList).getByText("Supported")).toBeVisible();
+    expect(within(featureList).getByText("Not supported")).toBeVisible();
   });
 
   it("starts a Quick import and exposes durable progress and cancellation", async () => {

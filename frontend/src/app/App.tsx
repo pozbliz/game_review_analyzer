@@ -390,7 +390,6 @@ function CatalogApp(): JSX.Element {
             </section>
           ) : !preview ? (
             <div className="preview-empty">
-              <p className="eyebrow">CONFIRM IDENTITY</p>
               <h2>Game details appear here</h2>
               <p>Nothing is downloaded beyond the metadata needed for this preview.</p>
             </div>
@@ -401,7 +400,6 @@ function CatalogApp(): JSX.Element {
               ) : (
                 <div className="capsule-placeholder" aria-hidden="true">{preview.title}</div>
               )}
-              <p className="eyebrow">CONFIRM IDENTITY</p>
               <h2>{preview.title}</h2>
               <p className="developer">{preview.developers?.join(", ") ?? unknown}</p>
               <dl className="identity-grid">
