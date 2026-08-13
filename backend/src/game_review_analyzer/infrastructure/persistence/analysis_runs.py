@@ -63,8 +63,12 @@ def create_analysis_run(
     provider: str,
     model: str,
     metric_policy: ThemeMetricPolicy,
+    cohort_size: int = 2_500,
 ) -> AnalysisRun:
     """Queue a provider run over non-overlapping oldest and newest review cohorts."""
+
+    if not 1 <= cohort_size <= 2_500:
+        raise ValueError("Cohort size must be between 1 and 2,500")
 
     with connect(database_path) as connection:
         completed_full_import: tuple[int] | None = connection.execute(
@@ -92,13 +96,13 @@ def create_analysis_run(
         )
         if not ordered_revision_ids:
             raise ValueError("Analysis requires an existing review dataset")
-        if len(ordered_revision_ids) <= 5_000:
+        if len(ordered_revision_ids) <= cohort_size * 2:
             midpoint: int = len(ordered_revision_ids) // 2
             early_revision_ids: tuple[int, ...] = ordered_revision_ids[:midpoint]
             recent_revision_ids: tuple[int, ...] = ordered_revision_ids[midpoint:]
         else:
-            early_revision_ids = ordered_revision_ids[:2_500]
-            recent_revision_ids = ordered_revision_ids[-2_500:]
+            early_revision_ids = ordered_revision_ids[:cohort_size]
+            recent_revision_ids = ordered_revision_ids[-cohort_size:]
         revision_ids: tuple[int, ...] = early_revision_ids + recent_revision_ids
         run_id = str(uuid4())
         connection.execute(

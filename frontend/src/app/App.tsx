@@ -367,7 +367,7 @@ function CatalogApp(): JSX.Element {
                   >
                     {providerSelection === "codex-cli"
                       ? "Analyze with Codex CLI"
-                      : "Analyze with Ollama"}
+                      : "Run Ollama pilot"}
                   </button>
                 </>
               )}
@@ -432,7 +432,11 @@ function CatalogApp(): JSX.Element {
                 <StorefrontOverview metadata={preview} />
               )}
               <div className="analysis-setup">
-                <p><strong>Oldest versus newest</strong><br />Scans the complete available English review history, then analyzes up to the 2,500 oldest and 2,500 newest reviews.</p>
+                <p><strong>{providerSelection.startsWith("ollama::") ? "Oldest versus newest pilot" : "Oldest versus newest"}</strong><br />{
+                  providerSelection.startsWith("ollama::")
+                    ? "Scans the complete available English review history, then analyzes 25 oldest and 25 newest reviews. Pilot results are less complete than a full report."
+                    : "Scans the complete available English review history, then analyzes up to the 2,500 oldest and 2,500 newest reviews."
+                }</p>
                 <label htmlFor="analysis-provider">Analysis provider</label>
                 <select
                   id="analysis-provider"

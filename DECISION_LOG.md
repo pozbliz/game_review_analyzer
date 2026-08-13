@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-08-13 — Ollama testing uses a 25-plus-25 pilot scope
+
+**What changed:**
+
+- Limited Ollama runs started by the application UI to the 25 oldest and 25 newest eligible reviews after a completed Full import.
+- Kept the standard Codex report scope at up to 2,500 oldest and 2,500 newest reviews.
+
+**Why:**
+
+- Both installed Qwen models exceeded one minute without completing a strict two-review live extraction on CPU-only hardware.
+- A 50-review pilot exercises real chronological selection, durable extraction, and report generation without presenting the result as comprehensive.
+
+**New issues:**
+
+- The Ollama extraction prompt and schema need profiling before increasing the local pilot scope.
+
+**Needs human judgment:**
+
+- Decide whether pilot speed and extraction quality justify a larger local scope after the first completed report.
+
+---
+
 ## 2026-08-13 — Resumable cohort analysis uses bounded extraction and deterministic consolidation
 
 **What changed:**

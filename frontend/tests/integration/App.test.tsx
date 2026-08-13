@@ -304,6 +304,7 @@ describe("application shell", () => {
           method: "POST",
           body: expect.stringContaining('"model":"qwen3.5:4b"'),
         });
+        expect(options?.body).toContain('"cohort_size":25');
         return json({ ...analysisRun("queued"), provider: "ollama", model: "qwen3.5:4b" });
       }
       return json({ ...analysisRun("completed"), provider: "ollama", model: "qwen3.5:4b" });
@@ -315,8 +316,9 @@ describe("application shell", () => {
       target: { value: "ollama::qwen3.5:4b" },
     });
     expect(screen.getByText(/local processing: review text stays on this device/i)).toBeVisible();
+    expect(screen.getByText(/analyzes 25 oldest and 25 newest reviews/i)).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Create report" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Analyze with Ollama" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Run Ollama pilot" }));
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/games/1145350/analyses/ollama",

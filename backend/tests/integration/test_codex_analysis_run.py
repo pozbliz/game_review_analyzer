@@ -124,6 +124,47 @@ def test_analysis_scope_selects_non_overlapping_oldest_and_newest_reviews(
     ] == list(range(2_503, 5_003))
 
 
+def test_analysis_scope_accepts_a_smaller_oldest_and_newest_pilot(
+    tmp_path: Path,
+) -> None:
+    database_path: Path = tmp_path / "app.sqlite3"
+    initialize_database(database_path)
+    save_game_dataset(database_path, metadata())
+    save_review_revisions(
+        database_path,
+        1145350,
+        tuple(review_at(position) for position in range(1, 101)),
+    )
+    complete_full_import(database_path)
+
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="ollama",
+        model="qwen3.5:4b",
+        metric_policy=ThemeMetricPolicy(
+            minimum_support_count=2,
+            minimum_support_percentage=1,
+            technical_minimum_support_count=2,
+            technical_minimum_support_percentage=1,
+        ),
+        cohort_size=25,
+    )
+
+    selected_reviews = load_review_revisions_by_ids(
+        database_path, run.review_revision_ids
+    )
+    assert run.review_count == 50
+    assert [
+        selected_reviews[identifier].source_created_at
+        for identifier in run.early_review_revision_ids
+    ] == list(range(1, 26))
+    assert [
+        selected_reviews[identifier].source_created_at
+        for identifier in run.recent_review_revision_ids
+    ] == list(range(76, 101))
+
+
 def test_analysis_scope_requires_a_completed_full_history_import(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
     initialize_database(database_path)

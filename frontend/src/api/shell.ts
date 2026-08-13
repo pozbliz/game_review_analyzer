@@ -215,6 +215,7 @@ export async function startOllamaAnalysis(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
+      cohort_size: 25,
       minimum_support_count: 2,
       minimum_support_percentage: 1,
       technical_minimum_support_count: 2,

@@ -163,6 +163,7 @@ class OllamaAnalysisRequest(ThemeMetricPolicy):
     """Select one installed local model and explicit provisional thresholds."""
 
     model: str = Field(min_length=1)
+    cohort_size: int = Field(default=2_500, ge=1, le=2_500)
 
 
 class QuickImportRequest(BaseModel):
@@ -335,8 +336,9 @@ def create_app(
                 provider="ollama",
                 model=request.model,
                 metric_policy=ThemeMetricPolicy.model_validate(
-                    request.model_dump(exclude={"model"})
+                    request.model_dump(exclude={"model", "cohort_size"})
                 ),
+                cohort_size=request.cohort_size,
             )
         except FullHistoryRequired as error:
             raise HTTPException(
