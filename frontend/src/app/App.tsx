@@ -23,6 +23,7 @@ import {
   SteamMetadata,
 } from "../api/shell";
 import ReportView from "../features/report/ReportView";
+import { getReportHistory, ReportHistoryEntry } from "../api/reports";
 import { deleteIncompleteJob } from "../api/storage";
 import StorefrontOverview from "../features/game/StorefrontOverview";
 
@@ -45,6 +46,7 @@ function CatalogApp(): JSX.Element {
   const [preview, setPreview] = useState<SteamMetadata | null>(null);
   const [previewError, setPreviewError] = useState<string>("");
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [reportHistory, setReportHistory] = useState<ReportHistoryEntry[]>([]);
   const [job, setJob] = useState<AnalysisJob | null>(null);
   const [jobError, setJobError] = useState<string>("");
   const [jobDeleteConfirmation, setJobDeleteConfirmation] = useState<string>("");
@@ -156,6 +158,7 @@ function CatalogApp(): JSX.Element {
   function loadPreview(selectedAppId: string): void {
     setPreviewLoading(true);
     setPreviewError("");
+    setReportHistory([]);
     setJob(null);
     setAnalysisRun(null);
     window.localStorage.removeItem("active-import-job");
@@ -164,6 +167,9 @@ function CatalogApp(): JSX.Element {
       .then((metadata) => {
         setPreview(metadata);
         setShowGameSearch(false);
+        void getReportHistory(metadata.app_id)
+          .then(setReportHistory)
+          .catch(() => setReportHistory([]));
       })
       .catch(() => {
         setPreview(null);
@@ -319,64 +325,68 @@ function CatalogApp(): JSX.Element {
           <button className="game-search-back" type="button" onClick={() => setShowGameSearch(true)}>
             <span aria-hidden="true">←</span> Game search
           </button>
-          {job ? (
-            <section className="import-progress" aria-labelledby="import-title">
-              <p className="eyebrow">FULL HISTORY IMPORT</p>
-              <h2 id="import-title">{
-                job.state === "completed" ? "Import complete" :
-                job.state === "failed" ? "Import failed" :
-                job.state === "cancelled" ? "Import cancelled" : "Downloading reviews"
-              }</h2>
-              <p>{job.imported_count.toLocaleString()} reviews scanned</p>
-              {job.state !== "completed" && <progress />}
-              {job.state === "failed" && <button type="button" onClick={retryImport}>Retry import</button>}
-              {["queued", "running"].includes(job.state) && (
-                <button type="button" onClick={cancelImport}>Cancel import</button>
-              )}
-              {["failed", "cancelled"].includes(job.state) && !jobDeleted && (
-                <div className="job-deletion">
-                  <p>This removes only the incomplete job. Imported reviews and existing reports remain available.</p>
-                  <label>
-                    Type {job.id} to delete this incomplete job
-                    <input
-                      value={jobDeleteConfirmation}
-                      onChange={(event) => setJobDeleteConfirmation(event.target.value)}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    disabled={jobDeleteConfirmation !== job.id}
-                    onClick={removeIncompleteJob}
-                  >
-                    Delete incomplete job
-                  </button>
-                </div>
-              )}
-              {jobDeleted && <p role="status">Incomplete job deleted</p>}
-              {job.state === "completed" && !analysisRun && (
+          {job || analysisRun ? (
+            <section className="import-progress" aria-labelledby={job ? "import-title" : "analysis-title"}>
+              {job && (
                 <>
-                  <p>Provisional report thresholds: at least 2 reviews and 1% support.</p>
-                  <button
-                    type="button"
-                    onClick={beginAnalysis}
-                    disabled={
-                      providerSelection === "codex-cli"
-                        ? !codexStatus?.installed || !codexStatus.authenticated
-                        : !ollamaStatus?.models.some(
-                            (model) => providerSelection === `ollama::${model.name}`,
-                          )
-                    }
-                  >
-                    {providerSelection === "codex-cli"
-                      ? "Analyze with Codex CLI"
-                      : "Run Ollama pilot"}
-                  </button>
+                  <p className="eyebrow">FULL HISTORY IMPORT</p>
+                  <h2 id="import-title">{
+                    job.state === "completed" ? "Import complete" :
+                    job.state === "failed" ? "Import failed" :
+                    job.state === "cancelled" ? "Import cancelled" : "Downloading reviews"
+                  }</h2>
+                  <p>{job.imported_count.toLocaleString()} reviews scanned</p>
+                  {job.state !== "completed" && <progress />}
+                  {job.state === "failed" && <button type="button" onClick={retryImport}>Retry import</button>}
+                  {["queued", "running"].includes(job.state) && (
+                    <button type="button" onClick={cancelImport}>Cancel import</button>
+                  )}
+                  {["failed", "cancelled"].includes(job.state) && !jobDeleted && (
+                    <div className="job-deletion">
+                      <p>This removes only the incomplete job. Imported reviews and existing reports remain available.</p>
+                      <label>
+                        Type {job.id} to delete this incomplete job
+                        <input
+                          value={jobDeleteConfirmation}
+                          onChange={(event) => setJobDeleteConfirmation(event.target.value)}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        disabled={jobDeleteConfirmation !== job.id}
+                        onClick={removeIncompleteJob}
+                      >
+                        Delete incomplete job
+                      </button>
+                    </div>
+                  )}
+                  {jobDeleted && <p role="status">Incomplete job deleted</p>}
+                  {job.state === "completed" && !analysisRun && (
+                    <>
+                      <p>Provisional report thresholds: at least 2 reviews and 1% support.</p>
+                      <button
+                        type="button"
+                        onClick={beginAnalysis}
+                        disabled={
+                          providerSelection === "codex-cli"
+                            ? !codexStatus?.installed || !codexStatus.authenticated
+                            : !ollamaStatus?.models.some(
+                                (model) => providerSelection === `ollama::${model.name}`,
+                              )
+                        }
+                      >
+                        {providerSelection === "codex-cli"
+                          ? "Analyze with Codex CLI"
+                          : "Run Ollama pilot"}
+                      </button>
+                    </>
+                  )}
                 </>
               )}
               {analysisRun && (
                 <div className="analysis-progress">
                   <p className="eyebrow">{analysisRun.provider === "ollama" ? "OLLAMA ANALYSIS" : "CODEX ANALYSIS"}</p>
-                  <h3>{
+                  <h3 id="analysis-title">{
                     analysisRun.state === "completed" ? "Report complete" :
                     analysisRun.state === "failed" ? "Analysis failed" :
                     analysisRun.state === "cancelled" ? "Analysis cancelled" : "Analyzing reviews"
@@ -433,6 +443,29 @@ function CatalogApp(): JSX.Element {
               {preview.storefront_source_status !== "unavailable" && (
                 <StorefrontOverview metadata={preview} />
               )}
+              {reportHistory.length > 0 && (
+                <section className="saved-reports" aria-labelledby="saved-reports-title">
+                  <h3 id="saved-reports-title">Saved reports</h3>
+                  <a
+                    className="open-latest-report"
+                    href={`/reports/${encodeURIComponent(reportHistory[0].report_version_id)}`}
+                  >
+                    Open latest report
+                  </a>
+                  <p>{formatReportHistoryEntry(reportHistory[0])}</p>
+                  {reportHistory.length > 1 && (
+                    <ul>
+                      {reportHistory.slice(1).map((entry) => (
+                        <li key={entry.report_version_id}>
+                          <a href={`/reports/${encodeURIComponent(entry.report_version_id)}`}>
+                            {formatReportHistoryEntry(entry)}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              )}
               <div className="analysis-setup">
                 <p><strong>{providerSelection.startsWith("ollama::") ? "Oldest versus newest pilot" : "Oldest versus newest"}</strong><br />{
                   providerSelection.startsWith("ollama::")
@@ -484,8 +517,12 @@ function CatalogApp(): JSX.Element {
                     <p>Restart the app after the model download completes.</p>
                   </div>
                 )}
-                <button className="create-report" type="button" onClick={beginImport}>
-                  Create report
+                <button
+                  className={`create-report${reportHistory.length > 0 ? " create-report-secondary" : ""}`}
+                  type="button"
+                  onClick={reportHistory.length > 0 ? beginAnalysis : beginImport}
+                >
+                  {reportHistory.length > 0 ? "Create new report" : "Create report"}
                 </button>
               </div>
             </>
@@ -496,4 +533,14 @@ function CatalogApp(): JSX.Element {
       </div>
     </main>
   );
+}
+
+function formatReportHistoryEntry(entry: ReportHistoryEntry): string {
+  const date: Date = new Date(`${entry.created_at.replace(" ", "T")}Z`);
+  const provider: string = ({
+    "codex-cli": "Codex CLI",
+    "manual-codex": "Manual Codex",
+    ollama: "Ollama",
+  } as Record<string, string>)[entry.provider] ?? entry.provider;
+  return `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date)} · ${provider} · ${entry.model}`;
 }

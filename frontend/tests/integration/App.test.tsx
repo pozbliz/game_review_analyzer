@@ -129,6 +129,89 @@ describe("application shell", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/games/preview?appid=1145350");
   });
 
+  it("surfaces dated saved reports before new report controls", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") return json([
+        {
+          report_version_id: "report-latest",
+          app_id: 1145350,
+          game_title: "Hades II",
+          review_count: 50,
+          provider: "ollama",
+          model: "qwen3.5:4b",
+          thresholds_calibrated: false,
+          created_at: "2026-08-14 12:00:00",
+        },
+        {
+          report_version_id: "report-older",
+          app_id: 1145350,
+          game_title: "Hades II",
+          review_count: 5000,
+          provider: "codex-cli",
+          model: "gpt-5.6-luna",
+          thresholds_calibrated: false,
+          created_at: "2026-08-12 12:00:00",
+        },
+      ]);
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+
+    expect(await screen.findByRole("link", { name: "Open latest report" })).toHaveAttribute(
+      "href",
+      "/reports/report-latest",
+    );
+    expect(screen.getByText(/Aug 12, 2026.*Codex CLI.*gpt-5.6-luna/i)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Create new report" })).toBeEnabled();
+    expect(fetchMock).toHaveBeenCalledWith("/api/games/1145350/reports");
+  });
+
+  it("creates another report from retained reviews without a Full import", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") return json([{
+        report_version_id: "report-latest",
+        app_id: 1145350,
+        game_title: "Hades II",
+        review_count: 5000,
+        provider: "codex-cli",
+        model: "gpt-5.6-luna",
+        thresholds_calibrated: false,
+        created_at: "2026-08-14 12:00:00",
+      }]);
+      if (url === "/api/games/1145350/analyses/codex-cli") {
+        return json(analysisRun("completed"));
+      }
+      if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+    fireEvent.click(await screen.findByRole("button", { name: "Create new report" }));
+
+    expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/games/1145350/analyses/codex-cli",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/games/1145350/imports/full",
+      expect.anything(),
+    );
+  });
+
   it("moves from game search to full-width details and back", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url = request.toString();
@@ -389,6 +472,7 @@ describe("application shell", () => {
       if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url === "/api/providers/ollama") return json({ ...ollamaProvider(), available: false, models: [] });
       if (url.startsWith("/api/games/preview")) return json(metadata());
+      if (url === "/api/games/1145350/reports") return json([]);
       if (url === "/api/games/1145350/imports/full") return json(job("queued", 0, "full"));
       if (url === "/api/jobs/job-1/retry") return json(job("queued", 0));
       progressRequests += 1;

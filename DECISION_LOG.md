@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-09-27 — Catalog reuses retained reviews for new reports
+
+**What changed:**
+
+- Loaded newest-first saved reports after game selection and made the latest report the primary action.
+- Added dated provider/model history and a secondary **Create new report** action.
+- Started later analysis runs directly from the retained full-history dataset without another Full import.
+
+**Why:**
+
+- Returning users should reach saved work before starting more acquisition.
+- Immutable reports can reuse the exact locally retained review corpus.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-08-14 — Saved reports lead a one-time preparation workflow
 
 **What changed:**
