@@ -1,6 +1,7 @@
 """Fixture-driven tests for the Steam storefront metadata adapter."""
 
 from io import BytesIO
+import json
 from pathlib import Path
 from urllib.request import Request
 
@@ -61,6 +62,26 @@ def test_adapter_reports_partial_metadata_without_failing_preview() -> None:
     assert metadata.missing_fields == frozenset(
         {"capsule_image_url", "release_date", "release_status", "review_count"}
     )
+
+
+def test_adapter_accepts_one_result_keyed_differently_when_identity_matches() -> None:
+    payload: dict[str, object] = json.loads(
+        (FIXTURE_DIRECTORY / "valid.json").read_bytes()
+    )
+    payload["2950840"] = payload.pop("1145350")
+
+    def open_fixture(request: Request, *, timeout: float) -> BytesIO:
+        assert timeout == 10.0
+        return BytesIO(
+            b"<html></html>"
+            if "/app/1145350/" in request.full_url
+            else json.dumps(payload).encode()
+        )
+
+    metadata = SteamStoreMetadataAdapter(open_url=open_fixture).fetch(1145350)
+
+    assert metadata.app_id == 1145350
+    assert metadata.title == "Hades II"
 
 
 def test_adapter_distinguishes_missing_and_malformed_games() -> None:

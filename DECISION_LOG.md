@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-09-27 — Steam metadata identity follows the nested AppID
+
+**What changed:**
+
+- Accepted a sole Steam metadata record under an unexpected outer key when its nested `steam_appid` matches the request.
+- Kept mismatched, missing, and ambiguous responses invalid.
+
+**Why:**
+
+- Steam returned Hades II and Hades under unrelated outer keys while preserving the correct nested AppID and game data.
+- The outer key mismatch caused valid previews to fail with HTTP 502.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-27 — History failures cannot trigger acquisition
 
 **What changed:**

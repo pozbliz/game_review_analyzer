@@ -100,6 +100,11 @@ class SteamStoreMetadataAdapter:
         if not isinstance(payload, dict):
             raise SteamMetadataMalformed("Steam metadata response must be an object")
         result: Any = payload.get(str(app_id))
+        if not isinstance(result, dict) and len(payload) == 1:
+            candidate: Any = next(iter(payload.values()))
+            candidate_data: Any = candidate.get("data") if isinstance(candidate, dict) else None
+            if isinstance(candidate_data, dict) and candidate_data.get("steam_appid") == app_id:
+                result = candidate
         if not isinstance(result, dict):
             raise SteamMetadataMalformed("Steam metadata response omitted the AppID result")
         if result.get("success") is False:

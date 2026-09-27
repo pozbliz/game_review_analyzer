@@ -21,6 +21,10 @@
 - [x] Verify the production UI in the connected browser.
 - [ ] [HUMAN] Calibrate direction thresholds and canonical-subject consistency on representative games before claiming production-quality semantic grouping.
 
+## 2026-09-27
+
+- [x] Accept Steam metadata returned under an unexpected outer key when its sole nested AppID matches the requested game.
+
 ## 2026-08-13
 
 - [x] Widen the game catalog and add a user-controlled collapsible selection rail so storefront details can use the full content width.
