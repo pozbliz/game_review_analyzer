@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-09-27 — Codex CLI defaults to low reasoning
+
+**What changed:**
+
+- Changed the current `gpt-5.6-luna` Codex CLI default from medium to low reasoning.
+- Kept historical evaluation records at medium reasoning unchanged.
+
+**Why:**
+
+- The user chose lower latency for current report generation.
+
+**New issues:**
+
+- Low reasoning has not received the prior medium-setting quality evaluation.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-27 — Catalog restores recent reports and retained work
 
 **What changed:**

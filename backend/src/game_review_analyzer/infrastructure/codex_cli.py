@@ -58,7 +58,7 @@ class CodexCliProvider:
         *,
         executable: str,
         model: str = "gpt-5.6-luna",
-        reasoning_effort: str = "medium",
+        reasoning_effort: str = "low",
         max_attempts: int = 2,
     ) -> None:
         if max_attempts < 1:
@@ -305,7 +305,7 @@ def _process_error_code(stderr: str, output_exists: bool) -> str:
 def codex_cli_status(
     *,
     model: str = "gpt-5.6-luna",
-    reasoning_effort: str = "medium",
+    reasoning_effort: str = "low",
 ) -> CodexCliStatus:
     """Check installation and login without reading or returning credential data."""
 
