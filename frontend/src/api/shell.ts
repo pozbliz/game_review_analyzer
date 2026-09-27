@@ -139,6 +139,11 @@ export interface AnalysisRun {
   phase: "queued" | "extracting" | "consolidating" | "completed" | "failed" | "cancelled";
 }
 
+export interface GameWorkspace {
+  full_history_ready: boolean;
+  latest_analysis_run: AnalysisRun | null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -194,17 +199,34 @@ function parseAnalysisRun(payload: unknown): AnalysisRun {
   return payload as unknown as AnalysisRun;
 }
 
-export async function startCodexAnalysis(appId: number): Promise<AnalysisRun> {
+export async function startCodexAnalysis(
+  appId: number, cohortSize: number,
+): Promise<AnalysisRun> {
   return parseAnalysisRun(await requestJson(`/api/games/${appId}/analyses/codex-cli`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      cohort_size: cohortSize,
       minimum_support_count: 2,
       minimum_support_percentage: 1,
       technical_minimum_support_count: 2,
       technical_minimum_support_percentage: 1,
     }),
   }));
+}
+
+export async function getGameWorkspace(appId: number): Promise<GameWorkspace> {
+  const payload: unknown = await requestJson(`/api/games/${appId}/workspace`);
+  if (!isRecord(payload) || typeof payload.full_history_ready !== "boolean" ||
+      !(payload.latest_analysis_run === null || isRecord(payload.latest_analysis_run))) {
+    throw new Error("Invalid game workspace response");
+  }
+  return {
+    full_history_ready: payload.full_history_ready,
+    latest_analysis_run: payload.latest_analysis_run === null
+      ? null
+      : parseAnalysisRun(payload.latest_analysis_run),
+  };
 }
 
 export async function startOllamaAnalysis(

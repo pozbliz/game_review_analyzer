@@ -6,6 +6,8 @@ The local application shell, keyed Steam catalog synchronization, local-first na
 
 Steam review imports wait two seconds between pages and honor rate-limit delays while preserving their latest checkpoint.
 
+The initial Catalog pairs game search with the six newest saved reports. Selecting a game restores retained acquisition and analysis state, and Codex CLI defaults to a 50-review pilot before the optional 5,000-review run.
+
 ## Current implementation status
 
 Slices 1–8 and 10–12 are implemented, including a successful authenticated Codex CLI report run. The one-review live report retained six exact Opinion Points, classified the review as mixed, and correctly omitted Themes that lacked two-review support. That run used 15,744 input tokens despite an application prompt under 1 KB and generated schema around 4.6 KB, so the app does not claim Codex CLI is quota-efficient and retains its strict validation contract. Slice 9 is active: Ollama 0.32.8 plus Qwen 3.5 4B and 9B are installed, and the app can explicitly run either through the durable local report flow. The human-reviewed pilot found 4B invalid on all three games and 9B impractically slow on this CPU-only machine, so neither is a reliable default for full analysis here. Hosted API and Claude Code adapters remain later choices. Slice 10 provides resettable, non-persistent Evidence Filters that deterministically rerank existing Themes and restrict evidence without model calls. Cohort Analysis is deferred. Source and packaged release work remains in Slices 13 and 14. The exact continuation checkpoint and every open action are maintained in `TASKS.md`.

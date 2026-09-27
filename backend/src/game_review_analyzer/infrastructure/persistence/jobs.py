@@ -130,6 +130,18 @@ def get_job(database_path: Path, job_id: str) -> AnalysisJob:
     )
 
 
+def has_completed_full_import(database_path: Path, app_id: int) -> bool:
+    """Return whether one game has completed Full review acquisition."""
+
+    with connect(database_path) as connection:
+        row: tuple[int] | None = connection.execute(
+            "SELECT 1 FROM analysis_jobs WHERE app_id = ? AND scope = 'full' "
+            "AND state = 'completed' LIMIT 1",
+            (app_id,),
+        ).fetchone()
+    return row is not None
+
+
 def start_job(database_path: Path, job_id: str) -> AnalysisJob | None:
     """Atomically claim a queued job for one runner."""
 

@@ -156,6 +156,18 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
     )
 
 
+def load_latest_analysis_run(database_path: Path, app_id: int) -> AnalysisRun | None:
+    """Load the newest durable analysis run for one game."""
+
+    with connect(database_path) as connection:
+        row: tuple[str] | None = connection.execute(
+            "SELECT id FROM analysis_runs WHERE app_id = ? "
+            "ORDER BY created_at DESC, rowid DESC LIMIT 1",
+            (app_id,),
+        ).fetchone()
+    return get_analysis_run(database_path, row[0]) if row else None
+
+
 def start_analysis_run(database_path: Path, run_id: str) -> AnalysisRun | None:
     """Atomically claim one queued provider run."""
 

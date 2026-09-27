@@ -12,6 +12,28 @@ afterEach(() => {
 });
 
 describe("application shell", () => {
+  it("shows recent saved reports beside game search", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/reports/recent") {
+        return json([{ ...historyEntry("recent-report", 1145350), game_title: "Hades II" }]);
+      }
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      return json(ollamaProvider());
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Recent reports" })).toBeVisible();
+    expect(screen.getByRole("link", { name: /Hades II/i })).toHaveAttribute(
+      "href",
+      "/reports/recent-report",
+    );
+    expect(screen.getByRole("heading", { name: /select the game to analyze/i })).toBeVisible();
+  });
+
   it("reports backend health after validating the shell API contracts", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url = request.toString();
@@ -300,6 +322,55 @@ describe("application shell", () => {
     );
   });
 
+  it("creates the first report from a completed Game Dataset without another import", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") return json([]);
+      if (url === "/api/games/1145350/workspace") return json(workspace(true));
+      if (url === "/api/games/1145350/analyses/codex-cli") {
+        return json(analysisRun("completed"));
+      }
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+    fireEvent.click(await screen.findByRole("button", { name: "Create report" }));
+
+    expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/games/1145350/imports/full",
+      expect.anything(),
+    );
+  });
+
+  it("restores the latest resumable analysis when its game is selected", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") return json([]);
+      if (url === "/api/games/1145350/workspace") {
+        return json(workspace(true, analysisRun("cancelled")));
+      }
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+
+    expect(await screen.findByRole("heading", { name: "Analysis cancelled" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Resume analysis" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Choose different provider" }));
+    expect(screen.getByLabelText("Analysis provider")).toBeVisible();
+  });
+
   it("moves from game search to full-width details and back", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url = request.toString();
@@ -471,14 +542,17 @@ describe("application shell", () => {
     render(<App />);
     await previewGame();
     fireEvent.click(screen.getByRole("button", { name: "Create report" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Analyze with Codex CLI" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Run Codex pilot" }));
 
     const link = await screen.findByRole("link", { name: "View report" });
     expect(link).toHaveAttribute("href", "/reports/report-1");
     expect(screen.getByText(/120 input and 30 output tokens/i)).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/games/1145350/analyses/codex-cli",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"cohort_size":25'),
+      }),
     );
   });
 
@@ -584,7 +658,9 @@ describe("application shell", () => {
       if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url === "/api/providers/ollama") return json({ ...ollamaProvider(), available: false, models: [] });
       if (url.startsWith("/api/games/preview")) return json(metadata());
+      if (url === "/api/reports/recent") return json([]);
       if (url === "/api/games/1145350/reports") return json([]);
+      if (url === "/api/games/1145350/workspace") return json(workspace(false));
       if (url === "/api/games/1145350/imports/full") return json(job("queued", 0, "full"));
       if (url === "/api/jobs/job-1/retry") return json(job("queued", 0));
       progressRequests += 1;
@@ -768,5 +844,12 @@ function analysisRun(state: string): object {
     output_tokens: state === "completed" ? 30 : null,
     extracted_review_count: state === "completed" ? 1 : 0,
     phase: state === "running" ? "extracting" : state,
+  };
+}
+
+function workspace(fullHistoryReady: boolean, latestAnalysisRun: object | null = null): object {
+  return {
+    full_history_ready: fullHistoryReady,
+    latest_analysis_run: latestAnalysisRun,
   };
 }

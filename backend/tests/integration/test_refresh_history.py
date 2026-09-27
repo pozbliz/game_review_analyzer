@@ -185,11 +185,14 @@ def test_refresh_and_report_history_http_contract(tmp_path: Path) -> None:
             "/api/games/1145350/refreshes", json={"target_count": 5000}
         )
         history_response = client.get("/api/games/1145350/reports")
+        recent_response = client.get("/api/reports/recent")
 
     assert refresh_response.status_code == 202
     assert refresh_response.json()["scope"] == "refresh"
     assert history_response.status_code == 200
     assert history_response.json()[0]["report_version_id"] == "report-1"
+    assert recent_response.status_code == 200
+    assert recent_response.json()[0]["report_version_id"] == "report-1"
 
 
 def stored_history(database_path: Path) -> tuple[str, list[tuple[int, str]], str]:

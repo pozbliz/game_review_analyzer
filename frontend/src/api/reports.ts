@@ -134,6 +134,12 @@ export async function getReportHistory(appId: number): Promise<ReportHistoryEntr
   return payload.map(parseHistoryEntry);
 }
 
+export async function getRecentReports(): Promise<ReportHistoryEntry[]> {
+  const payload: unknown = await requestJson("/api/reports/recent");
+  if (!Array.isArray(payload)) throw new Error("Invalid recent reports response");
+  return payload.map(parseHistoryEntry);
+}
+
 async function requestJson(path: string): Promise<unknown> {
   const response: Response = await fetch(path);
   if (!response.ok) throw new Error(`Request failed: ${path}`);

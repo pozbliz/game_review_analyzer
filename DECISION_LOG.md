@@ -1,5 +1,32 @@
 # Decision Log
 
+## 2026-09-27 — Catalog restores recent reports and retained work
+
+**What changed:**
+
+- Restored the six newest saved reports beside the initial game search.
+- Added per-game workspace discovery for completed Full acquisition and the latest Analysis Run.
+- Reused completed Game Datasets instead of repeating Full acquisition.
+- Added a default 50-review Codex CLI pilot and retained the 5,000-review option.
+- Let users resume a cancelled analysis or choose another provider.
+
+**Why:**
+
+- The approved recent-report panel existed only in the prototype.
+- Report history was an incorrect proxy for whether reviews had already been acquired.
+- Returning to game search hid an unfinished analysis without cancelling it.
+- CPU-only Ollama analysis was too slow for normal use on this machine.
+
+**New issues:**
+
+- The 50-review Codex pilot remains provisional and can miss Themes found by the larger scope.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-27 — Steam review imports back off after rate limits
 
 **What changed:**

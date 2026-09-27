@@ -289,11 +289,16 @@ def test_api_starts_and_exposes_completed_codex_analysis(tmp_path: Path) -> None
         )
     ) as client:
         save_game_dataset(database_path, metadata())
-        save_review_revisions(database_path, 1145350, (review("Good game", 100),))
+        save_review_revisions(
+            database_path,
+            1145350,
+            tuple(review_at(position) for position in range(1, 101)),
+        )
         complete_full_import(database_path)
         started = client.post(
             "/api/games/1145350/analyses/codex-cli",
             json={
+                "cohort_size": 25,
                 "minimum_support_count": 2,
                 "minimum_support_percentage": 1,
                 "technical_minimum_support_count": 2,
@@ -301,6 +306,7 @@ def test_api_starts_and_exposes_completed_codex_analysis(tmp_path: Path) -> None
             },
         )
         run_id = started.json()["id"]
+        workspace = client.get("/api/games/1145350/workspace")
         completed = client.get(f"/api/analysis-runs/{run_id}")
         for _ in range(100):
             if completed.json()["state"] == "completed":
@@ -308,7 +314,11 @@ def test_api_starts_and_exposes_completed_codex_analysis(tmp_path: Path) -> None
             completed = client.get(f"/api/analysis-runs/{run_id}")
 
     assert started.status_code == 202
-    assert completed.json()["review_count"] == 1
+    assert started.json()["review_count"] == 50
+    assert workspace.status_code == 200
+    assert workspace.json()["full_history_ready"] is True
+    assert workspace.json()["latest_analysis_run"]["id"] == run_id
+    assert completed.json()["review_count"] == 50
     assert completed.json()["report_version_id"] is not None
 
 

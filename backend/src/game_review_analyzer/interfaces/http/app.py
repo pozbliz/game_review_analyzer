@@ -64,6 +64,7 @@ from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     FullHistoryRequired,
     create_analysis_run,
     get_analysis_run,
+    load_latest_analysis_run,
     recoverable_analysis_run_ids,
     request_analysis_cancellation,
     retry_analysis_run,
@@ -81,6 +82,7 @@ from game_review_analyzer.infrastructure.persistence.jobs import (
     create_reconciliation_job,
     create_refresh_job,
     get_job,
+    has_completed_full_import,
     load_reconciliation_result,
     recoverable_job_ids,
     request_cancellation,
@@ -88,6 +90,7 @@ from game_review_analyzer.infrastructure.persistence.jobs import (
 )
 from game_review_analyzer.infrastructure.persistence.report_versions import (
     ReportHistoryEntry,
+    list_recent_report_versions,
     list_report_versions,
     load_report_version,
 )
@@ -183,6 +186,19 @@ class OllamaAnalysisRequest(ThemeMetricPolicy):
 
     model: str = Field(min_length=1)
     cohort_size: int = Field(default=2_500, ge=1, le=2_500)
+
+
+class CodexAnalysisRequest(ThemeMetricPolicy):
+    """Select an explicit Codex cohort size and provisional thresholds."""
+
+    cohort_size: int = Field(default=25, ge=1, le=2_500)
+
+
+class GameWorkspaceResponse(BaseModel):
+    """Expose retained acquisition and analysis state for one selected game."""
+
+    full_history_ready: bool
+    latest_analysis_run: AnalysisRun | None
 
 
 class QuickImportRequest(BaseModel):
@@ -309,7 +325,7 @@ def create_app(
         status_code=202,
     )
     def start_codex_analysis(
-        app_id: int, metric_policy: ThemeMetricPolicy
+        app_id: int, request: CodexAnalysisRequest
     ) -> AnalysisRun:
         status = resolved_codex_status_source()
         if not status.installed or not status.authenticated:
@@ -324,7 +340,10 @@ def create_app(
                 app_id=app_id,
                 provider="codex-cli",
                 model=status.model,
-                metric_policy=metric_policy,
+                metric_policy=ThemeMetricPolicy.model_validate(
+                    request.model_dump(exclude={"cohort_size"})
+                ),
+                cohort_size=request.cohort_size,
             )
         except FullHistoryRequired as error:
             raise HTTPException(
@@ -569,6 +588,29 @@ def create_app(
         if load_game_dataset(resolved_settings.database_path, app_id) is None:
             raise HTTPException(status_code=404, detail={"code": "game_not_found"})
         return list_report_versions(resolved_settings.database_path, app_id)
+
+    @app.get(
+        f"{API_PREFIX}/reports/recent",
+        response_model=tuple[ReportHistoryEntry, ...],
+    )
+    def recent_reports() -> tuple[ReportHistoryEntry, ...]:
+        return list_recent_report_versions(resolved_settings.database_path)
+
+    @app.get(
+        f"{API_PREFIX}/games/{{app_id}}/workspace",
+        response_model=GameWorkspaceResponse,
+    )
+    def game_workspace(app_id: int) -> GameWorkspaceResponse:
+        if load_game_dataset(resolved_settings.database_path, app_id) is None:
+            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
+        return GameWorkspaceResponse(
+            full_history_ready=has_completed_full_import(
+                resolved_settings.database_path, app_id
+            ),
+            latest_analysis_run=load_latest_analysis_run(
+                resolved_settings.database_path, app_id
+            ),
+        )
 
     @app.get(
         f"{API_PREFIX}/reports/{{report_version_id}}",

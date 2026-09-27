@@ -110,6 +110,26 @@ def list_report_versions(
             "ORDER BY created_at DESC, rowid DESC",
             (app_id,),
         ).fetchall()
+    return _history_entries(rows)
+
+
+def list_recent_report_versions(
+    database_path: Path, limit: int = 6
+) -> tuple[ReportHistoryEntry, ...]:
+    """List the newest saved reports across all games."""
+
+    with sqlite3.connect(database_path) as connection:
+        rows: list[tuple[str, str]] = connection.execute(
+            "SELECT snapshot_json, created_at FROM report_versions "
+            "ORDER BY created_at DESC, rowid DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return _history_entries(rows)
+
+
+def _history_entries(
+    rows: list[tuple[str, str]],
+) -> tuple[ReportHistoryEntry, ...]:
     entries: list[ReportHistoryEntry] = []
     for snapshot_json, created_at in rows:
         report: ReportVersion = ReportVersion.model_validate_json(snapshot_json)

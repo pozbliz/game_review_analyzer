@@ -8,6 +8,7 @@ import {
   getCodexCliProviderStatus,
   getOllamaProviderStatus,
   getGamePreview,
+  getGameWorkspace,
   getHealth,
   getJob,
   getAnalysisRun,
@@ -23,7 +24,7 @@ import {
   SteamMetadata,
 } from "../api/shell";
 import ReportView from "../features/report/ReportView";
-import { getReportHistory, ReportHistoryEntry } from "../api/reports";
+import { getRecentReports, getReportHistory, ReportHistoryEntry } from "../api/reports";
 import { deleteIncompleteJob } from "../api/storage";
 import StorefrontOverview from "../features/game/StorefrontOverview";
 
@@ -49,8 +50,10 @@ function CatalogApp(): JSX.Element {
   const [previewError, setPreviewError] = useState<string>("");
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
   const [reportHistory, setReportHistory] = useState<ReportHistoryEntry[]>([]);
+  const [recentReports, setRecentReports] = useState<ReportHistoryEntry[]>([]);
   const [reportHistoryLoading, setReportHistoryLoading] = useState<boolean>(false);
   const [reportHistoryError, setReportHistoryError] = useState<string>("");
+  const [fullHistoryReady, setFullHistoryReady] = useState<boolean>(false);
   const [job, setJob] = useState<AnalysisJob | null>(null);
   const [jobError, setJobError] = useState<string>("");
   const [jobDeleteConfirmation, setJobDeleteConfirmation] = useState<string>("");
@@ -60,6 +63,7 @@ function CatalogApp(): JSX.Element {
   const [providerSelection, setProviderSelection] = useState<string>(
     () => window.localStorage.getItem("analysis-provider") ?? "codex-cli",
   );
+  const [codexCohortSize, setCodexCohortSize] = useState<number>(25);
   const [analysisRun, setAnalysisRun] = useState<AnalysisRun | null>(null);
   const [analysisError, setAnalysisError] = useState<string>("");
 
@@ -75,6 +79,14 @@ function CatalogApp(): JSX.Element {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    let active: boolean = true;
+    getRecentReports()
+      .then((reports) => { if (active) setRecentReports(reports); })
+      .catch(() => { if (active) setRecentReports([]); });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -170,6 +182,7 @@ function CatalogApp(): JSX.Element {
     setReportHistory([]);
     setReportHistoryLoading(true);
     setReportHistoryError("");
+    setFullHistoryReady(false);
     setJob(null);
     setAnalysisRun(null);
     window.localStorage.removeItem("active-import-job");
@@ -179,7 +192,7 @@ function CatalogApp(): JSX.Element {
         if (requestId !== previewRequestId.current) return;
         setPreview(metadata);
         setShowGameSearch(false);
-        void getReportHistory(metadata.app_id)
+        const historyRequest: Promise<void> = getReportHistory(metadata.app_id)
           .then((items) => {
             if (requestId === previewRequestId.current) setReportHistory(items);
           })
@@ -189,10 +202,22 @@ function CatalogApp(): JSX.Element {
                 "Unable to load saved reports. Select this game again to retry.",
               );
             }
-          })
-          .finally(() => {
-            if (requestId === previewRequestId.current) setReportHistoryLoading(false);
           });
+        const workspaceRequest: Promise<void> = getGameWorkspace(metadata.app_id)
+          .then((workspace) => {
+            if (requestId !== previewRequestId.current) return;
+            setFullHistoryReady(workspace.full_history_ready);
+            if (workspace.latest_analysis_run?.state !== "completed") {
+              const latestRun: AnalysisRun | null = workspace.latest_analysis_run;
+              if (latestRun) {
+                window.localStorage.setItem("active-analysis-run", latestRun.id);
+                setAnalysisRun(latestRun);
+              }
+            }
+          });
+        void Promise.allSettled([historyRequest, workspaceRequest]).then(() => {
+          if (requestId === previewRequestId.current) setReportHistoryLoading(false);
+        });
       })
       .catch(() => {
         if (requestId !== previewRequestId.current) return;
@@ -245,7 +270,7 @@ function CatalogApp(): JSX.Element {
       : null;
     const start = selectedModel
       ? startOllamaAnalysis(selectedAppId, selectedModel)
-      : startCodexAnalysis(selectedAppId);
+      : startCodexAnalysis(selectedAppId, codexCohortSize);
     start
       .then((run) => {
         window.localStorage.setItem("active-analysis-run", run.id);
@@ -267,6 +292,11 @@ function CatalogApp(): JSX.Element {
     retryAnalysisRun(analysisRun.id)
       .then(setAnalysisRun)
       .catch(() => setAnalysisError("Unable to retry analysis."));
+  }
+
+  function chooseDifferentProvider(): void {
+    window.localStorage.removeItem("active-analysis-run");
+    setAnalysisRun(null);
   }
 
   function retryImport(): void {
@@ -297,7 +327,7 @@ function CatalogApp(): JSX.Element {
         </p>
       </header>
 
-      <div className="catalog">
+      <div className={`catalog${showGameSearch ? " catalog-searching" : ""}`}>
         <section
           id="catalog-selection"
           className="catalog-search"
@@ -347,7 +377,29 @@ function CatalogApp(): JSX.Element {
           {previewError && <p className="error" role="alert">{previewError}</p>}
         </section>
 
-        <aside className="catalog-preview" aria-live="polite" hidden={showGameSearch}>
+        <aside className="catalog-preview" aria-live="polite">
+          {showGameSearch ? (
+            <section className="recent-reports" aria-labelledby="recent-reports-title">
+              <p className="eyebrow">CONTINUE YOUR RESEARCH</p>
+              <h2 id="recent-reports-title">Recent reports</h2>
+              {recentReports.length > 0 ? (
+                <ul>
+                  {recentReports.map((entry) => (
+                    <li key={entry.report_version_id}>
+                      <a href={`/reports/${encodeURIComponent(entry.report_version_id)}`}>
+                        <strong>{entry.game_title}</strong>
+                        <span>{entry.review_count.toLocaleString()} reviews</span>
+                        <small>{formatReportHistoryEntry(entry)}</small>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No saved reports yet. Select a game to create the first one.</p>
+              )}
+            </section>
+          ) : (
+            <>
           <button className="game-search-back" type="button" onClick={() => setShowGameSearch(true)}>
             <span aria-hidden="true">←</span> Game search
           </button>
@@ -402,7 +454,7 @@ function CatalogApp(): JSX.Element {
                         }
                       >
                         {providerSelection === "codex-cli"
-                          ? "Analyze with Codex CLI"
+                          ? codexCohortSize === 25 ? "Run Codex pilot" : "Analyze with Codex CLI"
                           : "Run Ollama pilot"}
                       </button>
                     </>
@@ -438,7 +490,10 @@ function CatalogApp(): JSX.Element {
                     </>
                   )}
                   {["failed", "cancelled"].includes(analysisRun.state) && (
-                    <button type="button" onClick={retryAnalysis}>Resume analysis</button>
+                    <>
+                      <button type="button" onClick={retryAnalysis}>Resume analysis</button>
+                      <button type="button" onClick={chooseDifferentProvider}>Choose different provider</button>
+                    </>
                   )}
                 </div>
               )}
@@ -493,8 +548,8 @@ function CatalogApp(): JSX.Element {
                 </section>
               )}
               <div className="analysis-setup">
-                <p><strong>{providerSelection.startsWith("ollama::") ? "Oldest versus newest pilot" : "Oldest versus newest"}</strong><br />{
-                  providerSelection.startsWith("ollama::")
+                <p><strong>{providerSelection.startsWith("ollama::") || codexCohortSize === 25 ? "Oldest versus newest pilot" : "Oldest versus newest"}</strong><br />{
+                  providerSelection.startsWith("ollama::") || codexCohortSize === 25
                     ? "Scans the complete available English review history, then analyzes 25 oldest and 25 newest reviews. Pilot results are less complete than a full report."
                     : "Scans the complete available English review history, then analyzes up to the 2,500 oldest and 2,500 newest reviews."
                 }</p>
@@ -514,6 +569,19 @@ function CatalogApp(): JSX.Element {
                     </option>
                   ))}
                 </select>
+                {providerSelection === "codex-cli" && (
+                  <>
+                    <label htmlFor="analysis-scope">Analysis scope</label>
+                    <select
+                      id="analysis-scope"
+                      value={codexCohortSize}
+                      onChange={(event) => setCodexCohortSize(Number(event.target.value))}
+                    >
+                      <option value={25}>Pilot · 50 reviews</option>
+                      <option value={2500}>Full · up to 5,000 reviews</option>
+                    </select>
+                  </>
+                )}
                 {providerSelection === "codex-cli" && codexStatus && (
                   <div className="provider-disclosure">
                     <strong>{
@@ -547,7 +615,7 @@ function CatalogApp(): JSX.Element {
                   className={`create-report${reportHistory.length > 0 ? " create-report-secondary" : ""}`}
                   type="button"
                   disabled={reportHistoryLoading || Boolean(reportHistoryError)}
-                  onClick={reportHistory.length > 0 ? beginAnalysis : beginImport}
+                  onClick={reportHistory.length > 0 || fullHistoryReady ? beginAnalysis : beginImport}
                 >
                   {reportHistory.length > 0 ? "Create new report" : "Create report"}
                 </button>
@@ -557,6 +625,8 @@ function CatalogApp(): JSX.Element {
           {reportHistoryError && <p className="error" role="alert">{reportHistoryError}</p>}
           {jobError && <p className="error" role="alert">{jobError}</p>}
           {analysisError && <p className="error" role="alert">{analysisError}</p>}
+            </>
+          )}
         </aside>
       </div>
     </main>

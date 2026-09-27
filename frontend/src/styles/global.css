@@ -25,6 +25,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #84a990; outline-
 .brand { display: flex; align-items: center; gap: .7rem; font-weight: 800; }
 .brand span { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 9px; color: white; background: var(--forest); }
 .catalog { max-width: 1500px; min-height: 650px; margin: 0 auto; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); box-shadow: var(--shadow); }
+.catalog-searching { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr); }
 .catalog-search, .catalog-preview { padding: clamp(2rem, 5vw, 4.5rem); }
 .catalog-search { min-height: 650px; }
 .catalog-preview { min-height: 650px; background: #eef3e9; }
@@ -74,6 +75,11 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .saved-reports li + li { margin-top: .4rem; }
 .saved-reports a { color: var(--forest); }
 .open-latest-report { display: block; padding: .85rem 1rem; border-radius: 9px; color: white !important; background: var(--forest); text-align: center; text-decoration: none; font-weight: 750; }
+.recent-reports > p:last-child { color: var(--muted); line-height: 1.5; }
+.recent-reports ul { display: grid; gap: .75rem; margin: 1.5rem 0 0; padding: 0; list-style: none; }
+.recent-reports a { display: grid; gap: .25rem; padding: 1rem; border: 1px solid var(--line); border-radius: 10px; color: inherit; background: var(--paper); text-decoration: none; }
+.recent-reports a:hover { border-color: #84a990; }
+.recent-reports span, .recent-reports small { color: var(--muted); }
 .analysis-setup { margin-top: 1.2rem; }
 .provider-disclosure { display: grid; gap: .25rem; margin: 1rem 0; padding: .85rem; border-left: 3px solid var(--forest); background: rgb(255 255 255 / 58%); }
 .provider-disclosure span { color: var(--forest-dark); font-size: .85rem; font-weight: 700; }
@@ -233,6 +239,7 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .screenshot-lightbox a { min-height: 24px; color: white; }
 
 @media (max-width: 900px) {
+  .catalog-searching { grid-template-columns: 1fr; }
   .report-facts { grid-template-columns: 1fr 1fr; }
   .report-facts div:nth-child(2) { border-right: 0; }
   .report-facts div:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }

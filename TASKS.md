@@ -9,9 +9,9 @@
 - [x] Remove **Scope digest** from the visible report summary while retaining it in stored/exported provenance.
 - [x] Investigate why the Minishoot Ollama runs produced zero Themes, define when an empty Theme result is legitimate, and prevent misleading empty reports without weakening evidence validation.
 - [x] Add API and component coverage for saved-report discovery, dated history, retained-dataset reuse, and the simplified report header.
-- [ ] Restore the approved recent-report list before game selection.
-- [ ] Start analysis from a completed Game Dataset when no Report Version exists, without repeating the Full import.
-- [ ] Restore the latest active or resumable Analysis Run when its game is selected again.
+- [x] Restore the approved recent-report list before game selection.
+- [x] Start analysis from a completed Game Dataset when no Report Version exists, without repeating the Full import.
+- [x] Restore the latest active or resumable Analysis Run when its game is selected again.
 - [ ] Run connected-browser coverage for the simplified saved-report workflow when a browser is available.
 
 ## Oldest-versus-newest cohort comparison
@@ -29,6 +29,7 @@
 - [x] Accept Steam metadata returned under an unexpected outer key when its sole nested AppID matches the requested game.
 - [x] Cache Ollama extraction progress every 10 reviews instead of waiting for the full 50-review pilot batch.
 - [x] Pace review imports and back off after Steam rate-limit responses without losing checkpoint progress.
+- [x] Add an explicit 50-review Codex CLI pilot before the optional 5,000-review run.
 
 ## 2026-08-13
 

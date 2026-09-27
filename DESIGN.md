@@ -49,7 +49,7 @@ The home view provides game-name search, direct AppID entry, recent reports, and
 
 Selecting a game first shows enough identity information to prevent mistakes: title, capsule artwork, developer, release date/status, AppID, and review availability. These fields remain visible when report history exists. A prominent **Open latest report** action appears beneath them, followed by older reports labeled with creation date and provider/model. **Create new report** is separate and secondary. Games without history show identity confirmation and **Create report** as the primary action.
 
-**Create report** generates the first immutable Report Version. **Create new report** generates a later version from retained local reviews without automatically repeating a Full download. New review acquisition is a separate explicit choice and also creates a new immutable report rather than changing an old one. “Update report” is avoided because it implies mutation, and “Compare reports” remains reserved for a future comparison feature.
+**Create report** generates the first immutable Report Version. **Create new report** generates a later version from retained local reviews without automatically repeating a Full download. If a completed Game Dataset has no Report Version, **Create report** starts analysis from that dataset. Selecting the game restores its latest active, failed, or cancelled Analysis Run and lets the user resume it or choose another provider. New review acquisition is a separate explicit choice and also creates a new immutable report rather than changing an old one. “Update report” is avoided because it implies mutation, and “Compare reports” remains reserved for a future comparison feature.
 
 ### Configure an analysis
 
@@ -58,6 +58,8 @@ The approved analysis-configuration direction uses a split workspace: configurat
 The approved durable-progress direction uses a reassuring stage timeline. It shows completed, current, and upcoming stages; a percentage and elapsed time; and an explicit statement that completed work is checkpointed locally and safe to resume after closing the browser. Cancellation and resume controls remain visible without making recovery feel like an error state.
 
 After confirming the game, the user chooses review scope and an AI provider/model. The app shows the number of selected reviews when known and an approximate pipeline-wide input size and cost for paid providers. The estimate includes planned extraction, consolidation, and report-generation passes plus expected output tokens when those values can be estimated. It does not enforce spending limits or require a separate cost-confirmation dialog.
+
+Codex CLI offers an explicit 50-review pilot using the 25 oldest and 25 newest reviews, plus a larger run using up to 2,500 reviews from each cohort. The pilot is the default so the user can inspect speed and output before spending more quota.
 
 The application clearly labels processing location:
 
