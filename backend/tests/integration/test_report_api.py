@@ -44,6 +44,8 @@ def test_report_summary_and_complete_evidence_preserve_metrics_and_context(
     assert report["metadata"]["storefront"]["price"] is None
     assert report["scope"] == {
         "review_count": 2,
+        "opinion_point_count": 2,
+        "non_neutral_opinion_point_count": 2,
         "thresholds_calibrated": False,
         "early": None,
         "recent": None,

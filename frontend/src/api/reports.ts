@@ -57,6 +57,8 @@ export interface ReportSummary {
   metadata: SteamMetadata;
   scope: {
     review_count: number;
+    opinion_point_count: number;
+    non_neutral_opinion_point_count: number;
     thresholds_calibrated: boolean;
     early?: CohortScope;
     recent?: CohortScope;
@@ -144,6 +146,8 @@ function parseReport(payload: unknown): ReportSummary {
       !isRecord(payload.metadata) ||
       typeof payload.game.app_id !== "number" || typeof payload.game.title !== "string" ||
       typeof payload.scope.review_count !== "number" ||
+      typeof payload.scope.opinion_point_count !== "number" ||
+      typeof payload.scope.non_neutral_opinion_point_count !== "number" ||
       typeof payload.scope.thresholds_calibrated !== "boolean" ||
       !strings(payload.provenance, ["provider", "model", "request_id", "scope_sha256"]) ||
       !Array.isArray(payload.positive_themes) || !Array.isArray(payload.negative_themes) ||
@@ -156,6 +160,8 @@ function parseReport(payload: unknown): ReportSummary {
     metadata: parseSteamMetadata(payload.metadata),
     scope: {
       review_count: payload.scope.review_count,
+      opinion_point_count: payload.scope.opinion_point_count,
+      non_neutral_opinion_point_count: payload.scope.non_neutral_opinion_point_count,
       thresholds_calibrated: payload.scope.thresholds_calibrated,
       early: parseCohortScope(payload.scope.early),
       recent: parseCohortScope(payload.scope.recent),

@@ -75,6 +75,7 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
   const allThemes: ReportTheme[] = report
     ? [...report.positive_themes, ...report.negative_themes, ...report.technical_themes]
     : [];
+  const hasThemes: boolean = allThemes.length > 0;
   const categories: string[] = [
     ...new Set(allThemes.map((theme) => theme.primary_category)),
   ].sort();
@@ -201,42 +202,54 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
         <p>Filters recalculate existing Themes only. They are not saved and do not run analysis.</p>
       </details>
 
-      <div className="report-toolbar">
-        <div>
-          <p className="eyebrow">THEME EXPLORER</p>
-          <h2>What players consistently mention</h2>
-        </div>
-        <label>
-          Category
-          <select value={category} onChange={(event) => setCategory(event.target.value)}>
-            <option>All categories</option>
-            {categories.map((item) => <option key={item}>{item}</option>)}
-          </select>
-        </label>
-      </div>
+      {!hasThemes && !filterQuery ? (
+        <section className="empty-report" role="status">
+          <h2>No recurring Themes met the evidence rule</h2>
+          <p>
+            {report.scope.non_neutral_opinion_point_count.toLocaleString()} positive or negative Opinion Point{report.scope.non_neutral_opinion_point_count === 1 ? " was" : "s were"} extracted from {report.scope.review_count.toLocaleString()} reviews.
+          </p>
+          <p>A Theme requires the same subject and polarity in at least two distinct reviews. This empty result does not mean players expressed no opinions.</p>
+        </section>
+      ) : (
+        <>
+          <div className="report-toolbar">
+            <div>
+              <p className="eyebrow">THEME EXPLORER</p>
+              <h2>What players consistently mention</h2>
+            </div>
+            <label>
+              Category
+              <select value={category} onChange={(event) => setCategory(event.target.value)}>
+                <option>All categories</option>
+                {categories.map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+          </div>
 
-      <div className="theme-columns">
-        <ThemeSection
-          heading="Positive themes"
-          symbol="+"
-          themes={visible(report.positive_themes)}
-          {...sharedThemeProps}
-        />
-        <ThemeSection
-          heading="Negative themes"
-          symbol="−"
-          themes={visible(report.negative_themes)}
-          {...sharedThemeProps}
-        />
-      </div>
+          <div className="theme-columns">
+            <ThemeSection
+              heading="Positive themes"
+              symbol="+"
+              themes={visible(report.positive_themes)}
+              {...sharedThemeProps}
+            />
+            <ThemeSection
+              heading="Negative themes"
+              symbol="−"
+              themes={visible(report.negative_themes)}
+              {...sharedThemeProps}
+            />
+          </div>
 
-      <ThemeSection
-        heading="Technical themes"
-        symbol="!"
-        themes={visible(report.technical_themes)}
-        technical
-        {...sharedThemeProps}
-      />
+          <ThemeSection
+            heading="Technical themes"
+            symbol="!"
+            themes={visible(report.technical_themes)}
+            technical
+            {...sharedThemeProps}
+          />
+        </>
+      )}
 
       <StorefrontOverview metadata={report.metadata} />
 

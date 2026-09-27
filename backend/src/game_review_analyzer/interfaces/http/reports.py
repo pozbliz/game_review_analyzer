@@ -41,6 +41,8 @@ class ReportScopeResponse(BaseModel):
     """Expose the exact metric denominator and calibration state."""
 
     review_count: int
+    opinion_point_count: int
+    non_neutral_opinion_point_count: int
     thresholds_calibrated: bool
     early: "CohortScopeResponse | None" = None
     recent: "CohortScopeResponse | None" = None
@@ -345,6 +347,11 @@ def build_report_response(
         metadata=metadata,
         scope=ReportScopeResponse(
             review_count=len(matching_reviews),
+            opinion_point_count=len(result.opinion_points),
+            non_neutral_opinion_point_count=sum(
+                point.sentiment != OpinionSentiment.NEUTRAL
+                for point in result.opinion_points
+            ),
             thresholds_calibrated=report.thresholds_calibrated,
             early=early_scope,
             recent=recent_scope,

@@ -12,6 +12,8 @@ describe("report exploration", () => {
     const payload = reportPayload() as Record<string, unknown>;
     payload.scope = {
       review_count: 2,
+      opinion_point_count: 0,
+      non_neutral_opinion_point_count: 0,
       thresholds_calibrated: false,
       early: null,
       recent: null,
@@ -28,6 +30,37 @@ describe("report exploration", () => {
     render(<ReportView reportId="report-1" />);
 
     expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
+  });
+
+  it("explains an empty Theme result without claiming that reviews had no opinions", async () => {
+    const payload = reportPayload() as Record<string, unknown>;
+    payload.scope = {
+      review_count: 50,
+      opinion_point_count: 1,
+      non_neutral_opinion_point_count: 1,
+      thresholds_calibrated: false,
+      early: null,
+      recent: null,
+    };
+    payload.positive_themes = [];
+    payload.negative_themes = [];
+    payload.technical_themes = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => (
+      request.toString().endsWith("/games/1145350/reports")
+        ? json(historyPayload())
+        : json(payload)
+    ));
+
+    render(<ReportView reportId="report-1" />);
+
+    expect(await screen.findByRole("heading", {
+      name: "No recurring Themes met the evidence rule",
+    })).toBeVisible();
+    expect(screen.getByText(/1 positive or negative Opinion Point was extracted from 50 reviews/i))
+      .toBeVisible();
+    expect(screen.getByText(/same subject and polarity in at least two distinct reviews/i))
+      .toBeVisible();
+    expect(screen.queryByText("No Themes in this category.")).not.toBeInTheDocument();
   });
 
   it("shows ranked design and Technical Themes with one inline detail at a time", async () => {
@@ -206,6 +239,8 @@ function reportPayload(): object {
     metadata: richMetadata(),
     scope: {
       review_count: 2,
+      opinion_point_count: 2,
+      non_neutral_opinion_point_count: 2,
       thresholds_calibrated: false,
       early: { review_count: 1, source_created_from: 1_600_000_000, source_created_to: 1_600_000_000 },
       recent: { review_count: 1, source_created_from: 1_700_000_000, source_created_to: 1_700_000_000 },

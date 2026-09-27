@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-09-27 — Empty Theme reports disclose extraction yield
+
+**What changed:**
+
+- Added total and non-neutral Opinion Point counts to the report API scope.
+- Replaced repeated empty category messages with one report-level explanation when no Themes exist.
+- Defined a valid empty result as no same-subject, same-polarity support across at least two distinct reviews.
+
+**Why:**
+
+- The three Minishoot Ollama runs each extracted one Opinion Point from 50 reviews. The evidence rule then correctly rejected that unsupported point as a Theme.
+- Showing the extraction yield distinguishes shallow model output from a genuine absence of player opinions.
+
+**New issues:**
+
+- None. The existing human calibration task still covers semantic grouping quality.
+
+**Needs human judgment:**
+
+- None beyond the existing calibration task.
+
+---
+
 ## 2026-09-27 — Immutable reports route creation through the catalog
 
 **What changed:**
