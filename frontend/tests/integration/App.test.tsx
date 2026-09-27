@@ -34,6 +34,30 @@ describe("application shell", () => {
     expect(screen.getByRole("heading", { name: /select the game to analyze/i })).toBeVisible();
   });
 
+  it("keeps terminal background work out of the initial catalog", async () => {
+    localStorage.setItem("active-import-job", "job-1");
+    localStorage.setItem("active-analysis-run", "analysis-1");
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/reports/recent") return json([]);
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/jobs/job-1") return json(job("cancelled", 10));
+      return json(analysisRun("cancelled"));
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(localStorage.getItem("active-import-job")).toBeNull();
+      expect(localStorage.getItem("active-analysis-run")).toBeNull();
+    });
+    expect(screen.getByRole("heading", { name: "Recent reports" })).toBeVisible();
+    expect(screen.queryByText("Import cancelled")).not.toBeInTheDocument();
+  });
+
   it("reports backend health after validating the shell API contracts", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url = request.toString();
@@ -693,13 +717,16 @@ describe("application shell", () => {
   it("preserves the selected Ollama provider across an import-page reload", async () => {
     localStorage.setItem("active-import-job", "job-1");
     localStorage.setItem("analysis-provider", "ollama::qwen3.5:4b");
+    let jobRequests: number = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url = request.toString();
       if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
       if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/reports/recent") return json([]);
       if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url === "/api/providers/ollama") return json(ollamaProvider());
-      return json(job("completed", 100));
+      jobRequests += 1;
+      return json(job(jobRequests === 1 ? "running" : "completed", 100));
     });
 
     render(<App />);

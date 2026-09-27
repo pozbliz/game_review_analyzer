@@ -106,8 +106,12 @@ function CatalogApp(): JSX.Element {
     if (!runId) return;
     getAnalysisRun(runId)
       .then((restoredRun) => {
-        setAnalysisRun(restoredRun);
-        setShowGameSearch(false);
+        if (["queued", "running"].includes(restoredRun.state)) {
+          setAnalysisRun(restoredRun);
+          setShowGameSearch(false);
+        } else {
+          window.localStorage.removeItem("active-analysis-run");
+        }
       })
       .catch(() => window.localStorage.removeItem("active-analysis-run"));
   }, []);
@@ -131,8 +135,12 @@ function CatalogApp(): JSX.Element {
     if (!jobId) return;
     getJob(jobId)
       .then((restoredJob) => {
-        setJob(restoredJob);
-        setShowGameSearch(false);
+        if (["queued", "running"].includes(restoredJob.state)) {
+          setJob(restoredJob);
+          setShowGameSearch(false);
+        } else {
+          window.localStorage.removeItem("active-import-job");
+        }
       })
       .catch(() => window.localStorage.removeItem("active-import-job"));
   }, []);

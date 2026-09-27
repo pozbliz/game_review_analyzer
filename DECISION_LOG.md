@@ -9,6 +9,7 @@
 - Reused completed Game Datasets instead of repeating Full acquisition.
 - Added a default 50-review Codex CLI pilot and retained the 5,000-review option.
 - Let users resume a cancelled analysis or choose another provider.
+- Limited automatic browser restore to queued or running work, so terminal work does not replace the Catalog.
 
 **Why:**
 
