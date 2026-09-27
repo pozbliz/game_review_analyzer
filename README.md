@@ -6,7 +6,7 @@ The local application shell, keyed Steam catalog synchronization, local-first na
 
 Steam review imports wait two seconds between pages and honor rate-limit delays while preserving their latest checkpoint.
 
-The initial Catalog pairs game search with the six newest saved reports. Selecting a game restores retained acquisition and analysis state, and Codex CLI defaults to a 50-review pilot before the optional 5,000-review run.
+The initial Catalog pairs game search with the six newest saved reports. Selecting a game restores retained acquisition and analysis state, and Codex CLI defaults to a 50-review pilot before the optional 5,000-review run. Codex and Ollama extraction checkpoint every 10 reviews.
 
 ## Current implementation status
 

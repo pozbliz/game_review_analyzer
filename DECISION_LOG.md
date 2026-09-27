@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-09-27 — Codex extraction checkpoints every 10 reviews
+
+**What changed:**
+
+- Limited Codex extraction batches to 10 reviews, matching the Ollama checkpoint size.
+- Preserved each completed batch in the existing extraction cache.
+
+**Why:**
+
+- A 50-review Codex call kept progress at zero until the full call returned.
+- Smaller batches expose durable progress and reduce repeated work after interruption.
+
+**New issues:**
+
+- Five CLI calls add fixed token and process overhead to a 50-review pilot.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-27 — Codex CLI defaults to low reasoning
 
 **What changed:**

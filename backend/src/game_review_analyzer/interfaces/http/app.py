@@ -249,11 +249,10 @@ def create_app(
             provider = OllamaProvider(model=run.model)
         else:
             raise ValueError(f"Unsupported analysis provider: {run.provider}")
-        batch_review_limit: int = 10 if run.provider == "ollama" else 50
         AnalysisRunner(
             resolved_settings.database_path,
             provider,
-            batch_review_limit=batch_review_limit,
+            batch_review_limit=10,
         ).run(run_id)
 
     @asynccontextmanager

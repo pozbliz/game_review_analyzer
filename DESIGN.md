@@ -59,7 +59,7 @@ The approved durable-progress direction uses a reassuring stage timeline. It sho
 
 After confirming the game, the user chooses review scope and an AI provider/model. The app shows the number of selected reviews when known and an approximate pipeline-wide input size and cost for paid providers. The estimate includes planned extraction, consolidation, and report-generation passes plus expected output tokens when those values can be estimated. It does not enforce spending limits or require a separate cost-confirmation dialog.
 
-Codex CLI offers an explicit 50-review pilot using the 25 oldest and 25 newest reviews, plus a larger run using up to 2,500 reviews from each cohort. The pilot is the default so the user can inspect speed and output before spending more quota.
+Codex CLI offers an explicit 50-review pilot using the 25 oldest and 25 newest reviews, plus a larger run using up to 2,500 reviews from each cohort. The pilot is the default so the user can inspect speed and output before spending more quota. Codex and Ollama extraction use 10-review batches so each completed batch updates durable progress and can be reused after interruption.
 
 The application clearly labels processing location:
 

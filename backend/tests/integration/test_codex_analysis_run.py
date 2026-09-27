@@ -277,15 +277,24 @@ def test_run_snapshots_corpus_and_creates_immutable_report(tmp_path: Path) -> No
 
 
 def test_api_starts_and_exposes_completed_codex_analysis(tmp_path: Path) -> None:
+    class BatchRecordingProvider(FakeProvider):
+        def __init__(self) -> None:
+            self.extraction_batch_sizes: list[int] = []
+
+        def extract(self, request, *, cancel_event=None):
+            self.extraction_batch_sizes.append(len(request.reviews))
+            return super().extract(request, cancel_event=cancel_event)
+
     database_path = tmp_path / "app.sqlite3"
+    provider = BatchRecordingProvider()
     status = lambda: CodexCliStatus(
-        True, True, "codex-cli test", "gpt-5.6-luna", "medium"
+        True, True, "codex-cli test", "gpt-5.6-luna", "low"
     )
     with TestClient(
         create_app(
             Settings(database_path=database_path),
             codex_status_source=status,
-            analysis_provider=FakeProvider(),
+            analysis_provider=provider,
         )
     ) as client:
         save_game_dataset(database_path, metadata())
@@ -320,6 +329,7 @@ def test_api_starts_and_exposes_completed_codex_analysis(tmp_path: Path) -> None
     assert workspace.json()["latest_analysis_run"]["id"] == run_id
     assert completed.json()["review_count"] == 50
     assert completed.json()["report_version_id"] is not None
+    assert provider.extraction_batch_sizes == [10, 10, 10, 10, 10]
 
 
 def test_api_rejects_analysis_when_codex_is_not_authenticated(tmp_path: Path) -> None:
