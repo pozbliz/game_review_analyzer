@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-09-27 — Ollama extraction progress uses 10-review batches
+
+**What changed:**
+
+- Limited Ollama extraction batches to 10 reviews while retaining 50-review batches for other providers.
+- Preserved each completed Ollama batch in the existing extraction cache.
+
+**Why:**
+
+- The 50-review pilot previously showed zero progress until one long CPU-bound generation completed.
+- Ten-review batches provide five accurate progress updates without per-review model calls.
+
+**New issues:**
+
+- Repeating the extraction prompt can increase total Ollama runtime.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-27 — Steam metadata identity follows the nested AppID
 
 **What changed:**

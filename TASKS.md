@@ -24,6 +24,7 @@
 ## 2026-09-27
 
 - [x] Accept Steam metadata returned under an unexpected outer key when its sole nested AppID matches the requested game.
+- [x] Cache Ollama extraction progress every 10 reviews instead of waiting for the full 50-review pilot batch.
 
 ## 2026-08-13
 

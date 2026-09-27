@@ -233,7 +233,12 @@ def create_app(
             provider = OllamaProvider(model=run.model)
         else:
             raise ValueError(f"Unsupported analysis provider: {run.provider}")
-        AnalysisRunner(resolved_settings.database_path, provider).run(run_id)
+        batch_review_limit: int = 10 if run.provider == "ollama" else 50
+        AnalysisRunner(
+            resolved_settings.database_path,
+            provider,
+            batch_review_limit=batch_review_limit,
+        ).run(run_id)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:

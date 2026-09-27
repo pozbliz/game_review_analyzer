@@ -338,13 +338,21 @@ def test_api_rejects_analysis_when_codex_is_not_authenticated(tmp_path: Path) ->
 
 
 def test_api_runs_only_an_explicitly_installed_ollama_model(tmp_path: Path) -> None:
+    class BatchRecordingProvider(FakeProvider):
+        def __init__(self) -> None:
+            self.extraction_batch_sizes: list[int] = []
+
+        def extract(self, request, *, cancel_event=None):
+            self.extraction_batch_sizes.append(len(request.reviews))
+            return super().extract(request, cancel_event=cancel_event)
+
     database_path = tmp_path / "app.sqlite3"
     status = OllamaStatus(
         True,
         "0.12.6",
         (OllamaModel("qwen3.5:4b", 3_400_000_000, "4B", "Q4_K_M"),),
     )
-    provider = FakeProvider()
+    provider = BatchRecordingProvider()
     provider.provider = "ollama"
     provider.model = "qwen3.5:4b"
     with TestClient(create_app(
@@ -353,7 +361,11 @@ def test_api_runs_only_an_explicitly_installed_ollama_model(tmp_path: Path) -> N
         analysis_provider=provider,
     )) as client:
         save_game_dataset(database_path, metadata())
-        save_review_revisions(database_path, 1145350, (review("Good game", 100),))
+        save_review_revisions(
+            database_path,
+            1145350,
+            tuple(review_at(position) for position in range(1, 22)),
+        )
         complete_full_import(database_path)
         started = client.post(
             "/api/games/1145350/analyses/ollama",
@@ -379,6 +391,7 @@ def test_api_runs_only_an_explicitly_installed_ollama_model(tmp_path: Path) -> N
     assert started.status_code == 202
     assert started.json()["provider"] == "ollama"
     assert started.json()["model"] == "qwen3.5:4b"
+    assert provider.extraction_batch_sizes == [10, 10, 1]
     assert missing.status_code == 409
     assert missing.json()["detail"]["code"] == "ollama_model_not_installed"
 
