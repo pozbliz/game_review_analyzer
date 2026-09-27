@@ -37,9 +37,10 @@ export default function App(): JSX.Element {
 }
 
 function CatalogApp(): JSX.Element {
+  const requestedAppId: string = new URLSearchParams(window.location.search).get("appid") ?? "";
   const [health, setHealth] = useState<HealthState>("loading");
   const [showGameSearch, setShowGameSearch] = useState<boolean>(true);
-  const [appId, setAppId] = useState<string>("");
+  const [appId, setAppId] = useState<string>(requestedAppId);
   const [gameQuery, setGameQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<GameSearchResult[]>([]);
   const [searchError, setSearchError] = useState<string>("");
@@ -71,6 +72,10 @@ function CatalogApp(): JSX.Element {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    if (/^[1-9][0-9]*$/.test(requestedAppId)) loadPreview(requestedAppId);
   }, []);
 
   useEffect(() => {

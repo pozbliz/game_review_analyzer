@@ -10,15 +10,6 @@ import {
   ThemeEvidence,
   ThemeCohortComparison,
 } from "../../api/reports";
-import {
-  AnalysisJob,
-  cancelJob,
-  getJob,
-  retryJob,
-  startFullImport,
-  startReconciliation,
-  startRefresh,
-} from "../../api/shell";
 import StorageControls from "../storage/StorageControls";
 import StorefrontOverview from "../game/StorefrontOverview";
 
@@ -58,8 +49,6 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
   const [evidence, setEvidence] = useState<Record<string, ThemeEvidence>>({});
   const [evidenceLoading, setEvidenceLoading] = useState<string | null>(null);
   const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
-  const [refreshJob, setRefreshJob] = useState<AnalysisJob | null>(null);
-  const [refreshError, setRefreshError] = useState<string>("");
   const [filterDraft, setFilterDraft] = useState<EvidenceFilterDraft>(EMPTY_FILTER);
   const [filterQuery, setFilterQuery] = useState<string>("");
   const [filterError, setFilterError] = useState<string>("");
@@ -73,7 +62,7 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
         setReport(value);
         void getReportHistory(value.game.app_id)
           .then((items) => { if (active) setHistory(items); })
-          .catch(() => { if (active) setRefreshError("Unable to load report history."); });
+          .catch(() => { if (active) setError("Unable to load report history."); });
       })
       .catch(() => {
         if (!active) return;
@@ -82,22 +71,6 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
       });
     return () => { active = false; };
   }, [reportId, filterQuery]);
-
-  useEffect(() => {
-    if (!refreshJob || !["queued", "running"].includes(refreshJob.state)) return;
-    let active: boolean = true;
-    const refresh = (): void => {
-      getJob(refreshJob.id)
-        .then((job) => { if (active) setRefreshJob(job); })
-        .catch(() => { if (active) setRefreshError("Unable to refresh progress."); });
-    };
-    refresh();
-    const timer: number = window.setInterval(refresh, 500);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, [refreshJob?.id, refreshJob?.state]);
 
   const allThemes: ReportTheme[] = report
     ? [...report.positive_themes, ...report.negative_themes, ...report.technical_themes]
@@ -132,42 +105,6 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
     }
   }
 
-  function beginRefresh(): void {
-    setRefreshError("");
-    startRefresh(appId, 5000)
-      .then(setRefreshJob)
-      .catch(() => setRefreshError("Unable to start refresh."));
-  }
-
-  function retryRefresh(): void {
-    if (!refreshJob) return;
-    setRefreshError("");
-    retryJob(refreshJob.id)
-      .then(setRefreshJob)
-      .catch(() => setRefreshError("Unable to retry refresh."));
-  }
-
-  function cancelRefresh(): void {
-    if (!refreshJob) return;
-    cancelJob(refreshJob.id)
-      .then(setRefreshJob)
-      .catch(() => setRefreshError("Unable to cancel refresh."));
-  }
-
-  function beginFullImport(): void {
-    setRefreshError("");
-    startFullImport(appId)
-      .then(setRefreshJob)
-      .catch(() => setRefreshError("Unable to start Full import."));
-  }
-
-  function beginReconciliation(): void {
-    setRefreshError("");
-    startReconciliation(appId)
-      .then(setRefreshJob)
-      .catch(() => setRefreshError("Unable to start reconciliation."));
-  }
-
   function applyFilters(): void {
     setFilterError("");
     setEvidence({});
@@ -184,15 +121,6 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
     setCategory("All categories");
     setFilterQuery("");
   }
-
-  const activeJob: boolean = Boolean(
-    refreshJob && ["queued", "running"].includes(refreshJob.state),
-  );
-  const jobLabel: string = refreshJob?.scope === "full"
-    ? "Full import"
-    : refreshJob?.scope === "reconciliation"
-      ? "Reconciliation"
-      : "Refresh";
 
   const sharedThemeProps: SharedThemeProps = {
     report,
@@ -226,41 +154,15 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
                     href={`/reports/${encodeURIComponent(entry.report_version_id)}`}
                     aria-current={entry.report_version_id === report.report_version_id ? "page" : undefined}
                   >
-                    {entry.report_version_id} · {entry.review_count.toLocaleString()} reviews
+                    {formatHistoryDate(entry.created_at)} · {entry.provider} · {entry.model}
                   </a>
                 </li>
               ))}
             </ul>
           </details>
-          <button type="button" className="refresh-button" onClick={beginRefresh}>
-            Refresh reviews
-          </button>
-          <details className="dataset-maintenance">
-            <summary>Dataset maintenance</summary>
-            <p>Full import scans every eligible review and may take a long time. Reconciliation scans the current corpus only to record reviews Steam no longer returns.</p>
-            <button type="button" disabled={activeJob} onClick={beginFullImport}>Start Full import</button>
-            <button type="button" disabled={activeJob} onClick={beginReconciliation}>Reconcile deleted reviews</button>
-          </details>
+          <a className="new-report-link" href={`/?appid=${appId}`}>Create new report</a>
         </div>
       </header>
-
-      {(refreshJob || refreshError) && (
-        <section className="refresh-status" aria-live="polite">
-          {refreshError && <p role="alert">{refreshError}</p>}
-          {refreshJob?.state === "failed" && (
-            <><p>{jobLabel} failed. Existing reports are unchanged.</p><button type="button" onClick={retryRefresh}>Retry {jobLabel.toLowerCase()}</button></>
-          )}
-          {refreshJob?.state === "cancelled" && (
-            <><p>{jobLabel} cancelled. Existing reports are unchanged.</p><button type="button" onClick={retryRefresh}>Retry {jobLabel.toLowerCase()}</button></>
-          )}
-          {["queued", "running"].includes(refreshJob?.state ?? "") && (
-            <><p>{jobLabel} in progress…</p><button type="button" onClick={cancelRefresh}>Cancel {jobLabel.toLowerCase()}</button></>
-          )}
-          {refreshJob?.state === "completed" && refreshJob.scope === "refresh" && <p>Reviews refreshed. Create a report to analyze the latest corpus.</p>}
-          {refreshJob?.state === "completed" && refreshJob.scope === "full" && <p>Full import complete. Create a report to analyze the complete corpus.</p>}
-          {refreshJob?.state === "completed" && refreshJob.scope === "reconciliation" && <p>Reconciliation complete. Missing reviews were recorded without deleting historical evidence.</p>}
-        </section>
-      )}
 
       <section className="report-facts" aria-label="Report scope and provenance">
         <div><span>Review scope</span><strong>{report.scope.review_count.toLocaleString()} reviews</strong></div>
@@ -268,7 +170,6 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
         {report.scope.recent && <div><span>Recent cohort</span><strong>{report.scope.recent.review_count.toLocaleString()} reviews</strong><small>{formatReviewDate(report.scope.recent.source_created_from)}–{formatReviewDate(report.scope.recent.source_created_to)}</small></div>}
         <div><span>Provider</span><strong>{report.provenance.provider}</strong></div>
         <div><span>Model</span><strong>{report.provenance.model}</strong></div>
-        <div><span>Scope digest</span><code title={report.provenance.scope_sha256}>{report.provenance.scope_sha256.slice(0, 12)}…</code></div>
       </section>
 
       <details className="evidence-filters">
@@ -342,7 +243,6 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
       <StorageControls
         appId={appId}
         reportId={report.report_version_id}
-        incompleteJobId={refreshJob && ["failed", "cancelled"].includes(refreshJob.state) ? refreshJob.id : undefined}
       />
     </main>
   );
@@ -500,6 +400,11 @@ function formatSignedPercentagePoints(value: number): string {
 function formatReviewDate(timestamp: number): string {
   return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short" })
     .format(new Date(timestamp * 1000));
+}
+
+function formatHistoryDate(timestamp: string): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" })
+    .format(new Date(`${timestamp.replace(" ", "T")}Z`));
 }
 
 function BooleanFilter({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }): JSX.Element {

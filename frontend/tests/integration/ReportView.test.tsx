@@ -56,6 +56,21 @@ describe("report exploration", () => {
     expect(screen.getByText("Players report delayed combat response.")).toBeVisible();
   });
 
+  it("keeps the immutable report header read-only and starts new reports from the catalog", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(reportFetch);
+
+    render(<ReportView reportId="report-1" />);
+
+    expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Create new report" })).toHaveAttribute(
+      "href",
+      "/?appid=1145350",
+    );
+    expect(screen.queryByText("Dataset maintenance")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Refresh reviews" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Scope digest")).not.toBeInTheDocument();
+  });
+
   it("filters by category and drills from representative evidence into full reviews", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url: string = request.toString();
@@ -116,87 +131,6 @@ describe("report exploration", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/reports/report-1"));
   });
 
-  it("starts refresh and exposes immutable report history with failure recovery", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
-      async (request, options) => {
-        const url: string = request.toString();
-        if (url.endsWith("/refreshes")) return json(jobPayload("failed"));
-        if (url.endsWith("/retry")) return json(jobPayload("queued"));
-        if (url.endsWith("/api/jobs/refresh-job")) return json(jobPayload("completed"));
-        return reportFetch(request, options);
-      },
-    );
-    render(<ReportView reportId="report-1" />);
-
-    expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
-    expect(await screen.findByText("Report history (2)")).toBeVisible();
-    expect(screen.getByRole("link", { name: /report-2/i })).toHaveAttribute(
-      "href",
-      "/reports/report-2",
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Refresh reviews" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Retry refresh" }));
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      "/api/jobs/refresh-job/retry",
-      { method: "POST" },
-    ));
-  });
-
-  it("cancels a running refresh without changing the displayed report", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
-      async (request) => {
-        const url: string = request.toString();
-        if (url.endsWith("/refreshes")) return json(jobPayload("running"));
-        if (url.endsWith("/cancel")) return json(jobPayload("cancelled"));
-        if (url.endsWith("/api/jobs/refresh-job")) return json(jobPayload("running"));
-        return reportFetch(request);
-      },
-    );
-    render(<ReportView reportId="report-1" />);
-    await screen.findByRole("heading", { name: "Hades II" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Refresh reviews" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Cancel refresh" }));
-
-    expect(await screen.findByText("Refresh cancelled. Existing reports are unchanged.")).toBeVisible();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/jobs/refresh-job/cancel",
-      { method: "POST" },
-    );
-  });
-
-  it("starts explicit Full import and reconciliation maintenance jobs", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
-      async (request) => {
-        const url: string = request.toString();
-        if (url.endsWith("/imports/full")) return json(jobPayload("completed", "full"));
-        if (url.endsWith("/reconciliations")) {
-          return json(jobPayload("completed", "reconciliation"));
-        }
-        return reportFetch(request);
-      },
-    );
-    render(<ReportView reportId="report-1" />);
-    await screen.findByRole("heading", { name: "Hades II" });
-
-    fireEvent.click(screen.getByText("Dataset maintenance"));
-    fireEvent.click(screen.getByRole("button", { name: "Start Full import" }));
-    expect(await screen.findByText(/Full import complete/i)).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Reconcile deleted reviews" }));
-    expect(await screen.findByText(/Reconciliation complete/i)).toBeVisible();
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/games/1145350/imports/full",
-      { method: "POST" },
-    );
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/games/1145350/reconciliations",
-      { method: "POST" },
-    );
-  });
-
   it("shows grouped regional storefront details and explicit Steam-hosted media links", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(reportFetch);
     render(<ReportView reportId="report-1" />);
@@ -236,23 +170,6 @@ function historyPayload(): object[] {
     thresholds_calibrated: false,
     created_at: "2026-08-11 12:00:00",
   }));
-}
-
-function jobPayload(
-  state: "queued" | "running" | "completed" | "failed" | "cancelled",
-  scope: "refresh" | "full" | "reconciliation" = "refresh",
-): object {
-  return {
-    id: "refresh-job",
-    app_id: 1145350,
-    scope,
-    state,
-    target_count: 5000,
-    imported_count: 0,
-    cursor: "*",
-    cancel_requested: false,
-    error_code: state === "failed" ? "steam_unavailable" : null,
-  };
 }
 
 function reportPayload(): object {

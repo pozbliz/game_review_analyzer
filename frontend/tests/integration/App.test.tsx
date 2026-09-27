@@ -7,6 +7,7 @@ import StorefrontOverview from "../../src/features/game/StorefrontOverview";
 afterEach(() => {
   cleanup();
   localStorage.clear();
+  window.history.replaceState({}, "", "/");
   vi.restoreAllMocks();
 });
 
@@ -236,6 +237,24 @@ describe("application shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Game search" }));
     expect(selectionPanel).toBeVisible();
     expect(screen.queryByRole("heading", { name: "Hades II" })).not.toBeInTheDocument();
+  });
+
+  it("opens a selected game from a new-report catalog link", async () => {
+    window.history.replaceState({}, "", "/?appid=1145350");
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") return json([]);
+      return json(metadata());
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith("/api/games/preview?appid=1145350");
   });
 
   it("presents storefront tags and feature support as scan-friendly lists", () => {

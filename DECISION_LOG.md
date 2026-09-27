@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-09-27 — Immutable reports route creation through the catalog
+
+**What changed:**
+
+- Removed refresh, Full import, and reconciliation controls from the report header.
+- Added a selected-game **Create new report** link into the catalog workflow.
+- Removed the visible scope digest while retaining it in the report contract and exports.
+- Kept report deletion and Game Dataset storage controls for recovery and local data management.
+
+**Why:**
+
+- Acquisition changes the input corpus and belongs before report creation, not inside an immutable result.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-27 — Catalog reuses retained reviews for new reports
 
 **What changed:**
