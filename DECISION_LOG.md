@@ -6,12 +6,14 @@
 
 - Made report-history failures nonfatal while viewing an already loaded report.
 - Disabled report creation when the catalog cannot determine whether saved reports exist.
+- Bound preview and history responses to the latest game selection.
 - Added the report-scope percentage threshold to the empty-Theme explanation.
 
 **Why:**
 
 - An auxiliary history failure must not hide an immutable report or masquerade as an empty history.
 - Treating an unknown history as empty could start an unnecessary Full import.
+- Out-of-order responses must not show saved reports from a previously selected game.
 - Theme conclusions require both distinct-review support and a minimum scope percentage.
 
 **New issues:**

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/app/App";
 import { SteamMetadata } from "../../src/api/shell";
@@ -222,6 +222,43 @@ describe("application shell", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Create report" })).toBeEnabled();
     });
+  });
+
+  it("ignores saved report history from an earlier game selection", async () => {
+    let resolveFirstHistory: (response: Response) => void = () => undefined;
+    const firstHistory = new Promise<Response>((resolve) => { resolveFirstHistory = resolve; });
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/111/reports") return firstHistory;
+      if (url === "/api/games/222/reports") return json([historyEntry("report-222", 222)]);
+      if (url === "/api/games/preview?appid=111") {
+        return json({ ...metadata(), app_id: 111, title: "First game" });
+      }
+      return json({ ...metadata(), app_id: 222, title: "Second game" });
+    });
+
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("connected"));
+    await selectAppId("111");
+    expect(await screen.findByRole("heading", { name: "First game" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Game search" }));
+    await selectAppId("222");
+    expect(await screen.findByRole("link", { name: "Open latest report" })).toHaveAttribute(
+      "href",
+      "/reports/report-222",
+    );
+
+    await act(async () => {
+      resolveFirstHistory(json([historyEntry("report-111", 111)]));
+    });
+    expect(screen.getByRole("link", { name: "Open latest report" })).toHaveAttribute(
+      "href",
+      "/reports/report-222",
+    );
   });
 
   it("creates another report from retained reviews without a Full import", async () => {
@@ -602,6 +639,26 @@ async function previewGame(): Promise<void> {
   });
   fireEvent.click(screen.getByRole("button", { name: /preview game/i }));
   await screen.findByRole("heading", { name: "Hades II" });
+}
+
+async function selectAppId(appId: string): Promise<void> {
+  fireEvent.change(screen.getByRole("textbox", { name: /steam appid/i }), {
+    target: { value: appId },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /preview game/i }));
+}
+
+function historyEntry(reportId: string, appId: number): object {
+  return {
+    report_version_id: reportId,
+    app_id: appId,
+    game_title: "Game",
+    review_count: 50,
+    provider: "ollama",
+    model: "qwen3.5:4b",
+    thresholds_calibrated: false,
+    created_at: "2026-08-14 12:00:00",
+  };
 }
 
 function json(payload: object): Response {

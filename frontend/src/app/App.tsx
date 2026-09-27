@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   AnalysisJob,
   AnalysisRun,
@@ -37,6 +37,7 @@ export default function App(): JSX.Element {
 }
 
 function CatalogApp(): JSX.Element {
+  const previewRequestId = useRef<number>(0);
   const requestedAppId: string = new URLSearchParams(window.location.search).get("appid") ?? "";
   const [health, setHealth] = useState<HealthState>("loading");
   const [showGameSearch, setShowGameSearch] = useState<boolean>(true);
@@ -163,6 +164,7 @@ function CatalogApp(): JSX.Element {
   }
 
   function loadPreview(selectedAppId: string): void {
+    const requestId: number = ++previewRequestId.current;
     setPreviewLoading(true);
     setPreviewError("");
     setReportHistory([]);
@@ -174,20 +176,32 @@ function CatalogApp(): JSX.Element {
     window.localStorage.removeItem("active-analysis-run");
     getGamePreview(selectedAppId)
       .then((metadata) => {
+        if (requestId !== previewRequestId.current) return;
         setPreview(metadata);
         setShowGameSearch(false);
         void getReportHistory(metadata.app_id)
-          .then(setReportHistory)
-          .catch(() => setReportHistoryError(
-            "Unable to load saved reports. Select this game again to retry.",
-          ))
-          .finally(() => setReportHistoryLoading(false));
+          .then((items) => {
+            if (requestId === previewRequestId.current) setReportHistory(items);
+          })
+          .catch(() => {
+            if (requestId === previewRequestId.current) {
+              setReportHistoryError(
+                "Unable to load saved reports. Select this game again to retry.",
+              );
+            }
+          })
+          .finally(() => {
+            if (requestId === previewRequestId.current) setReportHistoryLoading(false);
+          });
       })
       .catch(() => {
+        if (requestId !== previewRequestId.current) return;
         setPreview(null);
         setPreviewError("Unable to preview that AppID. Check it and try again.");
       })
-      .finally(() => setPreviewLoading(false));
+      .finally(() => {
+        if (requestId === previewRequestId.current) setPreviewLoading(false);
+      });
   }
 
   function submitSearch(event: FormEvent<HTMLFormElement>): void {
