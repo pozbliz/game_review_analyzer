@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-09-27 — Steam review imports back off after rate limits
+
+**What changed:**
+
+- Increased the delay between Steam review pages from 0.5 seconds to 2 seconds.
+- Made HTTP 429 retries honor numeric `Retry-After` values, with 30-second and 60-second fallbacks.
+- Retained the existing three-attempt limit and durable import checkpoints.
+
+**Why:**
+
+- A Full import saved 14,936 reviews before Steam returned HTTP 429.
+- The prior one-second and two-second retries repeated the request too quickly.
+
+**New issues:**
+
+- Full imports now take about 2.5 extra minutes per 100 pages.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-27 — Ollama extraction progress uses 10-review batches
 
 **What changed:**

@@ -25,6 +25,7 @@
 
 - [x] Accept Steam metadata returned under an unexpected outer key when its sole nested AppID matches the requested game.
 - [x] Cache Ollama extraction progress every 10 reviews instead of waiting for the full 50-review pilot batch.
+- [x] Pace review imports and back off after Steam rate-limit responses without losing checkpoint progress.
 
 ## 2026-08-13
 

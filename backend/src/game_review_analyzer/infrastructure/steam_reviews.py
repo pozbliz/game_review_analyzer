@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import json
 from time import sleep
 from typing import Any
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -42,7 +42,7 @@ class SteamReviewIngestionAdapter:
         open_url: Callable[..., Any] = urlopen,
         sleep: Callable[[float], None] = sleep,
         timeout_seconds: float = 15.0,
-        pace_seconds: float = 0.5,
+        pace_seconds: float = 2.0,
         max_attempts: int = 3,
     ) -> None:
         self._open_url = open_url
@@ -93,7 +93,17 @@ class SteamReviewIngestionAdapter:
             except (OSError, URLError) as error:
                 if attempt + 1 == self._max_attempts:
                     raise SteamReviewsUnavailable("Steam review request failed") from error
-                self._sleep(float(2**attempt))
+                delay_seconds: float = float(2**attempt)
+                if isinstance(error, HTTPError) and error.code == 429:
+                    retry_after: str | None = (
+                        error.headers.get("Retry-After") if error.headers else None
+                    )
+                    delay_seconds = (
+                        float(retry_after)
+                        if retry_after and retry_after.isdecimal()
+                        else float(30 * (2**attempt))
+                    )
+                self._sleep(delay_seconds)
             except (json.JSONDecodeError, UnicodeDecodeError, TypeError) as error:
                 raise SteamReviewsMalformed("Steam returned invalid review JSON") from error
         raise AssertionError("bounded retry loop exited unexpectedly")

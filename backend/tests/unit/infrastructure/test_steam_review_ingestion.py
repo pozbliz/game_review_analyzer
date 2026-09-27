@@ -3,7 +3,7 @@
 from collections.abc import Iterator
 from io import BytesIO
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlparse
 from urllib.request import Request
 
@@ -40,7 +40,7 @@ def test_adapter_encodes_cursor_filters_eligibility_and_stops_at_exhaustion() ->
     assert [review.review_id for review in pages[0].reviews] == ["1001", "1002"]
     assert pages[1].reviews == ()
     assert parse_qs(urlparse(requests[1].full_url).query)["cursor"] == ["next+cursor=="]
-    assert sleeps == [0.5]
+    assert sleeps == [2.0]
 
 
 def test_adapter_excludes_non_english_reviews() -> None:
@@ -86,6 +86,26 @@ def test_adapter_retries_transient_failures_with_bounded_backoff() -> None:
     assert list(adapter.iter_pages(1145350))[0].reviews == ()
     assert attempts == 3
     assert sleeps == [1.0, 2.0]
+
+
+def test_adapter_honors_rate_limit_delay_with_safe_fallback() -> None:
+    attempts: int = 0
+    sleeps: list[float] = []
+
+    def eventually_open(*_: object, **__: object) -> BytesIO:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise HTTPError("", 429, "rate limited", {"Retry-After": "7"}, None)
+        if attempts == 2:
+            raise HTTPError("", 429, "rate limited", {}, None)
+        return BytesIO((FIXTURE_DIRECTORY / "page_empty.json").read_bytes())
+
+    adapter = SteamReviewIngestionAdapter(open_url=eventually_open, sleep=sleeps.append)
+
+    assert list(adapter.iter_pages(1145350))[0].reviews == ()
+    assert attempts == 3
+    assert sleeps == [7.0, 60.0]
 
 
 def test_adapter_stops_after_three_failed_attempts() -> None:
