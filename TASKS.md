@@ -9,6 +9,9 @@
 - [x] Remove **Scope digest** from the visible report summary while retaining it in stored/exported provenance.
 - [x] Investigate why the Minishoot Ollama runs produced zero Themes, define when an empty Theme result is legitimate, and prevent misleading empty reports without weakening evidence validation.
 - [x] Add API and component coverage for saved-report discovery, dated history, retained-dataset reuse, and the simplified report header.
+- [ ] Restore the approved recent-report list before game selection.
+- [ ] Start analysis from a completed Game Dataset when no Report Version exists, without repeating the Full import.
+- [ ] Restore the latest active or resumable Analysis Run when its game is selected again.
 - [ ] Run connected-browser coverage for the simplified saved-report workflow when a browser is available.
 
 ## Oldest-versus-newest cohort comparison
