@@ -26,6 +26,15 @@
 
 ## 2026-09-27
 
+### Specific design themes pilot
+
+- [x] Exclude vague overall praise, criticism, and recommendations during Opinion Point extraction.
+- [x] Invalidate cached extractions created under the prior generic extraction contract.
+- [x] Consolidate pilot Opinion Points semantically into specific Themes with meaningful categories.
+- [x] Preserve deterministic support metrics and exact evidence validation after semantic consolidation.
+- [ ] Run focused and full repository verification, then review the committed scope from `bcb9b6d`.
+- [ ] [HUMAN] Review one new 50-review pilot before approving the analysis-quality direction.
+
 - [x] Reduce the current Codex CLI default from medium to low reasoning.
 - [x] Cache Codex CLI extraction progress every 10 reviews instead of waiting for the full pilot batch.
 - [x] Add redacted per-attempt and per-stage timing telemetry for report creation.

@@ -1,46 +1,26 @@
-"""Deterministic shared-Theme consolidation tests."""
+"""Specific Opinion Point filtering tests."""
 
 from game_review_analyzer.application.opinion_consolidation import (
-    consolidate_opinion_points,
+    specific_opinion_points,
 )
 from game_review_analyzer.domain.analysis import (
-    AnalysisRequest,
-    AnalysisSourceReview,
     ExtractedOpinionPoint,
     OpinionSentiment,
 )
 
 
-def test_canonical_subjects_form_shared_themes_without_another_model_call() -> None:
-    request = AnalysisRequest(
-        schema_version="1.0",
-        request_id="run-1",
-        scope_sha256="a" * 64,
-        app_id=10,
-        game_title="Game",
-        reviews=(
-            AnalysisSourceReview(review_revision_id="early-1", text="[]"),
-            AnalysisSourceReview(review_revision_id="recent-1", text="[]"),
-        ),
-    )
+def test_generic_subjects_do_not_reach_semantic_consolidation() -> None:
     points = (
-        extracted("one", "early-1", "responsive combat", "Combat responds."),
-        extracted("two", "recent-1", " Responsive   Combat ", "Fights respond."),
+        extracted("generic-1", "one", "game quality", "Amazing game."),
+        extracted("generic-2", "two", "gameplay", "The gameplay is fun."),
+        extracted("generic-3", "three", "story", "The story is good."),
+        extracted("specific-1", "four", "harpoon timing", "Harpoon timing feels responsive."),
+        extracted("specific-2", "five", "dialogue pacing", "Dialogue pacing feels unnatural."),
     )
 
-    result = consolidate_opinion_points(
-        request,
-        points,
-        provider="codex-cli",
-        model="gpt-5.6-luna",
-    )
+    filtered = specific_opinion_points(points)
 
-    assert len(result.themes) == 1
-    assert result.themes[0].title == "Responsive combat"
-    assert result.themes[0].opinion_point_ids == ("one", "two")
-    assert {point.supports_theme_id for point in result.opinion_points} == {
-        result.themes[0].id
-    }
+    assert tuple(point.id for point in filtered) == ("specific-1", "specific-2")
 
 
 def extracted(

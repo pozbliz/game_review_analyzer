@@ -5,7 +5,17 @@ from pathlib import Path
 
 import pytest
 
-from game_review_analyzer.domain.analysis import AnalysisResult, AnalysisSourceReview
+from game_review_analyzer.domain.analysis import (
+    AnalysisResult,
+    AnalysisSourceReview,
+    ExtractedOpinionPoint,
+    OpinionExtractionResult,
+    OpinionPoint,
+    OpinionSentiment,
+    Theme,
+    ThemeCategory,
+    ThemePolarity,
+)
 from game_review_analyzer.domain.reports import ThemeMetricPolicy
 from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
@@ -25,6 +35,9 @@ from game_review_analyzer.infrastructure.persistence.jobs import (
     create_full_job,
     finish_job,
     start_job,
+)
+from game_review_analyzer.infrastructure.persistence.opinion_extractions import (
+    save_opinion_extraction_batch,
 )
 from game_review_analyzer.infrastructure.persistence.report_versions import load_report_version
 from game_review_analyzer.infrastructure.persistence.review_revisions import (
@@ -241,6 +254,207 @@ def test_failed_extraction_resumes_without_reprocessing_cached_reviews(
         ("3", "4"),
         ("5",),
     ]
+
+
+def test_analysis_ignores_extractions_from_the_previous_contract(
+    tmp_path: Path,
+) -> None:
+    class RecordingProvider(FakeProvider):
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, ...]] = []
+
+        def extract(self, request, *, cancel_event=None):
+            self.calls.append(
+                tuple(review.review_revision_id for review in request.reviews)
+            )
+            return super().extract(request, cancel_event=cancel_event)
+
+    database_path: Path = tmp_path / "app.sqlite3"
+    initialize_database(database_path)
+    save_game_dataset(database_path, metadata())
+    save_review_revisions(
+        database_path,
+        1145350,
+        (review_at(1), review_at(2)),
+    )
+    complete_full_import(database_path)
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=ThemeMetricPolicy(
+            minimum_support_count=2,
+            minimum_support_percentage=1,
+            technical_minimum_support_count=2,
+            technical_minimum_support_percentage=1,
+        ),
+    )
+    save_opinion_extraction_batch(
+        database_path,
+        revision_ids_by_review_id={
+            "1": run.review_revision_ids[0],
+            "2": run.review_revision_ids[1],
+        },
+        result=OpinionExtractionResult(
+            schema_version="1.0",
+            request_id="old-contract",
+            scope_sha256="a" * 64,
+            provider="codex-cli",
+            model="gpt-5.6-luna",
+            completed_review_revision_ids=("1", "2"),
+            opinion_points=(),
+        ),
+        contract_version="1.0",
+    )
+    provider = RecordingProvider()
+
+    AnalysisRunner(database_path, provider, batch_review_limit=2).run(run.id)
+
+    assert provider.calls == [("1", "2")]
+
+
+def test_analysis_semantically_groups_specific_points_and_assigns_category(
+    tmp_path: Path,
+) -> None:
+    class SemanticProvider(FakeProvider):
+        def __init__(self) -> None:
+            self.consolidation_calls: int = 0
+
+        def extract(self, request, *, cancel_event=None):
+            from game_review_analyzer.application.provider import ExtractionProviderRun
+
+            points: list[ExtractedOpinionPoint] = []
+            for source_review in request.reviews:
+                specific_excerpt: str = (
+                    "Harpoon timing feels responsive."
+                    if source_review.review_revision_id == "1"
+                    else "Catching fish responds quickly to harpoon timing."
+                )
+                points.extend(
+                    (
+                        ExtractedOpinionPoint(
+                            id=f"generic-{source_review.review_revision_id}",
+                            review_revision_id=source_review.review_revision_id,
+                            excerpt="Amazing game.",
+                            sentiment=OpinionSentiment.POSITIVE,
+                            subject="game quality",
+                        ),
+                        ExtractedOpinionPoint(
+                            id=f"specific-{source_review.review_revision_id}",
+                            review_revision_id=source_review.review_revision_id,
+                            excerpt=specific_excerpt,
+                            sentiment=OpinionSentiment.POSITIVE,
+                            subject=(
+                                "harpoon responsiveness"
+                                if source_review.review_revision_id == "1"
+                                else "harpoon timing"
+                            ),
+                        ),
+                    )
+                )
+            return ExtractionProviderRun(
+                OpinionExtractionResult(
+                    schema_version="1.0",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=tuple(
+                        source_review.review_revision_id
+                        for source_review in request.reviews
+                    ),
+                    opinion_points=tuple(points),
+                ),
+                CodexCliUsage(10, 0, 2),
+            )
+
+        def consolidate(self, request, *, cancel_event=None):
+            self.consolidation_calls += 1
+            supplied_points: list[dict[str, object]] = [
+                point
+                for source_review in request.reviews
+                for point in json.loads(source_review.text)["opinion_points"]
+            ]
+            assert {point["subject"] for point in supplied_points} == {
+                "harpoon responsiveness",
+                "harpoon timing",
+            }
+            theme_id: str = "theme-harpoon-timing"
+            opinion_points: tuple[OpinionPoint, ...] = tuple(
+                OpinionPoint.model_validate({**point, "supports_theme_id": theme_id})
+                for point in supplied_points
+            )
+            result = AnalysisResult(
+                schema_version="1.0",
+                request_id=request.request_id,
+                scope_sha256=request.scope_sha256,
+                provider=self.provider,
+                model=self.model,
+                completed_review_revision_ids=tuple(
+                    source_review.review_revision_id for source_review in request.reviews
+                ),
+                opinion_points=opinion_points,
+                themes=(
+                    Theme(
+                        id=theme_id,
+                        title="Responsive harpoon timing",
+                        summary="Players value responsive timing when catching fish.",
+                        polarity=ThemePolarity.POSITIVE,
+                        primary_category=ThemeCategory.GAMEPLAY,
+                        related_categories=(),
+                        opinion_point_ids=tuple(point.id for point in opinion_points),
+                        technical=False,
+                        opposes_theme_id=None,
+                    ),
+                ),
+                mechanic_classifications=(),
+            )
+            return CodexCliRun(result, CodexCliUsage(20, 0, 4))
+
+    database_path: Path = tmp_path / "app.sqlite3"
+    initialize_database(database_path)
+    save_game_dataset(database_path, metadata())
+    save_review_revisions(
+        database_path,
+        1145350,
+        (
+            review("Amazing game. Harpoon timing feels responsive.", 1).model_copy(
+                update={"review_id": "1", "source_created_at": 1}
+            ),
+            review(
+                "Amazing game. Catching fish responds quickly to harpoon timing.",
+                2,
+            ).model_copy(update={"review_id": "2", "source_created_at": 2}),
+        ),
+    )
+    complete_full_import(database_path)
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=ThemeMetricPolicy(
+            minimum_support_count=2,
+            minimum_support_percentage=1,
+            technical_minimum_support_count=2,
+            technical_minimum_support_percentage=1,
+        ),
+    )
+    provider = SemanticProvider()
+
+    AnalysisRunner(database_path, provider, batch_review_limit=10).run(run.id)
+
+    completed = get_analysis_run(database_path, run.id)
+    report = load_report_version(database_path, completed.report_version_id or "")
+    assert provider.consolidation_calls == 1
+    assert report is not None
+    assert tuple(theme.title for theme in report.analysis_result.themes) == (
+        "Responsive harpoon timing",
+    )
+    assert report.analysis_result.themes[0].primary_category == ThemeCategory.GAMEPLAY
+    assert report.theme_metrics.all_themes[0].support_count == 2
+    assert report.theme_metrics.all_themes[0].support_percentage == 100
 
 
 def test_run_snapshots_corpus_and_creates_immutable_report(

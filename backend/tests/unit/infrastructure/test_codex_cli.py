@@ -154,6 +154,9 @@ def test_codex_cli_extracts_one_bounded_opinion_batch(monkeypatch) -> None:
     assert run.result.opinion_points == ()
     assert run.usage.input_tokens == 120
     assert "sentence- or clause-level opinions" in processes[0].prompt
+    assert "Do not extract vague overall verdicts" in processes[0].prompt
+    assert "this game is amazing" in processes[0].prompt
+    assert "dialogue pacing feels unnatural" in processes[0].prompt
 
 
 def test_codex_cli_consolidates_cached_points_with_cohort_audit(monkeypatch) -> None:
@@ -170,6 +173,9 @@ def test_codex_cli_consolidates_cached_points_with_cohort_audit(monkeypatch) -> 
 
     assert "shared Theme system across both cohorts" in processes[0].prompt
     assert "audit unassigned early and recent Opinion Points" in processes[0].prompt
+    assert "Merge semantically equivalent subjects" in processes[0].prompt
+    assert "Do not create vague Themes" in processes[0].prompt
+    assert "Game-specific only when no shared category fits" in processes[0].prompt
 
 
 def test_codex_cli_retries_malformed_output_without_changing_provider(

@@ -165,7 +165,7 @@ An **Evidence Filter** temporarily restricts an existing report and recalculates
 
 The default report compares two non-overlapping Review Cohorts selected from a completed full-history import: up to the 2,500 reviews with the earliest source creation times and up to the 2,500 with the latest. When fewer than 5,000 eligible reviews exist, all available reviews are split chronologically into non-overlapping early and recent halves. The immutable report records both exact memberships and date ranges.
 
-The provider extracts Opinion Points from the combined scope once and discovers a shared Theme system so support remains comparable. A bounded residual audit examines unassigned Opinion Points from each cohort for recurring cohort-specific Themes. Early and recent support, percentage-point change, and evidence are then calculated deterministically without another model call. Directional labels describe review evidence as appearing improved, unchanged, worsened, newly prominent, or no longer prominent; they do not claim that a software defect was conclusively fixed.
+The provider extracts Opinion Points from the combined scope once and discovers a shared Theme system so support remains comparable. Extraction keeps only concrete observations about a named design or technical element and its effect. It excludes vague overall verdicts, recommendations, and generic praise or criticism. A bounded semantic consolidation pass merges differently worded points that express the same concrete observation. A residual audit examines unassigned Opinion Points from each cohort for recurring cohort-specific Themes. Early and recent support, percentage-point change, and evidence are then calculated deterministically. Directional labels describe review evidence as appearing improved, unchanged, worsened, newly prominent, or no longer prominent; they do not claim that a software defect was conclusively fixed.
 
 ## Analysis and evidence rules
 
@@ -179,12 +179,12 @@ Neutral or purely factual points do not support a theme and do not contribute to
 
 The MVP does not require embeddings. The selected AI provider:
 
-1. Extracts structured, normalized Opinion Points from review batches.
-2. Consolidates differently worded but equivalent points into candidate Themes over multiple bounded passes.
+1. Extracts structured, normalized Opinion Points about concrete design or technical elements from review batches.
+2. Consolidates differently worded but equivalent points into candidate Themes in one bounded pass.
 3. Assigns Opinion Sentiment, a primary category, optional related categories, and representative evidence.
 4. Produces a concise descriptive title and summary supported by the linked points.
 
-Provider responses must conform to versioned structured schemas and reference only supplied review/point identifiers. Review and storefront text is untrusted data, never provider instructions. Prompts isolate it as quoted source material, and import validation rejects unknown identifiers, invented evidence, non-matching excerpts, and unsupported claims rather than silently accepting them. Embeddings may later assist clustering behind the same analysis boundary without changing stored report contracts.
+Provider responses must conform to versioned structured schemas and reference only supplied review/point identifiers. Review and storefront text is untrusted data, never provider instructions. Prompts isolate it as quoted source material, and import validation rejects unknown identifiers, invented evidence, non-matching excerpts, and unsupported claims rather than silently accepting them. The consolidation pass uses the same validator. Support counts and percentages remain deterministic calculations over validated Theme membership. Embeddings may later assist clustering behind the same analysis boundary without changing stored report contracts.
 
 ### Theme rules
 

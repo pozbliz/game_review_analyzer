@@ -7,9 +7,7 @@ from time import monotonic
 from typing import Protocol
 
 from game_review_analyzer.application.manual_codex import build_analysis_request
-from game_review_analyzer.application.opinion_consolidation import (
-    consolidate_opinion_points,
-)
+from game_review_analyzer.application.opinion_consolidation import specific_opinion_points
 from game_review_analyzer.application.report_creation import create_report
 from game_review_analyzer.application.provider import (
     AnalysisProviderError,
@@ -17,7 +15,12 @@ from game_review_analyzer.application.provider import (
     ExtractionProviderRun,
     ProviderRun,
 )
-from game_review_analyzer.domain.analysis import AnalysisRequest, AnalysisSourceReview
+from game_review_analyzer.domain.analysis import (
+    AnalysisRequest,
+    AnalysisResult,
+    AnalysisSourceReview,
+    ExtractedOpinionPoint,
+)
 from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     AnalysisRun,
@@ -37,7 +40,7 @@ from game_review_analyzer.infrastructure.persistence.review_revisions import (
 from game_review_analyzer.shared.telemetry import TRACER, log_event
 
 
-EXTRACTION_CONTRACT_VERSION = "1.0"
+EXTRACTION_CONTRACT_VERSION = "2.0"
 
 
 class AnalysisProvider(Protocol):
@@ -219,6 +222,24 @@ class AnalysisRunner:
                 model=run.model,
                 contract_version=EXTRACTION_CONTRACT_VERSION,
             )
+            specific_points: tuple[ExtractedOpinionPoint, ...] = specific_opinion_points(
+                tuple(
+                    point
+                    for revision_id in run.review_revision_ids
+                    for point in cached[revision_id]
+                )
+            )
+            specific_points_by_revision: dict[int, list[ExtractedOpinionPoint]] = {
+                revision_id: [] for revision_id in run.review_revision_ids
+            }
+            revision_id_by_review_id: dict[str, int] = {
+                revisions[revision_id].review_id: revision_id
+                for revision_id in run.review_revision_ids
+            }
+            for point in specific_points:
+                specific_points_by_revision[
+                    revision_id_by_review_id[point.review_revision_id]
+                ].append(point)
             request = build_analysis_request(
                 request_id=run.id,
                 app_id=run.app_id,
@@ -235,7 +256,7 @@ class AnalysisRunner:
                                 ),
                                 "opinion_points": [
                                     point.model_dump(mode="json")
-                                    for point in cached[revision_id]
+                                    for point in specific_points_by_revision[revision_id]
                                 ],
                             },
                             ensure_ascii=False,
@@ -253,20 +274,33 @@ class AnalysisRunner:
                 },
             ):
                 consolidation_started_at: float = monotonic()
-                result = consolidate_opinion_points(
-                    request,
-                    tuple(
-                        point
-                        for revision_id in run.review_revision_ids
-                        for point in cached[revision_id]
-                    ),
-                    provider=run.provider,
-                    model=run.model,
-                )
+                if specific_points:
+                    consolidation = self._provider.consolidate(
+                        request,
+                        cancel_event=cancellation,
+                    )
+                    result = consolidation.result
+                    input_tokens += consolidation.usage.input_tokens or 0
+                    cached_input_tokens += consolidation.usage.cached_input_tokens or 0
+                    output_tokens += consolidation.usage.output_tokens or 0
+                else:
+                    result = AnalysisResult(
+                        schema_version="1.0",
+                        request_id=request.request_id,
+                        scope_sha256=request.scope_sha256,
+                        provider=run.provider,
+                        model=run.model,
+                        completed_review_revision_ids=tuple(
+                            review.review_revision_id for review in request.reviews
+                        ),
+                        opinion_points=(),
+                        themes=(),
+                        mechanic_classifications=(),
+                    )
                 log_event(
                     "analysis.consolidation_completed",
                     run_id=run.id,
-                    opinion_point_count=sum(map(len, cached.values())),
+                    opinion_point_count=len(specific_points),
                     duration_ms=round(
                         (monotonic() - consolidation_started_at) * 1000
                     ),

@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-09-27 — Pilot reports require specific design evidence
+
+**What changed:**
+
+- Restricted extraction to opinions about a concrete design or technical element and its observed effect.
+- Replaced exact-subject grouping with one semantic consolidation pass over validated Opinion Points.
+- Kept deterministic support metrics and the existing exact-evidence validation after consolidation.
+- Advanced the extraction contract version so prior generic cache entries are not reused.
+
+**Why:**
+
+- Generic findings such as “this game is amazing” do not help a developer understand a reusable design strength or weakness.
+- Equivalent observations can use different wording, so exact normalized subjects split one finding into several weak Themes.
+
+**New issues:**
+
+- Semantic consolidation adds provider time and tokens to each report with retained Opinion Points.
+
+**Needs human judgment:**
+
+- Review one new 50-review pilot before approving this analysis-quality direction.
+
+---
+
 ## 2026-09-27 — Report creation exposes stage and provider timing
 
 **What changed:**
