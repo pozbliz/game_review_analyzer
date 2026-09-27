@@ -201,6 +201,29 @@ describe("application shell", () => {
     );
   });
 
+  it("waits for saved report discovery before enabling report creation", async () => {
+    let resolveHistory: (response: Response) => void = () => undefined;
+    const historyResponse = new Promise<Response>((resolve) => { resolveHistory = resolve; });
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") return historyResponse;
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+
+    expect(screen.getByRole("button", { name: "Create report" })).toBeDisabled();
+    resolveHistory(json([]));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Create report" })).toBeEnabled();
+    });
+  });
+
   it("creates another report from retained reviews without a Full import", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url: string = request.toString();

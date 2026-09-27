@@ -48,6 +48,7 @@ function CatalogApp(): JSX.Element {
   const [previewError, setPreviewError] = useState<string>("");
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
   const [reportHistory, setReportHistory] = useState<ReportHistoryEntry[]>([]);
+  const [reportHistoryLoading, setReportHistoryLoading] = useState<boolean>(false);
   const [reportHistoryError, setReportHistoryError] = useState<string>("");
   const [job, setJob] = useState<AnalysisJob | null>(null);
   const [jobError, setJobError] = useState<string>("");
@@ -165,6 +166,7 @@ function CatalogApp(): JSX.Element {
     setPreviewLoading(true);
     setPreviewError("");
     setReportHistory([]);
+    setReportHistoryLoading(true);
     setReportHistoryError("");
     setJob(null);
     setAnalysisRun(null);
@@ -178,7 +180,8 @@ function CatalogApp(): JSX.Element {
           .then(setReportHistory)
           .catch(() => setReportHistoryError(
             "Unable to load saved reports. Select this game again to retry.",
-          ));
+          ))
+          .finally(() => setReportHistoryLoading(false));
       })
       .catch(() => {
         setPreview(null);
@@ -529,7 +532,7 @@ function CatalogApp(): JSX.Element {
                 <button
                   className={`create-report${reportHistory.length > 0 ? " create-report-secondary" : ""}`}
                   type="button"
-                  disabled={Boolean(reportHistoryError)}
+                  disabled={reportHistoryLoading || Boolean(reportHistoryError)}
                   onClick={reportHistory.length > 0 ? beginAnalysis : beginImport}
                 >
                   {reportHistory.length > 0 ? "Create new report" : "Create report"}
