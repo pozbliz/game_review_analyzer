@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-09-27 — History failures cannot trigger acquisition
+
+**What changed:**
+
+- Made report-history failures nonfatal while viewing an already loaded report.
+- Disabled report creation when the catalog cannot determine whether saved reports exist.
+- Added the report-scope percentage threshold to the empty-Theme explanation.
+
+**Why:**
+
+- An auxiliary history failure must not hide an immutable report or masquerade as an empty history.
+- Treating an unknown history as empty could start an unnecessary Full import.
+- Theme conclusions require both distinct-review support and a minimum scope percentage.
+
+**New issues:**
+
+- Connected-browser verification remains open because this session has no available browser.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-27 — Empty Theme reports disclose extraction yield
 
 **What changed:**

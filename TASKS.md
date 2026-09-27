@@ -8,7 +8,8 @@
 - [x] Replace report-view **Dataset maintenance** controls with an explicit new-report flow outside the immutable report; keep low-level maintenance only where required for recovery or storage management.
 - [x] Remove **Scope digest** from the visible report summary while retaining it in stored/exported provenance.
 - [x] Investigate why the Minishoot Ollama runs produced zero Themes, define when an empty Theme result is legitimate, and prevent misleading empty reports without weakening evidence validation.
-- [ ] Add API, component, and connected-browser coverage for saved-report discovery, dated history, retained-dataset reuse, and the simplified report header.
+- [x] Add API and component coverage for saved-report discovery, dated history, retained-dataset reuse, and the simplified report header.
+- [ ] Run connected-browser coverage for the simplified saved-report workflow when a browser is available.
 
 ## Oldest-versus-newest cohort comparison
 

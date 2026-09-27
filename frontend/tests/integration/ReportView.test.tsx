@@ -32,6 +32,19 @@ describe("report exploration", () => {
     expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
   });
 
+  it("keeps the report visible when history is unavailable", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => (
+      request.toString().endsWith("/games/1145350/reports")
+        ? new Response("{}", { status: 503 })
+        : json(reportPayload())
+    ));
+
+    render(<ReportView reportId="report-1" />);
+
+    expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
+    expect(screen.getByRole("alert")).toHaveTextContent("Unable to load report history");
+  });
+
   it("explains an empty Theme result without claiming that reviews had no opinions", async () => {
     const payload = reportPayload() as Record<string, unknown>;
     payload.scope = {
@@ -60,6 +73,7 @@ describe("report exploration", () => {
       .toBeVisible();
     expect(screen.getByText(/same subject and polarity in at least two distinct reviews/i))
       .toBeVisible();
+    expect(screen.getByText(/minimum percentage of the report scope/i)).toBeVisible();
     expect(screen.queryByText("No Themes in this category.")).not.toBeInTheDocument();
   });
 

@@ -49,6 +49,7 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
   const [evidence, setEvidence] = useState<Record<string, ThemeEvidence>>({});
   const [evidenceLoading, setEvidenceLoading] = useState<string | null>(null);
   const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
+  const [historyError, setHistoryError] = useState<string>("");
   const [filterDraft, setFilterDraft] = useState<EvidenceFilterDraft>(EMPTY_FILTER);
   const [filterQuery, setFilterQuery] = useState<string>("");
   const [filterError, setFilterError] = useState<string>("");
@@ -56,13 +57,14 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
   useEffect(() => {
     let active: boolean = true;
     setFilterError("");
+    setHistoryError("");
     getReport(reportId, filterQuery)
       .then((value) => {
         if (!active) return;
         setReport(value);
         void getReportHistory(value.game.app_id)
           .then((items) => { if (active) setHistory(items); })
-          .catch(() => { if (active) setError("Unable to load report history."); });
+          .catch(() => { if (active) setHistoryError("Unable to load report history."); });
       })
       .catch(() => {
         if (!active) return;
@@ -161,6 +163,7 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
               ))}
             </ul>
           </details>
+          {historyError && <p className="error" role="alert">{historyError}</p>}
           <a className="new-report-link" href={`/?appid=${appId}`}>Create new report</a>
         </div>
       </header>
@@ -208,7 +211,7 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
           <p>
             {report.scope.non_neutral_opinion_point_count.toLocaleString()} positive or negative Opinion Point{report.scope.non_neutral_opinion_point_count === 1 ? " was" : "s were"} extracted from {report.scope.review_count.toLocaleString()} reviews.
           </p>
-          <p>A Theme requires the same subject and polarity in at least two distinct reviews. This empty result does not mean players expressed no opinions.</p>
+          <p>A Theme requires the same subject and polarity in at least two distinct reviews and a minimum percentage of the report scope. This empty result does not mean players expressed no opinions.</p>
         </section>
       ) : (
         <>

@@ -66,6 +66,7 @@ describe("application shell", () => {
           { status: 200 },
         );
       }
+      if (url === "/api/games/1145350/reports") return json([]);
       return new Response(
         JSON.stringify({
           app_id: 1145350,
@@ -172,6 +173,32 @@ describe("application shell", () => {
     expect(screen.getByText(/Aug 12, 2026.*Codex CLI.*gpt-5.6-luna/i)).toBeVisible();
     expect(screen.getByRole("button", { name: "Create new report" })).toBeEnabled();
     expect(fetchMock).toHaveBeenCalledWith("/api/games/1145350/reports");
+  });
+
+  it("does not start a Full import when saved report discovery fails", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") {
+        return new Response("{}", { status: 503 });
+      }
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unable to load saved reports",
+    );
+    expect(screen.getByRole("button", { name: "Create report" })).toBeDisabled();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/games/1145350/imports/full",
+      expect.anything(),
+    );
   });
 
   it("creates another report from retained reviews without a Full import", async () => {
@@ -307,6 +334,7 @@ describe("application shell", () => {
       if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url === "/api/providers/ollama") return json({ ...ollamaProvider(), available: false, models: [] });
       if (url.startsWith("/api/games/preview")) return json(metadata());
+      if (url === "/api/games/1145350/reports") return json([]);
       if (url === "/api/games/1145350/imports/full") {
         expect(options).toMatchObject({ method: "POST" });
         return json(job("queued", 0, "full"));
@@ -352,6 +380,7 @@ describe("application shell", () => {
         processing_location: "external_cloud",
         cost_basis: "subscription_quota_unknown",
       });
+      if (url === "/api/games/1145350/reports") return json([]);
       return json(metadata());
     });
 
@@ -372,6 +401,7 @@ describe("application shell", () => {
       if (url === "/api/config") return json(publicConfig());
       if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url.startsWith("/api/games/preview")) return json(metadata());
+      if (url === "/api/games/1145350/reports") return json([]);
       if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
       if (url === "/api/games/1145350/analyses/codex-cli") return json(analysisRun("queued"));
       analysisPolls += 1;
@@ -400,6 +430,7 @@ describe("application shell", () => {
       if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url === "/api/providers/ollama") return json(ollamaProvider());
       if (url.startsWith("/api/games/preview")) return json(metadata());
+      if (url === "/api/games/1145350/reports") return json([]);
       if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
       if (url === "/api/games/1145350/analyses/ollama") {
         expect(options).toMatchObject({
@@ -436,6 +467,7 @@ describe("application shell", () => {
       if (url === "/api/providers/codex-cli") return json(codexProvider());
       if (url === "/api/providers/ollama") return json(ollamaProvider());
       if (url.startsWith("/api/games/preview")) return json(metadata());
+      if (url === "/api/games/1145350/reports") return json([]);
       if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
       if (url === "/api/games/1145350/analyses/ollama") {
         return json({ ...analysisRun("running"), provider: "ollama", model: "qwen3.5:4b" });
@@ -471,6 +503,7 @@ describe("application shell", () => {
       if (url === "/api/providers/ollama") {
         return json({ ...ollamaProvider(), available: false, models: [] });
       }
+      if (url === "/api/games/1145350/reports") return json([]);
       return json(metadata());
     });
 

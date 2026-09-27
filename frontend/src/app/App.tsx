@@ -48,6 +48,7 @@ function CatalogApp(): JSX.Element {
   const [previewError, setPreviewError] = useState<string>("");
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
   const [reportHistory, setReportHistory] = useState<ReportHistoryEntry[]>([]);
+  const [reportHistoryError, setReportHistoryError] = useState<string>("");
   const [job, setJob] = useState<AnalysisJob | null>(null);
   const [jobError, setJobError] = useState<string>("");
   const [jobDeleteConfirmation, setJobDeleteConfirmation] = useState<string>("");
@@ -164,6 +165,7 @@ function CatalogApp(): JSX.Element {
     setPreviewLoading(true);
     setPreviewError("");
     setReportHistory([]);
+    setReportHistoryError("");
     setJob(null);
     setAnalysisRun(null);
     window.localStorage.removeItem("active-import-job");
@@ -174,7 +176,9 @@ function CatalogApp(): JSX.Element {
         setShowGameSearch(false);
         void getReportHistory(metadata.app_id)
           .then(setReportHistory)
-          .catch(() => setReportHistory([]));
+          .catch(() => setReportHistoryError(
+            "Unable to load saved reports. Select this game again to retry.",
+          ));
       })
       .catch(() => {
         setPreview(null);
@@ -525,6 +529,7 @@ function CatalogApp(): JSX.Element {
                 <button
                   className={`create-report${reportHistory.length > 0 ? " create-report-secondary" : ""}`}
                   type="button"
+                  disabled={Boolean(reportHistoryError)}
                   onClick={reportHistory.length > 0 ? beginAnalysis : beginImport}
                 >
                   {reportHistory.length > 0 ? "Create new report" : "Create report"}
@@ -532,6 +537,7 @@ function CatalogApp(): JSX.Element {
               </div>
             </>
           )}
+          {reportHistoryError && <p className="error" role="alert">{reportHistoryError}</p>}
           {jobError && <p className="error" role="alert">{jobError}</p>}
           {analysisError && <p className="error" role="alert">{analysisError}</p>}
         </aside>
