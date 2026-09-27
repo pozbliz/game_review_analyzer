@@ -28,6 +28,7 @@
 
 - [x] Reduce the current Codex CLI default from medium to low reasoning.
 - [x] Cache Codex CLI extraction progress every 10 reviews instead of waiting for the full pilot batch.
+- [x] Add redacted per-attempt and per-stage timing telemetry for report creation.
 - [x] Accept Steam metadata returned under an unexpected outer key when its sole nested AppID matches the requested game.
 - [x] Cache Ollama extraction progress every 10 reviews instead of waiting for the full 50-review pilot batch.
 - [x] Pace review imports and back off after Steam rate-limit responses without losing checkpoint progress.

@@ -119,6 +119,7 @@ class AnalysisRunner:
             )
             return
         try:
+            preparation_started_at: float = monotonic()
             metadata = load_game_dataset(self._database_path, run.app_id)
             if metadata is None:
                 raise ValueError("Matching Game Dataset metadata is unavailable")
@@ -138,12 +139,21 @@ class AnalysisRunner:
                 for revision_id in run.review_revision_ids
                 if revision_id not in cached
             )
+            completed_review_count: int = len(cached)
+            log_event(
+                "analysis.prepared",
+                run_id=run.id,
+                duration_ms=round((monotonic() - preparation_started_at) * 1000),
+                cached_review_count=completed_review_count,
+                pending_review_count=len(pending_revision_ids),
+            )
             input_tokens: int = 0
             cached_input_tokens: int = 0
             output_tokens: int = 0
             for batch_number, batch_revision_ids in enumerate(
                 self._batches(pending_revision_ids, revisions), start=1
             ):
+                batch_started_at: float = monotonic()
                 batch_request = build_analysis_request(
                     request_id=f"{run.id}-extract-{batch_number}",
                     app_id=run.app_id,
@@ -168,9 +178,14 @@ class AnalysisRunner:
                         ),
                     },
                 ):
+                    provider_started_at: float = monotonic()
                     extraction = self._provider.extract(
                         batch_request, cancel_event=cancellation
                     )
+                    provider_duration_ms: int = round(
+                        (monotonic() - provider_started_at) * 1000
+                    )
+                cache_started_at: float = monotonic()
                 save_opinion_extraction_batch(
                     self._database_path,
                     revision_ids_by_review_id={
@@ -179,6 +194,20 @@ class AnalysisRunner:
                     },
                     result=extraction.result,
                     contract_version=EXTRACTION_CONTRACT_VERSION,
+                )
+                cache_duration_ms: int = round(
+                    (monotonic() - cache_started_at) * 1000
+                )
+                completed_review_count += len(batch_revision_ids)
+                log_event(
+                    "analysis.extraction_batch_completed",
+                    run_id=run.id,
+                    batch_number=batch_number,
+                    review_count=len(batch_revision_ids),
+                    completed_review_count=completed_review_count,
+                    provider_duration_ms=provider_duration_ms,
+                    cache_duration_ms=cache_duration_ms,
+                    duration_ms=round((monotonic() - batch_started_at) * 1000),
                 )
                 input_tokens += extraction.usage.input_tokens or 0
                 cached_input_tokens += extraction.usage.cached_input_tokens or 0
@@ -223,6 +252,7 @@ class AnalysisRunner:
                     "analysis.opinion_point.count": sum(map(len, cached.values())),
                 },
             ):
+                consolidation_started_at: float = monotonic()
                 result = consolidate_opinion_points(
                     request,
                     tuple(
@@ -232,6 +262,14 @@ class AnalysisRunner:
                     ),
                     provider=run.provider,
                     model=run.model,
+                )
+                log_event(
+                    "analysis.consolidation_completed",
+                    run_id=run.id,
+                    opinion_point_count=sum(map(len, cached.values())),
+                    duration_ms=round(
+                        (monotonic() - consolidation_started_at) * 1000
+                    ),
                 )
             if cancellation.is_set():
                 finish_analysis_run(self._database_path, run.id, "cancelled")
@@ -250,6 +288,7 @@ class AnalysisRunner:
                     "analysis.theme.count": len(result.themes),
                 },
             ):
+                report_started_at: float = monotonic()
                 create_report(
                     self._database_path,
                     report_id,
@@ -259,6 +298,12 @@ class AnalysisRunner:
                     run.metric_policy,
                     early_review_revision_ids=run.early_review_revision_ids,
                     recent_review_revision_ids=run.recent_review_revision_ids,
+                )
+                log_event(
+                    "analysis.report_persisted",
+                    run_id=run.id,
+                    theme_count=len(result.themes),
+                    duration_ms=round((monotonic() - report_started_at) * 1000),
                 )
             finish_analysis_run(
                 self._database_path,

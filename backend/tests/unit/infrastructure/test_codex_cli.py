@@ -174,6 +174,7 @@ def test_codex_cli_consolidates_cached_points_with_cohort_audit(monkeypatch) -> 
 
 def test_codex_cli_retries_malformed_output_without_changing_provider(
     monkeypatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     processes: list[CompletedProcess] = []
 
@@ -198,12 +199,22 @@ def test_codex_cli_retries_malformed_output_without_changing_provider(
         return process
 
     monkeypatch.setattr("subprocess.Popen", start_process)
+    caplog.set_level("INFO", logger="game_review_analyzer")
 
     run = CodexCliProvider(executable="codex.cmd", max_attempts=2).analyze(request())
 
     assert run.result.provider == "codex-cli"
     assert len(processes) == 2
     assert all("gpt-5.6-luna" in process.command for process in processes)
+    events: list[dict[str, Any]] = [json.loads(record.message) for record in caplog.records]
+    failed_attempt: dict[str, Any] = next(
+        event for event in events if event["event"] == "provider.attempt_failed"
+    )
+    assert failed_attempt["operation"] == "analysis"
+    assert failed_attempt["attempt"] == 1
+    assert failed_attempt["error_code"] == "malformed_result"
+    assert failed_attempt["retrying"] is True
+    assert failed_attempt["duration_ms"] >= 0
 
 
 def test_codex_cli_exposes_safe_validation_code_after_final_attempt(

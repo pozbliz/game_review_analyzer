@@ -71,7 +71,7 @@ npm run build
 
 For development, run `uv run uvicorn game_review_analyzer.interfaces.http.app:app --reload` from `backend/` and `npm run dev` from `frontend/`. For the production delivery path, build the frontend first and run only the backend; FastAPI serves `frontend/dist/` along with the API.
 
-Analysis runs emit redacted JSON events through the `game_review_analyzer` logger. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OpenTelemetry Collector-compatible HTTP endpoint to export HTTP and analysis traces; review text, prompts, and model output are excluded from telemetry.
+Analysis runs emit redacted JSON timing events through the `game_review_analyzer` logger. Events time preparation, each provider attempt and subprocess, cache writes, consolidation, and report persistence. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OpenTelemetry Collector-compatible HTTP endpoint to export HTTP and analysis traces; review text, prompts, and model output are excluded from telemetry.
 
 The local human evaluation tool is available at `frontend/public/review-labeler.html` directly or `/review-labeler.html` through the running application. It loads candidate JSON locally and exports reviewed JSON without transmitting review data.
 

@@ -1,5 +1,6 @@
 """Durable Codex CLI analysis-to-report integration tests."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -242,7 +243,10 @@ def test_failed_extraction_resumes_without_reprocessing_cached_reviews(
     ]
 
 
-def test_run_snapshots_corpus_and_creates_immutable_report(tmp_path: Path) -> None:
+def test_run_snapshots_corpus_and_creates_immutable_report(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     database_path = tmp_path / "app.sqlite3"
     initialize_database(database_path)
     save_game_dataset(database_path, metadata())
@@ -262,6 +266,7 @@ def test_run_snapshots_corpus_and_creates_immutable_report(tmp_path: Path) -> No
     )
     save_review_revisions(database_path, 1145350, (review("Changed later", 200),))
 
+    caplog.set_level("INFO", logger="game_review_analyzer")
     AnalysisRunner(database_path, FakeProvider()).run(run.id)
 
     completed = get_analysis_run(database_path, run.id)
@@ -274,6 +279,16 @@ def test_run_snapshots_corpus_and_creates_immutable_report(tmp_path: Path) -> No
     assert report is not None
     assert report.analysis_result.provider == "codex-cli"
     assert report.review_revision_ids == run.review_revision_ids
+    events: list[dict[str, object]] = [
+        json.loads(record.message) for record in caplog.records
+    ]
+    batch_event: dict[str, object] = next(
+        event for event in events if event["event"] == "analysis.extraction_batch_completed"
+    )
+    assert batch_event["batch_number"] == 1
+    assert batch_event["review_count"] == 1
+    assert batch_event["provider_duration_ms"] >= 0
+    assert batch_event["cache_duration_ms"] >= 0
 
 
 def test_api_starts_and_exposes_completed_codex_analysis(tmp_path: Path) -> None:

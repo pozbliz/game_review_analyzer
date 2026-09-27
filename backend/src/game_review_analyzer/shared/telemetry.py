@@ -23,6 +23,7 @@ def configure_telemetry(app: FastAPI) -> None:
     """Instrument HTTP requests and optionally export traces through OTLP/HTTP."""
 
     global _configured
+    LOGGER.setLevel(logging.INFO)
     endpoint: str | None = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
     if endpoint and not _configured:
         provider = TracerProvider(

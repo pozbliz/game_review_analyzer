@@ -57,6 +57,8 @@ Do not commit real keys. The public configuration API reveals only whether a Ste
 
 Install and authenticate Codex CLI outside the application. The app checks readiness but never reads or stores Codex credentials. Each run is explicit, uses the configured pinned model, sends the selected review text to external cloud processing, and records measured token usage when Codex exposes it. Subscription quota and dollar cost remain unknown.
 
+The backend console emits redacted JSON timing events for every Codex attempt and analysis stage. `provider.attempt_failed` includes the safe failure code and whether the app retries. These events include counts and byte sizes, but exclude prompts, review text, model output, credentials, and process stderr.
+
 ### Ollama
 
 Install Ollama and a compatible model yourself. The app lists already-installed models and runs only the model selected by the user. It never pulls a model or silently falls back. Local Qwen 3.5 4B and 9B are available for explicit experimentation but are not presented as reliable full-analysis defaults on the evaluated CPU-only machine.

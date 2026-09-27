@@ -321,7 +321,7 @@ Durable module boundaries are:
 - **Analysis Provider:** versioned structured request/response independent of vendor
 - **Theme Metrics:** deterministic counts and percentages computed from stored memberships, never trusted from generated prose
 - **Credential Store:** session, operating-system vault, and environment adapters
-- **CLI Runner:** isolated non-interactive provider processes with availability checks, cancellation, bounded output, and redacted diagnostics
+- **CLI Runner:** isolated non-interactive provider processes with availability checks, cancellation, bounded output, redacted diagnostics, and per-attempt timing
 - **Report Repository:** immutable report versions and evidence provenance
 - **Export/Import:** versioned schemas with strict validation
 
@@ -335,6 +335,7 @@ The React client does not own credentials, Steam integration logic, provider SDK
 - Optional metadata failures produce unknown fields and source-status details without blocking review analysis.
 - Provider unavailability never causes automatic fallback.
 - Invalid provider output is retried only within a bounded policy, then preserved as a failed job with diagnostics that exclude secrets and review text where unnecessary.
+- Redacted timing events separate preparation, provider subprocesses, validation retries, cache writes, consolidation, and report persistence.
 - A cancelled or failed job can reuse safe completed work but never appears as a final report.
 - Historical reports and their exact source evidence remain unchanged when Steam metadata, reviews, taxonomy, prompts, models, or provider behavior later changes.
 - Full-history imports and very large paid-provider runs show time, volume, and approximate-cost warnings before work begins.

@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-09-27 — Report creation exposes stage and provider timing
+
+**What changed:**
+
+- Added redacted JSON timing events for preparation, provider subprocesses, validation attempts, extraction cache writes, consolidation, and report persistence.
+- Included safe failure codes and retry state for every rejected Codex result.
+
+**Why:**
+
+- One 50-review Codex pilot took 6 minutes 32 seconds and used 53,087 input plus 6,374 output tokens.
+- The first two batches took 44 and 39 seconds; later hidden retries caused 193-second and 80-second gaps.
+- Existing telemetry recorded only run start and completion, so it could not identify provider retries.
+
+**New issues:**
+
+- At the measured rate, 2,500 reviews take about 5.4 hours and 5,000 take about 10.9 hours.
+- Codex CLI remains unsuitable for the larger report scope without a faster bulk provider path.
+
+**Needs human judgment:**
+
+- Select a faster hosted batch provider before treating the larger scope as practical.
+
+---
+
 ## 2026-09-27 — Codex extraction checkpoints every 10 reviews
 
 **What changed:**
