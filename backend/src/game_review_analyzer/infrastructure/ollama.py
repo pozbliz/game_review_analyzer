@@ -13,6 +13,7 @@ from game_review_analyzer.application.manual_codex import (
     MANUAL_CODEX_INSTRUCTIONS,
     ManualCodexValidationError,
     validate_analysis_result,
+    validate_consolidation_result,
     validate_manual_codex_extraction_result,
 )
 from game_review_analyzer.application.provider import (
@@ -129,7 +130,7 @@ class OllamaProvider:
             request,
             instructions=CODEX_CONSOLIDATION_INSTRUCTIONS,
             schema=AnalysisResult.model_json_schema(),
-            validator=lambda value, text: validate_analysis_result(
+            validator=lambda value, text: validate_consolidation_result(
                 value, text, expected_provider="ollama"
             ),
             cancel_event=cancel_event,

@@ -119,6 +119,48 @@ def test_provider_retries_malformed_output_with_the_same_model() -> None:
     assert calls == ["qwen3.5:4b", "qwen3.5:4b"]
 
 
+def test_provider_consolidation_rejects_omitted_validated_points() -> None:
+    analysis_request: AnalysisRequest = build_analysis_request(
+        request_id="request-consolidation",
+        app_id=1145350,
+        game_title="Hades II",
+        reviews=(
+            AnalysisSourceReview(
+                review_revision_id="revision-1",
+                text=json.dumps({
+                    "cohort": "early",
+                    "opinion_points": [{
+                        "id": "point-1",
+                        "review_revision_id": "revision-1",
+                        "excerpt": "Combat feels responsive.",
+                        "sentiment": "positive",
+                        "subject": "combat responsiveness",
+                    }],
+                }),
+            ),
+        ),
+    )
+
+    def stream(
+        _payload: dict[str, Any],
+        _cancel: Event | None,
+    ) -> Iterator[dict[str, Any]]:
+        yield {
+            "model": "qwen3.5:4b",
+            "response": result_json(analysis_request),
+            "done": True,
+        }
+
+    with pytest.raises(OllamaError) as raised:
+        OllamaProvider(
+            model="qwen3.5:4b",
+            stream_source=stream,
+            max_attempts=1,
+        ).consolidate(analysis_request)
+
+    assert raised.value.code == "invalid_result"
+
+
 def test_provider_maps_local_timeout_to_stable_failure_without_retry() -> None:
     calls: list[str] = []
 

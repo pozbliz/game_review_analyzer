@@ -7,7 +7,9 @@ from time import monotonic
 from typing import Protocol
 
 from game_review_analyzer.application.manual_codex import build_analysis_request
-from game_review_analyzer.application.opinion_consolidation import specific_opinion_points
+from game_review_analyzer.application.opinion_consolidation import (
+    exclude_known_generic_opinion_points,
+)
 from game_review_analyzer.application.report_creation import create_report
 from game_review_analyzer.application.provider import (
     AnalysisProviderError,
@@ -222,11 +224,13 @@ class AnalysisRunner:
                 model=run.model,
                 contract_version=EXTRACTION_CONTRACT_VERSION,
             )
-            specific_points: tuple[ExtractedOpinionPoint, ...] = specific_opinion_points(
-                tuple(
-                    point
-                    for revision_id in run.review_revision_ids
-                    for point in cached[revision_id]
+            specific_points: tuple[ExtractedOpinionPoint, ...] = (
+                exclude_known_generic_opinion_points(
+                    tuple(
+                        point
+                        for revision_id in run.review_revision_ids
+                        for point in cached[revision_id]
+                    )
                 )
             )
             specific_points_by_revision: dict[int, list[ExtractedOpinionPoint]] = {

@@ -12,6 +12,7 @@ from game_review_analyzer.application.manual_codex import (
     export_manual_codex_package,
     export_manual_codex_extraction_package,
     validate_analysis_result,
+    validate_consolidation_result,
     validate_manual_codex_result,
     validate_manual_codex_extraction_result,
 )
@@ -244,6 +245,79 @@ def test_shared_validator_accepts_only_the_selected_provider() -> None:
             expected_provider="ollama",
         )
     assert raised.value.code == "provider_mismatch"
+
+
+def test_consolidation_preserves_every_validated_opinion_point() -> None:
+    request, result = valid_consolidation_result()
+
+    validated = validate_consolidation_result(
+        request,
+        json.dumps(result),
+        expected_provider="manual-codex",
+    )
+
+    assert tuple(point.id for point in validated.opinion_points) == (
+        "point-1",
+        "point-2",
+    )
+
+    omitted: dict[str, Any] = deepcopy(result)
+    omitted["opinion_points"] = omitted["opinion_points"][:1]
+    omitted["themes"] = []
+    omitted["opinion_points"][0]["supports_theme_id"] = None
+    invented: dict[str, Any] = deepcopy(result)
+    invented["opinion_points"][0]["id"] = "invented"
+    invented["themes"][0]["opinion_point_ids"][0] = "invented"
+    mutated: dict[str, Any] = deepcopy(result)
+    mutated["opinion_points"][0]["subject"] = "generic combat"
+
+    for expected_code, invalid_result in (
+        ("opinion_point_set_mismatch", omitted),
+        ("opinion_point_set_mismatch", invented),
+        ("opinion_point_mismatch", mutated),
+    ):
+        with pytest.raises(ManualCodexValidationError) as raised:
+            validate_consolidation_result(
+                request,
+                json.dumps(invalid_result),
+                expected_provider="manual-codex",
+            )
+        assert raised.value.code == expected_code
+
+
+def valid_consolidation_result() -> tuple[AnalysisRequest, dict[str, Any]]:
+    _, result = valid_grouped_result()
+    points: list[dict[str, Any]] = result["opinion_points"]
+    points[0]["excerpt"] = 'Combat feels "tight".'
+    request: AnalysisRequest = build_analysis_request(
+        request_id="request-consolidation",
+        app_id=1145350,
+        game_title="Hades II",
+        reviews=tuple(
+            AnalysisSourceReview(
+                review_revision_id=revision_id,
+                text=json.dumps({
+                    "cohort": cohort,
+                    "opinion_points": [
+                        {
+                            key: value
+                            for key, value in point.items()
+                            if key != "supports_theme_id"
+                        }
+                        for point in points
+                        if point["review_revision_id"] == revision_id
+                    ],
+                }),
+            )
+            for revision_id, cohort in (
+                ("revision-1", "early"),
+                ("revision-2", "recent"),
+            )
+        ),
+    )
+    result["request_id"] = request.request_id
+    result["scope_sha256"] = request.scope_sha256
+    return request, result
 
 
 def valid_grouped_result() -> tuple[AnalysisRequest, dict[str, Any]]:

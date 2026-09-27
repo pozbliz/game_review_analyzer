@@ -16,6 +16,7 @@ from game_review_analyzer.application.manual_codex import (
     MANUAL_CODEX_INSTRUCTIONS,
     ManualCodexValidationError,
     validate_analysis_result,
+    validate_consolidation_result,
     validate_manual_codex_extraction_result,
 )
 from game_review_analyzer.domain.analysis import (
@@ -123,10 +124,13 @@ class CodexCliProvider:
                     operation=operation,
                     attempt=attempt_number,
                 )
-                result: AnalysisResult = validate_analysis_result(
-                    request,
-                    result_json,
-                    expected_provider="codex-cli",
+                validator = (
+                    validate_consolidation_result
+                    if operation == "consolidation"
+                    else validate_analysis_result
+                )
+                result: AnalysisResult = validator(
+                    request, result_json, expected_provider="codex-cli"
                 )
                 if result.model != self.model:
                     raise CodexCliError(

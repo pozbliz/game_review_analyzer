@@ -9,7 +9,11 @@ from typing import Any
 import pytest
 
 from game_review_analyzer.application.manual_codex import build_analysis_request
-from game_review_analyzer.domain.analysis import AnalysisRequest, AnalysisSourceReview
+from game_review_analyzer.domain.analysis import (
+    AnalysisRequest,
+    AnalysisResult,
+    AnalysisSourceReview,
+)
 from game_review_analyzer.infrastructure.codex_cli import (
     CodexCliError,
     CodexCliProvider,
@@ -161,16 +165,31 @@ def test_codex_cli_extracts_one_bounded_opinion_batch(monkeypatch) -> None:
 
 def test_codex_cli_consolidates_cached_points_with_cohort_audit(monkeypatch) -> None:
     processes: list[CompletedProcess] = []
+    validated: list[str] = []
 
     def start_process(command: list[str], **options: Any) -> CompletedProcess:
         process = CompletedProcess(command, **options)
         processes.append(process)
         return process
 
+    def validate(
+        _request: AnalysisRequest,
+        result_json: str,
+        *,
+        expected_provider: str,
+    ) -> AnalysisResult:
+        validated.append(expected_provider)
+        return AnalysisResult.model_validate_json(result_json)
+
     monkeypatch.setattr("subprocess.Popen", start_process)
+    monkeypatch.setattr(
+        "game_review_analyzer.infrastructure.codex_cli.validate_consolidation_result",
+        validate,
+    )
 
     CodexCliProvider(executable="codex.cmd").consolidate(request())
 
+    assert validated == ["codex-cli"]
     assert "shared Theme system across both cohorts" in processes[0].prompt
     assert "audit unassigned early and recent Opinion Points" in processes[0].prompt
     assert "Merge semantically equivalent subjects" in processes[0].prompt

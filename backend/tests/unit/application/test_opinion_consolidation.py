@@ -1,7 +1,7 @@
 """Specific Opinion Point filtering tests."""
 
 from game_review_analyzer.application.opinion_consolidation import (
-    specific_opinion_points,
+    exclude_known_generic_opinion_points,
 )
 from game_review_analyzer.domain.analysis import (
     ExtractedOpinionPoint,
@@ -18,7 +18,7 @@ def test_generic_subjects_do_not_reach_semantic_consolidation() -> None:
         extracted("specific-2", "five", "dialogue pacing", "Dialogue pacing feels unnatural."),
     )
 
-    filtered = specific_opinion_points(points)
+    filtered = exclude_known_generic_opinion_points(points)
 
     assert tuple(point.id for point in filtered) == ("specific-1", "specific-2")
 

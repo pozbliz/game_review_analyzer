@@ -11,6 +11,7 @@ from game_review_analyzer.domain.analysis import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisSourceReview,
+    ExtractedOpinionPoint,
     OpinionExtractionResult,
     OpinionPoint,
     OpinionSentiment,
@@ -163,6 +164,7 @@ def validate_analysis_result(
     result_json: str,
     *,
     expected_provider: str,
+    _exact_excerpts_by_review: dict[str, frozenset[str]] | None = None,
 ) -> AnalysisResult:
     """Parse and validate one provider result against its exact request scope."""
 
@@ -213,7 +215,14 @@ def validate_analysis_result(
                 "unknown_review_revision",
                 f"Opinion Point {point.id} references an unknown Review Revision.",
             )
-        if point.excerpt not in review_text:
+        exact_excerpts: frozenset[str] | None = (
+            _exact_excerpts_by_review.get(point.review_revision_id)
+            if _exact_excerpts_by_review is not None
+            else None
+        )
+        if (
+            exact_excerpts is not None and point.excerpt not in exact_excerpts
+        ) or (exact_excerpts is None and point.excerpt not in review_text):
             raise ManualCodexValidationError(
                 "non_matching_excerpt",
                 f"Opinion Point {point.id} is not an exact source excerpt.",
@@ -285,6 +294,71 @@ def validate_analysis_result(
             raise ManualCodexValidationError(
                 "unknown_review_revision",
                 "Mechanic classification references an unknown Review Revision.",
+            )
+    return result
+
+
+def validate_consolidation_result(
+    request: AnalysisRequest,
+    result_json: str,
+    *,
+    expected_provider: str,
+) -> AnalysisResult:
+    """Allow Theme assignment while preserving every supplied Opinion Point."""
+
+    supplied_points: list[ExtractedOpinionPoint] = []
+    try:
+        for review in request.reviews:
+            payload: dict[str, Any] = json.loads(review.text)
+            for point_data in payload["opinion_points"]:
+                point = ExtractedOpinionPoint.model_validate(point_data)
+                if point.review_revision_id != review.review_revision_id:
+                    raise ValueError
+                supplied_points.append(point)
+    except (
+        json.JSONDecodeError,
+        KeyError,
+        TypeError,
+        ValidationError,
+        ValueError,
+    ) as error:
+        raise ManualCodexValidationError(
+            "malformed_consolidation_request",
+            "Consolidation request does not contain validated Opinion Points.",
+        ) from error
+
+    expected_point_by_id: dict[str, ExtractedOpinionPoint] = {
+        point.id: point for point in supplied_points
+    }
+    if len(expected_point_by_id) != len(supplied_points):
+        raise ManualCodexValidationError(
+            "duplicate_identifier",
+            "Supplied Opinion Point identifiers must be unique.",
+        )
+    result: AnalysisResult = validate_analysis_result(
+        request,
+        result_json,
+        expected_provider=expected_provider,
+        _exact_excerpts_by_review={
+            review.review_revision_id: frozenset(
+                point.excerpt
+                for point in supplied_points
+                if point.review_revision_id == review.review_revision_id
+            )
+            for review in request.reviews
+        },
+    )
+    if {point.id for point in result.opinion_points} != set(expected_point_by_id):
+        raise ManualCodexValidationError(
+            "opinion_point_set_mismatch",
+            "Consolidation must preserve every supplied Opinion Point exactly once.",
+        )
+    for point in result.opinion_points:
+        expected_point = expected_point_by_id[point.id]
+        if point.model_dump(exclude={"supports_theme_id"}) != expected_point.model_dump():
+            raise ManualCodexValidationError(
+                "opinion_point_mismatch",
+                f"Consolidation changed supplied Opinion Point {point.id}.",
             )
     return result
 

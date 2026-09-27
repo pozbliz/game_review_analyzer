@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
+from game_review_analyzer.application.provider import (
+    CancellationSignal,
+    ExtractionProviderRun,
+)
 from game_review_analyzer.domain.analysis import (
+    AnalysisRequest,
     AnalysisResult,
     AnalysisSourceReview,
     ExtractedOpinionPoint,
@@ -260,10 +265,17 @@ def test_analysis_ignores_extractions_from_the_previous_contract(
     tmp_path: Path,
 ) -> None:
     class RecordingProvider(FakeProvider):
+        """Record extraction batches while returning the standard fake result."""
+
         def __init__(self) -> None:
             self.calls: list[tuple[str, ...]] = []
 
-        def extract(self, request, *, cancel_event=None):
+        def extract(
+            self,
+            request: AnalysisRequest,
+            *,
+            cancel_event: CancellationSignal | None = None,
+        ) -> ExtractionProviderRun:
             self.calls.append(
                 tuple(review.review_revision_id for review in request.reviews)
             )
@@ -318,12 +330,17 @@ def test_analysis_semantically_groups_specific_points_and_assigns_category(
     tmp_path: Path,
 ) -> None:
     class SemanticProvider(FakeProvider):
+        """Return generic and equivalent concrete points for runner verification."""
+
         def __init__(self) -> None:
             self.consolidation_calls: int = 0
 
-        def extract(self, request, *, cancel_event=None):
-            from game_review_analyzer.application.provider import ExtractionProviderRun
-
+        def extract(
+            self,
+            request: AnalysisRequest,
+            *,
+            cancel_event: CancellationSignal | None = None,
+        ) -> ExtractionProviderRun:
             points: list[ExtractedOpinionPoint] = []
             for source_review in request.reviews:
                 specific_excerpt: str = (
@@ -369,7 +386,12 @@ def test_analysis_semantically_groups_specific_points_and_assigns_category(
                 CodexCliUsage(10, 0, 2),
             )
 
-        def consolidate(self, request, *, cancel_event=None):
+        def consolidate(
+            self,
+            request: AnalysisRequest,
+            *,
+            cancel_event: CancellationSignal | None = None,
+        ) -> CodexCliRun:
             self.consolidation_calls += 1
             supplied_points: list[dict[str, object]] = [
                 point

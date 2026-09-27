@@ -20,7 +20,7 @@ GENERIC_SUBJECTS: frozenset[str] = frozenset(
 )
 
 
-def specific_opinion_points(
+def exclude_known_generic_opinion_points(
     points: tuple[ExtractedOpinionPoint, ...],
 ) -> tuple[ExtractedOpinionPoint, ...]:
     """Remove known generic subjects before semantic Theme consolidation."""
