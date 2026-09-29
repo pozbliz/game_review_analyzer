@@ -2,7 +2,7 @@
 
 ## Status
 
-The product design and this strategic plan are approved. Slices 1–8 and 10–12 are implemented, including authenticated live Codex verification, while Slice 4 retains a deferred production-quality calibration gate. Slice 9 has the Ollama adapter, model selection, and local Qwen benchmark implemented; later provider choices remain optional. Slice 10 provides deterministic Evidence Filters without model calls. Oldest-versus-newest Cohort Comparison is approved as Slice 15. The concrete, dependency-ordered action checklist is maintained in `TASKS.md`.
+The progressive aggregate-report design and this strategic plan are approved. Slices 0–15 record the earlier implementation. Their Version 2 report behavior is superseded where it conflicts with `DESIGN.md`. Slices 16–21 replace that behavior. Slice 16 is the execution frontier. `TASKS.md` still describes the earlier implementation and must be revised through `$create-implementation-tasks` before code changes begin.
 
 ## Durable verification seams
 
@@ -12,7 +12,7 @@ Implementation should preserve these stable behavioral boundaries:
 - Steam Game Catalog and Steam Metadata adapters
 - Review Ingestion with append-only Review Revisions
 - durable Job Runner
-- provider-neutral Analysis Provider
+- versioned Analysis Provider contracts
 - deterministic Theme Metrics
 - Credential Store
 - immutable Report Repository
@@ -206,21 +206,21 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Outcome:** A new GitHub user can install the local web application, securely configure one analysis path, and maintain trustworthy reports without developer assistance.
 
-**Blocked by:** Slices 5–12, Steam policy validation, accessibility/security gates, and copyright-holder confirmation.
+**Blocked by:** Slice 21, Steam policy validation, accessibility and security gates, and copyright-holder confirmation.
 
 **Scope:** integration and security verification, documentation, CI, MIT license, clean-install workflow, and source release.
 
-**Acceptance:** A clean Windows environment completes installation and representative AppID, Codex/cloud, refresh, filtering, history, and export scenarios. Documentation covers credentials, Ollama, Codex, data paths, privacy, and recovery.
+**Acceptance:** A clean Windows environment completes installation, Full Import, Test Report, Main Report, extension, replacement, recovery, and export scenarios. Documentation covers Codex CLI, data paths, privacy, and recovery.
 
 **Tradeoff:** Packaged releases and advertised macOS/Linux support remain outside this release gate.
 
-**Status:** Blocked; copyright holder requires human confirmation.
+**Status:** Blocked by Slice 21 and copyright-holder confirmation.
 
 ## Slice 14 — Package and validate distribution
 
 **Outcome:** Windows users can run a packaged release without Node.js or Python development toolchains, while source portability is verified before other operating systems are advertised.
 
-**Blocked by:** Slice 13.
+**Blocked by:** Slice 13 after the progressive workflow release gate passes.
 
 **Scope:** Windows packaging of the established frontend/backend delivery path, migration/update guidance, clean-machine validation, and macOS/Linux source checks.
 
@@ -244,6 +244,92 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Status:** Implemented with resumable bounded extraction, deterministic canonical-subject consolidation, immutable cohort metrics, progress/retry controls, report presentation, and an explicitly incomplete 25-plus-25 Ollama pilot. Representative-game semantic calibration remains open.
 
+This slice records superseded Version 2 behavior. Slices 16–21 replace its report model and user workflow.
+
+## Slice 16 — Produce a standalone Test Report
+
+**Outcome:** Create one saved aggregate Test Report from 25 oldest and 25 newest reviews without changing the Main Report.
+
+**Blocked by:** None. Full Import, Codex CLI execution, durable analysis runs, and report persistence already exist.
+
+**Scope:** Version 3 Theme candidate contracts, internal Theme memberships, deterministic aggregate metrics, one Test Report slot per game, API changes, and the test-report interface.
+
+**Acceptance:** A completed Full Import can produce one 50-review Test Report in one provider call. The report uses non-overlapping oldest and newest cohorts, shows Themes at 5% support, caps each polarity at five, and replaces only the prior Test Report. Invalid provider output creates no report. The Test Report cannot be extended and never changes the Main Report.
+
+**Tradeoff:** The Main Report continues to use the superseded implementation until Slice 17.
+
+**Status:** Approved; execution frontier.
+
+## Slice 17 — Produce the first Main Report
+
+**Outcome:** Create the first aggregate Main Report from 500 oldest and 500 newest reviews.
+
+**Blocked by:** Slice 16.
+
+**Scope:** One Main Report slot per game, deterministic cohort selection, character-bounded map calls, Theme merging, retained candidates, durable batch checkpoints, aggregate metrics, report API, progress, and interface changes.
+
+**Acceptance:** Tests prove exact non-overlapping selection, full-text input, a 250-review call ceiling, character-based packing, and replacement of oversized reviews with the next eligible unseen review. Restarts reuse validated batches. Candidates with at least 2% support in either cohort remain internal. Themes with at least 5% support in either cohort become visible. An empty visible report is valid.
+
+**Tradeoff:** The Main Report cannot grow or reset through the interface until Slice 18.
+
+**Status:** Approved; blocked by Slice 16.
+
+## Slice 18 — Grow or replace the Main Report safely
+
+**Outcome:** Extend the Main Report by up to 1,000 unseen reviews or replace it with a fresh 1,000-review analysis.
+
+**Blocked by:** Slice 17.
+
+**Scope:** Required Steam refresh, exact run reservations, cumulative Theme memberships, stable Theme definitions, candidate promotion, replacement runs, atomic report replacement, cancellation, retry, and restart recovery.
+
+**Acceptance:** Extensions select up to 500 oldest and 500 newest unseen review identities after refresh. New reviews can enter the newest cohort. Edits to analyzed identities do not re-enter it. The final extension can contain fewer than 1,000 reviews. Concurrent runs cannot reserve the same scope. Validated batches survive retry and restart. Failed or cancelled work leaves the current Main Report unchanged. Successful work replaces it atomically. Replacement does not reuse the prior Main Report's analysis artifacts.
+
+**Tradeoff:** Theme definitions stay fixed during extension. A poor taxonomy requires replacement.
+
+**Status:** Approved; blocked by Slice 17.
+
+## Slice 19 — Remove superseded report behavior
+
+**Outcome:** Expose one Main Report and one Test Report per game without Version 2 report behavior.
+
+**Blocked by:** Slice 18.
+
+**Scope:** Catalog and report routes, report history, Opinion Points, excerpts, evidence APIs, Evidence Filters, categories, mixed reception, mechanic classifications, provider controls, legacy schemas, and obsolete adapters.
+
+**Acceptance:** Removed report paths and controls are unavailable. The interface exposes only Test, create Main, Extend, Replace, export, cancel, and retry actions where valid. Version 2 reports cannot be read, imported, or extended. Backend and frontend checks pass after dead paths are deleted.
+
+**Tradeoff:** Deleted Version 2 data and behavior cannot be restored through the application.
+
+**Status:** Approved; blocked by Slice 18.
+
+## Slice 20 — Export aggregate Version 3 reports
+
+**Outcome:** Export and import the current aggregate report format without review evidence.
+
+**Blocked by:** Slices 18 and 19.
+
+**Scope:** Version 3 HTML, CSV, and JSON contracts, local JSON re-import, report-slot rules, sanitization, and download controls.
+
+**Acceptance:** HTML and CSV contain aggregate Themes and cohort metrics. Default exports contain no review text, excerpt, or reviewer identity. JSON retains internal revision memberships for local validation and rejects import when required local revisions are absent. Import cannot create report history beyond the Main and Test slots.
+
+**Tradeoff:** JSON remains tied to a compatible local Game Dataset and is not a portable data backup.
+
+**Status:** Approved; blocked by Slices 18 and 19.
+
+## Slice 21 — Verify the progressive workflow
+
+**Outcome:** Verify the 50-review, 1,000-review, and 2,000-review workflows before release work resumes.
+
+**Blocked by:** Slices 16–20.
+
+**Scope:** Live Codex CLI runs, token and timing measurements, restart recovery, connected-browser checks, exports, automated checks, and operating documentation.
+
+**Acceptance:** Verification proves Test Report isolation, first Main Report creation, one extension, replacement, truthful progress, recovery, and safe exports. Backend tests, frontend tests, type checking, and the production build pass. A human reviews the live Theme output for usefulness before release approval.
+
+**Tradeoff:** Poor live speed, token use, or Theme quality can block release and require a design revision.
+
+**Status:** Approved; blocked by Slices 16–20.
+
 ## Deferred
 
 - Embedding-assisted semantic grouping
@@ -255,11 +341,14 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 - Additional review sources
 - Manual Theme correction
 - Statistical analytics dashboards
+- Additional providers and user-selectable models
+- Automatic splitting or merging of established Themes during extension
 
 ## Approval gates
 
-- **Prototype:** satisfied; the Catalog → Split → Timeline → Research direction is approved. Connected-browser verification remains tracked separately.
-- **Analysis quality:** fixture-based Slice 4 implementation may proceed with explicit provisional thresholds; approve the real-game baseline before production-quality acceptance or reliability claims.
-- **Provider:** approve the first automated provider after quality/cost evaluation before Slice 8.
-- **Steam:** resolve retention, attribution, and request-rate obligations before Slices 11 and 13.
-- **Release:** confirm the MIT copyright holder and approve the release candidate before Slice 13 publication.
+- **Design:** satisfied; the progressive aggregate-report design is approved.
+- **Plan:** satisfied; Slices 16–21 and their order are approved.
+- **Tasks:** revise `TASKS.md` through `$create-implementation-tasks` before Slice 16 implementation.
+- **Analysis quality:** review live Theme usefulness after Slice 21 verification.
+- **Steam:** existing policy validation remains required for release.
+- **Release:** complete Slice 21, confirm the MIT copyright holder, and approve the release candidate before Slice 13 publication.

@@ -1,9 +1,16 @@
-# Game Review Analyzer — Domain Context
+# Game Review Analyzer - Domain Context
 
 ## Report lifecycle
 
-- **Create report:** Generate a new immutable Report Version from a selected game and review scope. This applies to both the first report and a later result after refreshing or changing scope.
-- **Report Version:** A preserved, immutable result tied to its exact review revisions, scope, metadata snapshot, and analysis configuration.
-- **Latest report:** The newest Report Version opened by default.
-- **Report history:** Older Report Versions for the selected game.
-- **Compare reports:** A future operation that explicitly contrasts reports; it is not a synonym for creating or refreshing one.
+- **Main Report:** The one current cumulative analysis for a game. A successful extension or replacement atomically replaces it.
+- **Test Report:** The one current 50-review provider test for a game. It remains separate from the Main Report.
+- **Extend report:** Refresh Steam, add unseen oldest and newest reviews, and replace the Main Report with the cumulative result.
+- **Replace report:** Refresh Steam and build a fresh Main Report without reusing prior analysis state.
+
+## Analysis
+
+- **Theme:** A model-generated summary of one recurring positive or negative player opinion.
+- **Theme Membership:** An internal link between a Theme and one analyzed Review Revision.
+- **Theme Candidate:** Hidden merge state that may become a Theme after later extensions.
+- **Oldest cohort:** Reviews selected from the oldest end of the unseen ordered review pool.
+- **Newest cohort:** Reviews selected from the newest end of the unseen ordered review pool.

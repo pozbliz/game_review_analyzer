@@ -1,5 +1,76 @@
 # Tasks
 
+## 2026-09-29
+
+### Standalone Test Report
+
+- [ ] Add failing Version 3 provider-contract tests.
+- [ ] Implement Theme candidates and internal Theme memberships.
+- [ ] Add failing aggregate metric tests.
+- [ ] Implement cohort metrics, thresholds, ranking, caps, and empty results.
+- [ ] Add repository tests for one independent Test Report slot.
+- [ ] Implement deterministic 25-oldest and 25-newest selection.
+- [ ] Connect one-call Codex execution with low reasoning.
+- [ ] Add API and frontend tests for creating and replacing Test Reports.
+- [ ] Verify invalid output never changes either report slot.
+
+### First Main Report
+
+- [ ] Add selection tests for 500 oldest and 500 newest reviews.
+- [ ] Cover overlap removal, complete text, and oversized-review replacement.
+- [ ] Add character-based packing tests with the 250-review limit.
+- [ ] Implement map batching and validated checkpoints.
+- [ ] Add merge tests for Themes, discarded candidates, and retained 2% candidates.
+- [ ] Add repository tests for the single Main Report slot.
+- [ ] Build the Main Report API, progress flow, and interface.
+- [ ] Verify visible 5% thresholds and valid empty reports.
+
+### Extend and Replace Main Report
+
+- [ ] Add refresh and unseen-review selection tests.
+- [ ] Cover new reviews, ignored edits, partial final extensions, and exact reservations.
+- [ ] Add concurrency tests preventing duplicate scope reservations.
+- [ ] Add extension merge tests for fixed Themes and candidate promotion.
+- [ ] Add replacement tests that prohibit prior-analysis reuse.
+- [ ] Implement atomic extension and replacement.
+- [ ] Add cancellation, retry, restart, and checkpoint-reuse tests.
+- [ ] Build Extend and Replace controls with current-report preservation.
+- [ ] Verify failures never change the current Main Report.
+
+### Remove Version 2 Behavior
+
+- [ ] Add contract tests for one Main Report and one Test Report.
+- [ ] Remove history, Opinion Points, excerpts, and evidence routes.
+- [ ] Remove filters, categories, mixed reception, and direction labels.
+- [ ] Remove unsupported provider and model controls.
+- [ ] Remove unreachable Version 2 repositories and adapters.
+- [ ] Add clean Version 3 schema and integrity tests.
+- [ ] Update storage deletion for reports, runs, and checkpoints.
+- [ ] Remove obsolete frontend views and tests.
+- [ ] Run backend, frontend, type, and build checks.
+
+### Version 3 Exports
+
+- [ ] Add aggregate HTML, CSV, and JSON contract tests.
+- [ ] Implement sanitized HTML and one-row-per-Theme CSV.
+- [ ] Implement JSON with internal revision memberships.
+- [ ] Reject imports with missing local revisions.
+- [ ] Enforce Main and Test Report slot rules during import.
+- [ ] Add privacy and content-injection tests.
+- [ ] Update export and import controls.
+- [ ] Verify exports contain no review text or reviewer identity.
+
+### Progressive Workflow Verification
+
+- [ ] Run the complete automated test and build suite.
+- [ ] Verify restart recovery with reserved scopes and completed batches.
+- [ ] Run live 50-review, 1,000-review, and 2,000-review Codex workflows.
+- [ ] Record elapsed time and measured token use.
+- [ ] Verify Test Report isolation, extension, and replacement in the browser.
+- [ ] Verify keyboard, narrow-screen, reduced-motion, and non-color behavior.
+- [ ] Update operating documentation for the new workflow.
+- [ ] [HUMAN] Review live Theme usefulness before release work resumes.
+
 ## Simplify saved-report workflow
 
 - [x] After game selection, load its saved report history and make **Open latest report** the primary action when history exists.
@@ -12,7 +83,7 @@
 - [x] Restore the approved recent-report list before game selection.
 - [x] Start analysis from a completed Game Dataset when no Report Version exists, without repeating the Full import.
 - [x] Restore the latest active or resumable Analysis Run when its game is selected again.
-- [ ] Run connected-browser coverage for the simplified saved-report workflow when a browser is available.
+- [x] Closed without execution; Progressive Workflow Verification replaces this Version 2 browser check.
 
 ## Oldest-versus-newest cohort comparison
 
@@ -22,7 +93,7 @@
 - [x] Calculate early-versus-recent support, percentage-point change, date ranges, and conservative direction labels without additional model calls.
 - [x] Expose acquisition prerequisites, durable progress, comparison metrics, and evidence from both cohorts in the report UI.
 - [x] Verify the production UI in the connected browser.
-- [ ] [HUMAN] Calibrate direction thresholds and canonical-subject consistency on representative games before claiming production-quality semantic grouping.
+- [x] Closed without execution; the approved design removes direction labels and Version 2 semantic grouping.
 
 ## 2026-09-27
 
@@ -33,7 +104,7 @@
 - [x] Consolidate pilot Opinion Points semantically into specific Themes with meaningful categories.
 - [x] Preserve deterministic support metrics and exact evidence validation after semantic consolidation.
 - [x] Run focused and full repository verification, then review the committed scope from `bcb9b6d`.
-- [ ] [HUMAN] Review one new 50-review pilot before approving the analysis-quality direction.
+- [x] Closed without execution; the Standalone Test Report and final human gate replace this pilot.
 
 - [x] Reduce the current Codex CLI default from medium to low reasoning.
 - [x] Cache Codex CLI extraction progress every 10 reviews instead of waiting for the full pilot batch.
@@ -51,7 +122,7 @@
 - [x] Simplify storefront hierarchy with tag chips, explicit feature-status rows, normal-weight values, and fewer decorative labels.
 - [x] Replace Steam language asterisks and footnotes with labeled full-audio and interface/subtitle chip groups.
 - [x] Open Steam screenshots in a native large-image lightbox with navigation, close controls, and original-image access.
-- [ ] [HUMAN] Confirm the two-step catalog flow visually in Chrome after a hard reload.
+- [x] Closed without execution; Progressive Workflow Verification includes the current browser flow.
 
 ## 2026-08-10
 
@@ -119,7 +190,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Verify report variant switching, replay, filters, Theme selection, evidence overlay, history, Escape dismissal, and console output in a connected browser.
 - [x] Review all report-exploration variants at laptop and narrow viewport widths with reduced-motion and non-color checks.
 - [x] Start a new conversation without quitting Codex after restoring `args = ["--disable-sandbox"]`, then open the built-in Browser at the app URL and retry connected-browser acceptance; Codex 26.803.81509 regenerates the plugin-owned argument on full app launch.
-- [ ] Verify native Tab traversal and Enter/Space activation manually; the connected-browser controller dispatches key events but does not reproduce those browser default actions.
+- [x] Closed without execution; Progressive Workflow Verification covers the replacement interface.
 - [x] [HUMAN] Select the Research overview with lightweight inline Theme detail accordions and no separate inspector or drawer.
 - [x] Build Catalog, Guided, and Library game-selection and identity-confirmation prototypes behind the standard visual picker.
 - [x] Integrate compact recent and existing-report access into the Catalog preview without replacing game identity fields.
@@ -132,7 +203,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Build at least three genuinely different durable progress, cancellation, retry, and resume prototypes.
 - [x] [HUMAN] Select the Timeline durable-progress direction with checkpointed stage visibility and calm recovery controls.
 - [x] Review the combined approved workflow at laptop and narrow viewport widths.
-- [ ] Review keyboard access, non-color communication, reduced motion, and information hierarchy across the combined workflow.
+- [x] Closed without execution; Progressive Workflow Verification covers the replacement interface.
 - [x] [HUMAN] Approve the combined workflow as an implementation-ready direction.
 - [x] Record the approved prototype direction and update affected design documentation before scaffolding production code.
 
@@ -209,12 +280,12 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] [HUMAN] Stop monolithic 5,000-review discovery runs and approve bounded extraction plus deterministic-support consolidation.
 - [x] Define and validate an Opinion Point-only batch contract and prepare 60 isolated 250-review packages covering the 15,000-review corpus.
 - [x] [HUMAN] Postpone bulk inference after the 250-review Codex CLI pilot exceeded five minutes and failed exact-excerpt validation.
-- [ ] [DEFERRED] Run and validate the 60 bounded Opinion Point extraction batches using an approved bulk-inference path.
-- [ ] [DEFERRED] Consolidate the validated Opinion Points through three deterministic bounded passes per game.
-- [ ] [DEFERRED] Measure whether the latest 5,000 eligible reviews produce stable headline Themes across representative games.
-- [ ] [DEFERRED] Calibrate provisional absolute support, percentage support, cluster-coherence, and Technical Theme thresholds.
+- [x] Closed without execution; Version 3 removes Opinion Point extraction and this stability workflow.
+- [x] Closed without execution; Version 3 removes Opinion Point consolidation.
+- [x] Closed without execution; progressive 1,000-review verification replaces this experiment.
+- [x] Closed without execution; Version 3 defines fixed candidate and visibility thresholds.
 - [x] Evaluate exact-excerpt validation and resistance to instructions embedded in review text.
-- [ ] [DEFERRED] [HUMAN] Approve the evaluation baseline and provisional reliability thresholds before production-quality acceptance.
+- [x] Closed without execution; the Version 3 live Theme review is the approved quality gate.
 - [x] Write failing tests for versioned Analysis Provider request and result schemas.
 - [x] Write privacy and disclosure tests, then implement privacy-minimized Manual Codex package export.
 - [x] Write import rejection tests for malformed, partial, mismatched, fabricated, non-matching, and prompt-injected results.
@@ -232,7 +303,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Write interaction tests, then build linked mixed-reception and category exploration.
 - [x] Write evidence-navigation tests, then build representative excerpt and full-review drill-down.
 - [x] Display exact scope, provenance, review context, and metric denominators.
-- [ ] [HUMAN] Complete connected-browser keyboard, screen-reader, non-color, reduced-motion, laptop, and narrow-width verification.
+- [x] Closed without execution; Progressive Workflow Verification covers the replacement interface.
 - [x] Verify every displayed metric against stored Theme memberships.
 
 ### Slice 6 — Export reports safely
@@ -271,7 +342,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Integrate Codex CLI into a durable Analysis Run that creates an immutable validated Report Version.
 - [x] Write usage-disclosure tests, then present measured CLI token use when available and explicit quota uncertainty instead of a dollar estimate.
 - [x] Write component tests, then build explicit start, durable progress, cancellation, completion, and external-cloud disclosure.
-- [ ] Add explicit model-selection controls if more than the pinned first model is needed.
+- [x] Closed without implementation; Version 3 defers model controls.
 - [x] Verify through automated tests that the application never reads or stores Codex credentials and that prompts, review text, and CLI output do not enter diagnostics.
 - [x] Verify no fallback and exact provider/model provenance through the automated seam.
 - [x] Complete one live authenticated end-to-end run and inspect the resulting report. Run `32f549e3-0d1d-4193-8c6d-a7e67c07da89` completed in one attempt with six exact Opinion Points, a mixed review classification, no unsupported single-review Themes, and an immutable Report Version.
@@ -281,18 +352,18 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 **Blocked by:** No implementation blocker. Live model evaluation requires a user-installed Ollama runtime and compatible models.
 
-- [ ] Apply the shared conformance suite to every remaining provider adapter.
+- [x] Closed without implementation; Version 3 supports only Codex CLI.
 - [x] Implement Ollama as the next provider using its local structured-output API.
 - [x] Benchmark installed Qwen 3.5 9B and 4B models against the human-reviewed pilot; record 4B contract failures and 9B CPU infeasibility.
-- [ ] Evaluate bounded Opinion Point extraction with a local model only if another local-model experiment is approved.
-- [ ] Implement evaluated OpenAI, Anthropic Claude, Google Gemini, or Claude Code adapters when requested.
-- [ ] Write Credential Store contract tests, then implement session, environment, and operating-system-vault adapters before the first API provider.
-- [ ] Write estimator tests, then implement dated pipeline-wide cost estimates for paid per-token providers.
+- [x] Closed without implementation; Version 3 removes Opinion Point extraction and defers local providers.
+- [x] Closed without implementation; Version 3 defers additional providers.
+- [x] Closed without implementation; Version 3 has no API-provider credential path.
+- [x] Closed without implementation; Version 3 has no paid API-provider estimator.
 - [x] Write discovery fixtures and tests, then implement Ollama availability and installed-model detection.
 - [x] Verify the application never initiates an Ollama model installation or download.
 - [x] Add compatible-model guidance and copyable commands that run only through explicit user action outside the app.
 - [x] Test explicit provider/model selection and no-fallback behavior across the implemented Codex CLI and Ollama adapters.
-- [ ] Evaluate no-embedding quality, token use, and pipeline-wide approximate cost across the initial providers.
+- [x] Closed without execution; Progressive Workflow Verification measures the supported Codex path.
 
 ### Slice 10 — Filter report evidence
 
@@ -344,7 +415,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [ ] [HUMAN] Confirm the copyright holder for the MIT license.
 - [ ] Add the MIT license and source-release metadata.
 - [x] Write source installation, provider, Ollama, Codex, storage, privacy, export, update, and recovery documentation.
-- [ ] Run a clean-Windows source installation through representative AppID, Codex/cloud, refresh, filtering, history, and export workflows.
+- [ ] Run a clean-Windows source installation through Full Import, Test Report, Main Report, extension, replacement, recovery, and export.
 - [ ] Run full CI, dependency, secret-leak, sanitization, accessibility, and release-artifact checks.
 - [ ] [HUMAN] Review and approve the source-release candidate.
 
@@ -367,7 +438,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 **Blocked by:** Promotion through design and implementation planning after the single-game MVP is reliable.
 
 - [ ] Explore embeddings as an optional semantic-grouping enhancement.
-- [ ] Add Cohort Analysis after minimum-size calibration and explicit implementation planning.
+- [x] Closed without implementation; Version 3 reports include fixed oldest and newest cohorts.
 - [ ] Add cross-game and cross-version comparison.
 - [ ] Add automated translation and multilingual analysis with original-text provenance.
 - [ ] Add PDF export.
@@ -376,4 +447,4 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [ ] Evaluate additional review sources after the Steam workflow is mature.
 - [ ] Add manual Theme correction tools.
 - [ ] Add statistical analytics dashboards.
-- [ ] Decide how future taxonomy revisions are exposed while historical Report Versions remain immutable.
+- [x] Closed without implementation; Version 3 uses Replace Report instead of immutable report history.

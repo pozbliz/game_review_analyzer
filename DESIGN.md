@@ -1,388 +1,392 @@
-# Game Review Analyzer — Design
+# Game Review Analyzer - Design
 
 ## Status
 
-This document describes the approved target behavior. The local application shell and direct-AppID metadata preview are implemented, while review acquisition and report functionality remain under construction. The Catalog, Split, Timeline, and Research prototype directions are approved for implementation; live browser verification remains open.
+Approved on 2026-09-29. This document describes the target behavior.
+
+The current application still implements evidence-heavy immutable reports, Opinion Points, categories, filters, and Version 2 contracts.
+
+Those behaviors remain implemented until the new design is planned and built.
 
 ## Purpose and scope
 
-Game Review Analyzer is a local web application for game developers who want to understand recurring player opinions about one Steam game. It collects Steam store information and reviews, identifies recurring positive and negative game-design themes, and keeps every conclusion traceable to review evidence.
+Game Review Analyzer is a local web application for game developers. It identifies the main positive and negative opinions across one Steam game's English reviews.
 
-The MVP is distributed from a public GitHub repository under the MIT license and runs on the user's machine. Windows is the first packaged-release target; source-based use should remain portable to macOS and Linux. A public multi-user service is not part of the MVP.
+The target favors useful summaries, lower token use, fast recovery, and simple report reading. It does not provide per-review proof for Theme assignments.
+
+The application runs on the user's machine. Windows is the first packaged-release target. Source-based use should remain portable where dependencies permit.
 
 ### Goals
 
 - Find a Steam game by name or AppID.
-- Capture a comprehensive, time-stamped Steam metadata snapshot.
-- Analyze English-language review evidence without requiring the application to download an AI model.
-- Support user-selected Codex CLI, Ollama, OpenAI API, Anthropic Claude API, Google Gemini API, and manual Codex analysis behind one provider-neutral contract.
-- Present up to 10 reliable positive and 10 reliable negative design themes, with fewer when evidence is insufficient.
-- Support quick, full, incremental refresh, and deterministic evidence-filtering workflows.
-- Keep reports reproducible, inspectable, exportable, and private by default.
+- Download and retain its available English Steam reviews.
+- Produce useful positive and negative Themes through Codex CLI.
+- Compare support in the oldest and newest analyzed cohorts.
+- Grow one main report in user-requested increments.
+- Preserve completed provider work across interruption and retry.
+- Calculate every displayed metric locally from validated memberships.
+- Export aggregated reports without review text or reviewer identity.
 
-### Non-goals for the MVP
+### Non-goals
 
-- Design recommendations, opportunity scores, or instructions about how the user's game should change.
-- Predicting sales or commercial success.
-- Cross-game comparison; the data model should permit it later, but the first product is centered on one-game reports.
-- Embedding-based clustering. Embeddings remain a future enhancement.
-- Automatic model downloads.
-- Manual editing of generated themes.
-- Automated translation or multilingual analysis.
-- Analytics dashboards or application-usage telemetry.
+- Per-review evidence, exact excerpts, Opinion Points, or evidence drill-down.
+- Theme categories, mechanic classifications, mixed-reception links, or direction labels.
+- Evidence Filters or temporary metric recalculation by review attributes.
+- Manual Theme editing, hiding, or correction.
+- Design recommendations or predictions about sales.
 - Review sources other than Steam.
+- Model downloads, automatic provider fallback, or multiple Version 3 providers.
+- Version 2 report reading, import, migration, or compatibility.
+- Preserved history for superseded main reports or test reports.
 - Public accounts, teams, or multi-tenant hosting.
 
 ## Core user experience
 
-### Approved workflow sequence
+### Prepare a game
 
-The approved prototype directions form one continuous flow: Catalog finds or confirms the game; Split configures the review scope, provider, processing location, and estimate; Timeline shows durable acquisition and report-generation progress; Research presents the resulting evidence-backed report. Returning users open the latest saved report directly from Catalog. Creating another report is a separate explicit action that reuses the retained local Game Dataset unless the user explicitly requests new review acquisition.
+The Catalog supports game-name search and direct AppID entry. It shows enough metadata to prevent selecting the wrong game.
 
-The individual prototypes use deliberately different visual treatments to make direction selection clear. Production integration must consolidate them into one shared token system for color, typography, spacing, radii, and motion while preserving each approved interaction model.
+The identity view includes title, capsule artwork, developer, release status, AppID, and review availability when Steam supplies them.
 
-### Start and select a game
+Games with retained work expose their current Main Report and Test Report separately. Neither slot presents superseded report history.
 
-The approved game-selection direction uses the Catalog's dense search-and-preview workspace. Before a game is selected, the preview area shows a compact list of recent reports rather than an empty prompt. Selecting a catalog result reuses that area for identity confirmation while preserving a stable panel footprint. A clear action returns to the recent-report view.
+A completed Full Import is required before analysis. The Full Import establishes access to the true oldest and newest retained reviews.
 
-The home view provides game-name search, direct AppID entry, recent reports, and access to the complete report library. Direct AppID entry and review retrieval work without a Steam Web API key. A securely configured Steam Web API key enables synchronization of Valve's official game catalog for more reliable name search. Best-effort public store search may supplement it but must never be the only way to select a game.
+The 50-review test is optional. Users may start the main 1,000-review report directly.
 
-Selecting a game first shows enough identity information to prevent mistakes: title, capsule artwork, developer, release date/status, AppID, and review availability. These fields remain visible when report history exists. A prominent **Open latest report** action appears beneath them, followed by older reports labeled with creation date and provider/model. **Create new report** is separate and secondary. Games without history show identity confirmation and **Create report** as the primary action.
+### Run a 50-review test
 
-**Create report** generates the first immutable Report Version. **Create new report** generates a later version from retained local reviews without automatically repeating a Full download. If a completed Game Dataset has no Report Version, **Create report** starts analysis from that dataset. Selecting the game restores its latest active, failed, or cancelled Analysis Run and lets the user resume it or choose another provider. New review acquisition is a separate explicit choice and also creates a new immutable report rather than changing an old one. “Update report” is avoided because it implies mutation, and “Compare reports” remains reserved for a future comparison feature.
+The test analyzes 25 oldest and 25 newest reviews from the current local Full Import. It does not refresh Steam first.
 
-### Configure an analysis
+The result is an actual saved report. Each game retains at most one test report, and a later test replaces it.
 
-The approved analysis-configuration direction uses a split workspace: configuration controls on one side and a live processing-disclosure panel on the other. The panel keeps selected review volume, expected processing time, approximate paid-provider cost, and local/cloud/manual processing location visible while scope and provider choices change. Quick and Full scopes remain distinct, and creating a report is explicit.
+The test report remains separate from the main report. It cannot be extended, and its provider result is not reused by main analysis.
 
-The approved durable-progress direction uses a reassuring stage timeline. It shows completed, current, and upcoming stages; a percentage and elapsed time; and an explicit statement that completed work is checkpointed locally and safe to resume after closing the browser. Cancellation and resume controls remain visible without making recovery feel like an error state.
+The test action remains available while a Main Report exists. Running it never changes the Main Report.
 
-After confirming the game, the user chooses review scope and an AI provider/model. The app shows the number of selected reviews when known and an approximate pipeline-wide input size and cost for paid providers. The estimate includes planned extraction, consolidation, and report-generation passes plus expected output tokens when those values can be estimated. It does not enforce spending limits or require a separate cost-confirmation dialog.
+The test uses the same Theme candidate contract and metric rules as the main report. A single provider call is used when all reviews fit.
 
-Codex CLI offers an explicit 50-review pilot using the 25 oldest and 25 newest reviews, plus a larger run using up to 2,500 reviews from each cohort. The pilot is the default so the user can inspect speed and output before spending more quota. Codex and Ollama extraction use 10-review batches so each completed batch updates durable progress and can be reused after interruption.
+### Create the main report
 
-The application clearly labels processing location:
+The first main report analyzes up to 1,000 reviews. It selects up to 500 oldest and 500 newest reviews without overlap.
 
-- **Local:** review text remains on the machine.
-- **Cloud:** selected review text is sent to the named provider.
-- **External/manual cloud:** the application creates a local package, and review text may leave the machine when the user explicitly gives that package to Codex. The application does not control Codex transmission or retention.
+The main report is the only progressive report for its game. The interface does not expose earlier 1,000-review stages as report history.
 
-The chosen provider is explicit for each analysis. The application never silently falls back to another provider, because that could change cost and disclose text to a different service.
+A successful 1,000-review main report replaces the visible main report. It does not replace the separate test report.
 
-### Long-running work
+### Extend the main report
 
-Analysis runs as a durable background job with visible stages:
+**Extend report** first refreshes Steam. If refresh fails, the extension stops and the current report remains available.
 
-1. Fetching game metadata
-2. Downloading reviews
-3. Extracting opinions
-4. Building themes
-5. Generating the report
+After refresh, selection adds up to 500 oldest and 500 newest unseen review identities. New Steam reviews can therefore enter the newest selection.
 
-Refreshing or closing the browser does not cancel the job. The user can cancel explicitly. Successfully downloaded reviews and completed batches remain available for retry, but incomplete work is never presented as a finished report. Jobs resume from safe checkpoints where the provider and pipeline allow it.
+Provider, model, analysis contract, and metric policy remain fixed while the Main Report is extended.
+
+For example, 200 new reviews plus 300 previously unseen recent reviews form the next 500-review newest segment.
+
+The extension adds its validated memberships to the current cumulative analysis. It then recalculates metrics over every analyzed membership.
+
+The current report remains readable during processing. A successful extension atomically replaces it with the cumulative report.
+
+A failed or cancelled extension leaves the current report unchanged. Retry resumes from validated checkpoints.
+
+When fewer than 1,000 usable reviews remain, the action states the remaining count. It analyzes every usable unseen review once.
+
+### Replace the main report
+
+**Replace report** refreshes Steam and starts a fresh analysis over up to 1,000 reviews.
+
+Replacement does not reuse prior main-report memberships, candidates, or completed analysis checkpoints. A retry of the replacement run may reuse its own checkpoints.
+
+The current report remains available until replacement succeeds. Success deletes the superseded main report and makes the new result current.
+
+Replacement is the correction path for a poor Theme taxonomy. It also applies when a future contract or supported model changes.
 
 ### Read a report
 
-The report prioritizes review analysis, then supporting game information:
+The report shows up to five positive and five negative Themes. Technical and design feedback compete in the same rankings.
 
-1. Game identity and report scope
-2. Positive and negative design themes
-3. Category-based theme exploration
-4. Game metadata and feature overview
-5. Steam-hosted media
-6. Review evidence browser
-7. Dated report history
+Each Theme shows:
 
-On wider screens, positive and negative headline themes appear side by side and stack on narrow screens. Reports are immutable: rerunning creates a new report version instead of rewriting the old result. The report view does not expose general Dataset maintenance or update controls; new-report acquisition starts from the game flow. The internal scope digest remains stored and exportable for provenance but is not shown in the normal report summary.
+- Title and short summary
+- Total support count and percentage
+- Oldest-cohort support percentage
+- Newest-cohort support percentage
+- Percentage-point difference between cohorts
 
-The approved report-exploration direction uses a dense research-workspace overview with positive and negative Theme rankings visible together. Each complete Theme row is an expandable control with a down-arrow indicator. Selecting it opens a lightweight, neutral detail region directly beneath that Theme with its summary, support metrics, category, representative excerpts, and complete-evidence action. Only one Theme detail region is open at a time. Selecting the open Theme again collapses it. The report does not use a separate drawer or compact always-visible Theme inspector.
+The interface shows no category, excerpts, review list, direction label, or AI-classification notice.
 
-Visual styling should feel like a professional research tool rather than a copy of Steam. Use neutral surfaces, restrained semantic color, icons and text in addition to color, system light/dark preference, and reduced-motion support. A compact collapsible top-level navigation may be prototyped; layout choices outside the approved report-exploration interaction remain provisional.
+Positive and negative lists appear side by side on wide screens and stack on narrow screens. Game metadata follows the Theme summary.
 
-## Steam data
+The interface uses text and icons with color, supports keyboard operation, respects reduced motion, and remains usable on narrow screens.
 
-### Sources and reliability
+## Steam data and review selection
 
-The review adapter uses Steam's documented review-list endpoint with cursor pagination and up to 100 reviews per request. It URL-encodes cursors, paces requests, retries bounded transient failures with backoff, checkpoints progress, and deduplicates reviews by Steam recommendation ID.
+### Sources and metadata
 
-Valve does not document one complete public API for all desired store fields. Rich metadata therefore comes from replaceable best-effort Steam storefront adapters. A failure to retrieve optional metadata does not block review analysis. Missing values are shown as **Unknown / unavailable**, never as unsupported.
+The review adapter uses Steam cursor pagination, URL-encoded cursors, pacing, bounded retry, checkpointing, and stable identity deduplication.
 
-### Metadata snapshot
+Rich store metadata comes from replaceable, best-effort Steam storefront sources. Optional metadata failure does not block review analysis.
 
-Each report version preserves the Steam metadata returned for that report, including when available:
+Missing metadata appears as **Unknown / unavailable**. The application never presents missing data as unsupported.
 
-- Title, AppID, developers, publishers, franchise, release date/status, and genres
-- Steam's short description unchanged and the full “About This Game” content in a collapsible section
-- All retrieved visible tags in Steam's priority order, labeled as a time-sensitive snapshot
-- Regional price, discount, currency, country, free-to-play status, demo availability, DLC names/count, in-app purchases, editions, and packages
-- Supported platforms, languages, system requirements, age/content information, and other store facts
-- Feature support and Steam-hosted media references
+Each Main Report and Test Report stores its Steam metadata snapshot. Later Steam changes do not alter the visible snapshot until report replacement.
 
-Store country and currency default from the machine locale, remain clearly visible and configurable, and are stored with the report. The application does not silently convert currencies.
+The snapshot retains available identity, description, tags, regional price, release, platform, language, feature, DLC, requirement, and media fields.
 
-### Feature overview
+Store country and currency remain visible and configurable. The application shows returned prices without silent currency conversion.
 
-Features are grouped for quick scanning:
+Steam-hosted images may appear in reports. Trailers never autoplay, and media navigation requires an explicit user action.
 
-- **Play modes:** single-player, multiplayer, co-op, PvP, shared/split-screen, and cross-platform play
-- **Input:** keyboard/mouse, partial/full controller support, and available Steam Deck information
-- **Steam features:** achievements, cloud saves, Workshop, trading cards, leaderboards, stats, and Remote Play
-- **Platforms and accessibility:** Windows, macOS, Linux, and accessibility fields Steam exposes
+### Acquisition
 
-Every feature uses one of four explicit states: **Supported**, **Partial**, **Not supported**, or **Unknown / unavailable**. Color is supplemented by text and iconography. Additional feature fields returned by Steam are retained rather than discarded.
+Steam review acquisition remains paginated, paced, checkpointed, and resumable. It deduplicates reviews by stable Steam review identity.
 
-### Media
+Full Import retrieves every eligible review available through the terminating Steam cursor flow. Refresh adds new and edited Review Revisions.
 
-Reports may display Steam-hosted capsule artwork, screenshots, and trailer thumbnails. Media is not rehosted. Trailers never autoplay and are not downloaded; playback or navigation occurs only after an explicit user action through Steam-hosted media.
+Quick Import may remain available for acquisition, but it cannot start a Main Report or Test Report.
 
-## Review acquisition and scope
+Steam-marked off-topic activity remains excluded by default. Analysis uses the Full Import's retained English review scope.
 
-### Import modes
+### Deterministic ordering
 
-- **Quick:** the latest 5,000 eligible reviews by default, preserving their natural recommended/not-recommended distribution. Users can choose another cap. The report states when this is a small fraction of all matching reviews.
-- **Full:** every eligible review available through cursor pagination. The UI warns that this can be slow or costly.
-- **Refresh:** adds new reviews and reprocesses updated reviews without redownloading the known corpus. A Quick dataset grows after refresh; it does not discard older reviews to maintain a rolling 5,000-review window.
-- **Full reconciliation:** an explicit later operation that scans the current Steam corpus to identify reviews no longer returned by Steam. Normal refresh cannot reliably detect deletions.
+Review selection uses this stable order:
 
-For acquisition, **eligible** means English-language reviews matching the configured off-topic and Review Scope controls. Quick acquisition continues pagination until it reaches the selected number of matching reviews or Steam returns no more reviews. When the Steam recommendation scope is `all`, the application does not balance or resample Recommended and Not Recommended reviews.
+1. Steam creation time
+2. Stable Steam review identity
+3. Review Revision identity
 
-Steam-marked off-topic activity is excluded by default. Users may include it explicitly, and the choice is recorded in the report scope. All purchase sources are included by default.
+The oldest selection starts at the beginning. The newest selection starts at the end after excluding identities already selected or analyzed.
 
-### Review scope controls
+When the boundaries meet, overlap is removed. The application selects each stable review identity at most once for the main report.
 
-The analysis scope can restrict:
+### New and edited reviews
 
-- Steam recommendation: all, Recommended, or Not Recommended
-- Steam purchase, received-for-free status, and written-during-Early-Access status
-- Playtime, defaulting to playtime at review with current total playtime as an alternative
-- Review date: last 30 days, 90 days, one year, or a custom range
+The main report has no frozen dataset cutoff. New review identities found by refresh join the unseen selection pool.
 
-Review date is evidence timing, not proof of the exact game version the reviewer played.
+An edit to an already analyzed review does not re-enter the progressive report. Its existing membership remains unchanged.
 
-### Evidence Filter and oldest-versus-newest Cohort Comparison
+An unseen review uses its latest retained Review Revision when its run reserves the review. Replacement also uses the latest retained revisions.
 
-An **Evidence Filter** temporarily restricts an existing report and recalculates metrics only for already discovered Themes. It reranks those Themes, hides Themes with zero support, marks Themes that fall below the report's headline thresholds, and limits excerpts, raw review evidence, and evidence drill-down to reviews inside the filter. It never discovers a new Theme, requires no model call, is resettable, and is not saved automatically.
+Reviews imported during an active run wait for the next extension. The active run keeps its exact reserved scope.
 
-The default report compares two non-overlapping Review Cohorts selected from a completed full-history import: up to the 2,500 reviews with the earliest source creation times and up to the 2,500 with the latest. When fewer than 5,000 eligible reviews exist, all available reviews are split chronologically into non-overlapping early and recent halves. The immutable report records both exact memberships and date ranges.
+### Oversized reviews
 
-The provider extracts Opinion Points from the combined scope once and discovers a shared Theme system so support remains comparable. Extraction keeps only concrete observations about a named design or technical element and its effect. It excludes vague overall verdicts, recommendations, and generic praise or criticism. A bounded semantic consolidation pass merges differently worded points that express the same concrete observation. A residual audit examines unassigned Opinion Points from each cohort for recurring cohort-specific Themes. Early and recent support, percentage-point change, and evidence are then calculated deterministically. Directional labels describe review evidence as appearing improved, unchanged, worsened, newly prominent, or no longer prominent; they do not claim that a software defect was conclusively fixed.
+Selected reviews use their complete text. The application does not truncate long reviews.
 
-## Analysis and evidence rules
+A review that cannot fit within one provider request is skipped. Selection replaces it with the next unseen review when possible.
 
-### Analysis unit
+Skipped review identities remain excluded from that run. The report states the oversized-review count, and denominators include only analyzed reviews.
 
-A complete review can discuss several unrelated subjects. The pipeline therefore extracts sentence- or clause-level **Opinion Points** before grouping recurring ideas. **Opinion Sentiment** is determined for each point independently of the review's overall **Steam Recommendation**.
+## Theme analysis
 
-Neutral or purely factual points do not support a theme and do not contribute to theme prevalence or sentiment splits. The original review text remains preserved for evidence.
+### Provider policy
 
-### No-embedding MVP pipeline
+Version 3 supports Codex CLI with one application-supported model and low reasoning. The application stores provider and model provenance.
 
-The MVP does not require embeddings. The selected AI provider:
+Users do not select a model or reasoning level. The application never switches provider or model automatically.
 
-1. Extracts structured, normalized Opinion Points about concrete design or technical elements from review batches.
-2. Consolidates differently worded but equivalent points into candidate Themes in one bounded pass.
-3. Assigns Opinion Sentiment, a primary category, optional related categories, and representative evidence.
-4. Produces a concise descriptive title and summary supported by the linked points.
+Codex CLI runs serially through the existing isolated subprocess boundary. Other providers remain outside this design.
 
-Provider responses must conform to versioned structured schemas and reference only supplied review/point identifiers. Review and storefront text is untrusted data, never provider instructions. Prompts isolate it as quoted source material, and import validation rejects unknown identifiers, invented evidence, non-matching excerpts, and unsupported claims rather than silently accepting them. The consolidation pass uses the same validator. Support counts and percentages remain deterministic calculations over validated Theme membership. Embeddings may later assist clustering behind the same analysis boundary without changing stored report contracts.
+Codex authentication remains owned by the installed CLI. The application never reads or stores the user's Codex credentials.
 
-### Theme rules
+The interface labels Codex processing as external cloud work and reports measured token usage when the CLI provides it.
 
-A **Theme** is a recurring player opinion supported by Opinion Points from multiple distinct reviews. It is more specific than its category. Each Theme contains:
+The application does not invent a monetary estimate or claim access to remaining subscription quota.
 
-- A specific title and concise evidence-based description
-- A positive or negative polarity supported by Opinion Points of that polarity
-- Exactly one primary category and zero or more related-category labels
-- Distinct-review support count and percentage, using all distinct reviews in the exact Report Version scope as the percentage denominator
-- Three to five representative excerpts stored as validated exact spans of source review text
-- Complete scope and provenance
-- Drill-down to every matched Opinion Point and its full locally stored source review
+### Map contract
 
-Each source review counts at most once per Theme, even if it repeats the opinion. Every distinct review has equal weight. Playtime and helpfulness remain visible context and never become hidden frequency multipliers.
+Reviews are packed by character capacity first and a maximum of 250 reviews second. Each selected review appears in one map batch.
 
-Headline results contain up to 10 positive and 10 negative design Themes across the complete report, not per category. Themes must meet both an absolute-support and percentage threshold; exact values require evaluation with real games. The app never pads the report with weak findings. Lower-frequency evidence may remain searchable without being stated as a report conclusion.
+Every map result returns completed review identifiers and Theme candidates. Each candidate contains:
 
-Reports are evidence-only. Generated text describes recurring player opinions and does not recommend design changes.
+- Candidate identifier
+- Title and summary
+- Positive or negative polarity
+- Supporting review identifiers from that batch
 
-### Categories
+The provider returns no excerpts, Opinion Points, categories, percentages, final counts, or rankings.
 
-The shared design taxonomy is:
+The backend rejects incomplete batches, unknown review identifiers, duplicate identifiers, empty support, and unsupported polarity values.
 
-1. Gameplay and mechanics
-2. Progression and rewards
-3. Difficulty and balance
-4. Content, variety, and replayability
-5. Controls, interface, and onboarding
-6. Narrative, characters, and world
-7. Multiplayer and social experience
-8. Visuals and audio
-9. Accessibility
-10. Monetization and value
-11. Game-specific
+### Merge contract
 
-**Game-specific** is used only when no shared category accurately fits. Category overlap never duplicates a Theme or its counts.
+The merge receives established Theme definitions, retained near-threshold candidates, and candidates from the new reviews.
 
-Rare crashes, performance problems, save corruption, and similar technical defects do not receive a special alert or occupy the headline design lists. Genuinely frequent technical feedback becomes a **Technical Theme**, using the same evidence and metric contract as a Theme but appearing in a distinct secondary report section outside the design taxonomy and headline rankings. Its display threshold must be calibrated independently and should be high enough that technical findings do not distract from the product's design-learning purpose.
+It maps each new candidate to an established Theme, a new Theme, or discard. The provider returns mappings rather than calculated support.
 
-### Mixed reception
+Supporting review memberships remain local. The backend unions distinct memberships and calculates all metrics.
 
-Semantically opposing positive and negative Themes about the same mechanic are linked but remain present in their respective rankings. Opening either entry shows one combined evidence view. The compact summary format is:
+Established Theme identities, titles, summaries, and polarities remain fixed during extension. Extensions do not split or merge established Themes.
 
-`65% liked · 28% disliked · 7% mixed · Mentioned by 12% (214/1,800)`
+A poor established taxonomy requires **Replace report**. Replacement creates its Theme system without reusing the old definitions.
 
-Liked, disliked, and mixed use distinct opinionated reviews about that mechanic as the denominator. A mixed review expresses both positive and negative points about it. “Mentioned by” uses all distinct reviews in scope as the denominator and excludes neutral-only mentions from the numerator.
+### Near-threshold candidates
 
-## Evidence presentation and privacy
+A new candidate remains internal when it reaches at least 2% support within either newly analyzed cohort segment.
 
-Representative evidence displays Steam recommendation, review date, playtime at review, current playtime, helpful votes, and applicable Early Access, received-free, and Steam-purchase labels. Full source text expands locally.
+Smaller candidates are discarded. Retained candidates carry their validated memberships into later merges and remain hidden until promotion.
 
-The normal interface and default exports omit reviewer names, avatars, and SteamIDs. An optional link may open the original public review on Steam, where Steam may reveal reviewer identity.
+When a retained candidate reaches the visible threshold, it becomes an established Theme. Its memberships count once per distinct review identity.
 
-Steam metadata, review text, provider output, and imported analysis files are all treated as untrusted content. The interface and exports escape plain text, sanitize permitted markup with an explicit allowlist, block executable content and unsafe URLs, and protect external navigation against opener access.
+The 50-review test does not retain hidden candidates after its report is complete because that report cannot be extended.
 
-## AI providers and credentials
+### Visible Theme rules
 
-### Provider contract
+A Theme becomes visible when it reaches at least 5% support in either cumulative cohort.
 
-The analysis pipeline is provider-neutral. Initial adapters are:
+A visible Theme may disappear from a later cumulative report when both cohort percentages fall below 5%. Its definition remains internal for later mapping.
 
-- Codex CLI using the user's existing local installation and login
-- Ollama using a model the user installed independently
-- OpenAI API
-- Anthropic Claude API
-- Google Gemini API
-- Manual Codex analysis package export/import
+The report ranks Themes by their higher cohort percentage. Deterministic local tie-breaking produces stable order.
 
-The automated Codex adapter runs `codex exec` non-interactively in an isolated temporary directory with an ephemeral session, read-only sandbox, explicit output schema, bounded retries, cancellation, and no provider fallback. The application supplies the analysis instructions; users do not prepare prompts or move files manually. Codex authentication remains owned by the separately installed CLI and is never read or stored by the application. Review text is processed by OpenAI under the user's Codex account and is labeled external cloud processing.
+Each polarity shows at most five Themes. The application shows fewer when fewer meet the threshold.
 
-Starting provider analysis creates a durable **Analysis Run** that snapshots the latest immutable Review Revision for every retained review before external processing begins. Its state, provider/model, provisional metric policy, cancellation request, measured token usage, and completed Report Version identifier are stored locally. Acquisition jobs and provider runs remain separate because their progress and recovery data are materially different.
+One review may support several Themes. It counts once within each Theme.
 
-The application never downloads an Ollama model. It detects the default local-only service, lists already-installed models, and requires the user to explicitly select one. Ollama analysis streams schema-constrained output through its local API so cancellation can stop result processing; exact scope, evidence, provider, and model validation remain identical to the Codex path. Installation guidance and copyable model commands may be shown, but the user runs them outside the app. If Codex or Ollama is unavailable, Steam lookup, metadata retrieval, and review downloading still work; analysis waits for an explicitly selected available provider.
+An analysis with no qualifying Themes succeeds. The report states that no main Theme met the 5% threshold.
 
-### Credentials
+## Metrics
 
-Credentials never appear in SQLite, report files, exports, logs, URLs, analytics, error payloads, frontend assets, or backend-to-frontend responses. A key entered in Settings exists transiently in client memory and in the dedicated local credential-submission request, is excluded from request logging and diagnostics, and is cleared from the client after the backend accepts it. Supported sources are:
+The backend calculates metrics from distinct validated Theme memberships. Provider-supplied counts or percentages are never accepted.
 
-- Session-only memory, the default for keys entered in Settings
-- An explicit **Remember securely** option backed by the operating system credential vault
-- Environment variables
+For each Theme:
 
-After entry, the full secret is never displayed again. Secret values are redacted from diagnostics. Provider requests originate from the local backend rather than being embedded in frontend assets.
+- Total percentage uses all analyzed reviews as its denominator.
+- Oldest percentage uses analyzed oldest-cohort reviews as its denominator.
+- Newest percentage uses analyzed newest-cohort reviews as its denominator.
+- Percentage-point difference is newest percentage minus oldest percentage.
 
-### Cost estimate
+Unequal cohort sizes are valid when fewer reviews remain or when only new recent reviews are available.
 
-For paid providers, the UI estimates approximate total cost from selected review text, the chosen model, planned repeated passes, and expected input and output tokens. Estimates are advisory because tokenization, generated output, retry behavior, and provider pricing can vary. The estimate states what it includes and when pricing data was last updated. The app does not add mandatory spending confirmations or a local spending cap.
+## Progress, recovery, and replacement safety
 
-Subscription-backed CLI providers do not receive a fabricated dollar estimate. Their disclosure states that the run consumes the user's provider quota, reports measured token usage when the CLI exposes it, and explains that remaining quota and monetary value are unavailable to the application.
+The main progress sequence is:
 
-### Manual Codex workflow
+1. Refreshing Steam, when required
+2. Selecting and reserving reviews
+3. Analyzing batches
+4. Merging Themes
+5. Calculating metrics
+6. Saving and replacing the report
 
-The app creates an analysis folder containing:
+Selection and run creation reserve an exact review scope atomically. Concurrent runs cannot reserve the same extension scope.
 
-- An agent instruction file
-- A manifest describing game, report scope, schema version, and review batches
-- Review batch files with minimized identity data
-- A strict structured-output schema
+Each validated batch is checkpointed with its ordered input digest, provider, model, contract version, result, and measured usage.
 
-Before export, the application labels this workflow **External/manual cloud**, identifies the review text included, and warns that Codex processing and retention occur outside the application's control. The user opens the folder in a Codex session and follows the supplied task. Codex writes result files back into the folder. The application validates schema, identifiers, completeness, exact evidence spans, and report-version matching before import. Invalid or partial output does not become a completed report.
+Cancellation retains validated checkpoints. Retry processes only incomplete batches and preserves the current visible report.
 
-## State, ownership, and lifecycle
+Only transient provider failures receive one automatic retry. Validation failures do not repeat the unchanged request.
 
-- A **Game Dataset** owns downloaded Steam reviews for one AppID and is reused across report versions. Each observed state of a Steam review is stored as an immutable **Review Revision**; refresh adds a revision instead of overwriting prior evidence.
-- An **Analysis Job** owns durable acquisition and processing checkpoints until it completes, fails, is cancelled, or is deleted.
-- An **Analysis Run** owns one exact provider request, cancellation state, measured usage, and its resulting Report Version.
-- A **Report Version** is an immutable result tied to an exact review scope, exact Review Revision membership, metadata snapshot, schema and prompt versions, pipeline configuration, provider and model identifiers, and creation time.
-- A future **Cohort Analysis** is a Report Version whose scope is an explicit Review Cohort.
-- The newest Report Version opens by default; older versions remain in history until manually deleted.
-- Refresh creates a new Report Version after adding reviews, recording new Review Revisions for changed reviews, and reclustering the relevant stored corpus. Historical reports continue to resolve their original Review Revisions.
+No partial report becomes visible. Report replacement and its review bindings commit atomically.
 
-Application data lives in the operating system's standard application-data directory by default. Settings show storage use and allow deletion of one report version, an incomplete job, or an entire game dataset and its reports. Destructive deletion requires explicit confirmation. Changing the data directory is a later supported operation.
+One shared contract-version value controls provider requests, checkpoint lookup, and progress counting.
 
-## Exports
+Redacted telemetry may record stages, durations, usage, retry state, and safe failure codes. It excludes review text, prompts, and model output.
 
-The MVP exports:
+## State and ownership
 
-- **Single-file HTML:** a readable report containing representative excerpts and externally referenced Steam-hosted media; the report file is standalone, but external media still requires a network connection
-- **JSON:** structured report data suitable for later re-import when the matching Game Dataset and Review Revisions are present locally
-- **CSV:** themes and evidence for further inspection
+- A **Game Dataset** owns retained Steam reviews and immutable Review Revisions for one AppID.
+- A **Main Report** is the one current cumulative report for a game.
+- A **Test Report** is the one current 50-review provider test for a game.
+- An **Analysis Run** owns one reserved scope, state, checkpoints, usage, and pending result.
+- A **Theme Membership** links one Theme to one analyzed Review Revision internally.
+- A **Theme Candidate** is hidden merge state that may later become an established Theme.
 
-Default exports omit full review text and reviewer identifiers. JSON import validates the schema and every referenced Game Dataset and Review Revision, and fails clearly if matching local evidence is absent. Full review text can be included only through an explicit JSON/CSV export option, but those exports are not a complete portable backup. A self-contained **Portable Report Archive** with all required evidence and explicit privacy warnings is deferred. PDF export is deferred.
+Main and test report slots are independent. Replacing one never changes the other.
+
+Reports store exact analyzed Review Revision memberships, cohort membership, provider provenance, contract version, metric policy, and Steam metadata.
+
+Version 2 records and exports are unsupported. The target requires no compatibility reader, importer, or migration path.
+
+Application data remains local in the configured SQLite path. Storage controls may delete a Main Report, Test Report, inactive run, or Game Dataset.
+
+Destructive deletion requires explicit confirmation. Deleting a Game Dataset also deletes its reports, runs, reviews, and checkpoints.
+
+## Exports and privacy
+
+Version 3 exports contain aggregated Themes and metrics.
+
+- HTML contains the readable report without review evidence.
+- CSV contains one row per Theme with total and cohort metrics.
+- JSON contains the report and internal revision memberships for local backup and re-import.
+
+Default exports contain no review text, excerpts, reviewer name, avatar, or SteamID.
+
+JSON import requires the matching local Game Dataset and Review Revisions. Imported Version 3 reports use the same main or test slot rules.
+
+Steam metadata, review text, and provider output remain untrusted content. Interfaces and exports escape text and block unsafe markup and URLs.
 
 ## Architecture and durable seams
 
-The approved stack is React, TypeScript, and Vite for the interface; FastAPI and Python for ingestion, jobs, analysis orchestration, and exports; and SQLite for local persistence. Compiled frontend assets are served by the local backend in production use.
+The approved stack remains React, TypeScript, Vite, FastAPI, Python, and SQLite.
 
-Durable module boundaries are:
+Existing module boundaries remain useful:
 
-- **Game Catalog:** official keyed catalog plus replaceable fallback search
-- **Steam Metadata:** normalized snapshot contract over best-effort store sources
-- **Review Ingestion:** paginated acquisition, normalization, deduplication, append-only Review Revisions, and refresh
-- **Job Runner:** durable stages, cancellation, retry, resume, and progress events
-- **Analysis Provider:** versioned structured request/response independent of vendor
-- **Theme Metrics:** deterministic counts and percentages computed from stored memberships, never trusted from generated prose
-- **Credential Store:** session, operating-system vault, and environment adapters
-- **CLI Runner:** isolated non-interactive provider processes with availability checks, cancellation, bounded output, redacted diagnostics, and per-attempt timing
-- **Report Repository:** immutable report versions and evidence provenance
-- **Export/Import:** versioned schemas with strict validation
+- **Review Ingestion:** Full Import, refresh, stable identity deduplication, and immutable Review Revisions
+- **Job Runner:** durable acquisition progress, cancellation, retry, and recovery
+- **Analysis Provider:** versioned map and merge contracts over untrusted review text
+- **Analysis Runner:** review reservation, batching, checkpoints, cancellation, and atomic report replacement
+- **Theme Metrics:** pure calculation from scope and membership sets
+- **Report Repository:** one main and one test slot per game with exact bindings
+- **Export/Import:** Version 3 aggregated formats and strict local membership validation
+- **CLI Runner:** isolated Codex execution, bounded retries, cancellation, usage, and redacted diagnostics
 
-The React client does not own credentials, Steam integration logic, provider SDK calls, or authoritative metrics.
+The provider interface remains the main external seam. Selection, merging, and metrics remain local application behavior.
+
+The React client does not own provider execution, Steam access, authoritative memberships, or metric calculation.
 
 ## Failure and edge cases
 
-- An invalid AppID produces a specific validation error before a job starts.
-- Empty review scopes complete metadata retrieval but explain that no analysis can be generated.
-- Steam timeouts, throttling, malformed pages, and cursor repetition stop with an actionable retry state while preserving checkpoints.
-- Optional metadata failures produce unknown fields and source-status details without blocking review analysis.
-- Provider unavailability never causes automatic fallback.
-- Invalid provider output is retried only within a bounded policy, then preserved as a failed job with diagnostics that exclude secrets and review text where unnecessary.
-- Redacted timing events separate preparation, provider subprocesses, validation retries, cache writes, consolidation, and report persistence.
-- A cancelled or failed job can reuse safe completed work but never appears as a final report.
-- Historical reports and their exact source evidence remain unchanged when Steam metadata, reviews, taxonomy, prompts, models, or provider behavior later changes.
-- Full-history imports and very large paid-provider runs show time, volume, and approximate-cost warnings before work begins.
+- Missing Full Import blocks both test and main analysis with an actionable message.
+- Failed refresh blocks Extend and Replace while preserving the current reports.
+- Empty datasets explain that analysis cannot start.
+- Oversized reviews are skipped and replaced when another unseen review exists.
+- Invalid provider output fails the run without changing either report slot.
+- Provider unavailability never triggers fallback.
+- Cancellation preserves validated checkpoints and the current report.
+- Backend restart resumes the reserved scope and validated checkpoints.
+- A final extension may contain fewer than 1,000 reviews.
+- New reviews after full coverage become the next newest-only extension.
+- A valid run may produce no visible Themes.
+- Replacement failure leaves the prior main report available.
 
-## Testing boundaries and acceptance behavior
+## Testing boundaries and observable scenarios
 
 ### Highest-value test seams
 
-- Steam fixtures test pagination, cursor encoding, retries, duplicate IDs, append-only updated-review revisions, empty sets, and partial metadata.
-- Fake AI providers test schema validation, unsupported evidence references, partial batches, deterministic retries, and no-fallback behavior.
-- Pure Theme Metrics tests reproduce all support, prevalence, mixed-reception, and Evidence Filter calculations from memberships.
-- Job Runner tests verify checkpoint/resume/cancel behavior across process and browser interruption.
-- Credential Store contract tests verify that secrets never enter database records, logs, exports, URLs, frontend assets, or backend-to-frontend responses and that the dedicated submission path cannot be logged.
-- Report and Codex import tests reject schema/version/scope mismatches and unsupported claims.
-- Content-safety tests verify output escaping, markup sanitization, safe external links, and rejection of prompt-injected or fabricated evidence.
-- Accessibility tests verify feature states without color, keyboard access, reduced motion, and responsive evidence navigation.
+- Pure selection tests cover deterministic ordering, overlap removal, new reviews, ignored edits, oversized reviews, and final partial extensions.
+- Provider contract tests reject incomplete batches, duplicate identifiers, unknown memberships, invalid polarity, and malformed mappings.
+- Merge tests cover stable Theme definitions, candidate retention, promotion, discard, and membership deduplication.
+- Theme Metrics tests cover 5% eligibility, five-item caps, cohort denominators, unequal cohorts, ranking, and empty reports.
+- Analysis Runner tests cover atomic reservation, checkpoint reuse, cancellation, restart, refresh failure, and replacement safety.
+- Report Repository tests prove one independent main slot and one independent test slot per game.
+- Export tests prove aggregated content, local JSON validation, and absence of review text or reviewer identity.
+- Frontend tests cover actions, progress, one-report replacement, test-report separation, empty results, and accessible responsive lists.
 
 ### Observable scenarios
 
-- A user enters an AppID without any keys, downloads metadata and reviews, exports a Codex package, imports valid results, and inspects evidence-backed Themes.
-- A user with an authenticated Codex CLI installation explicitly starts analysis, sees the external-cloud and quota disclosure, and receives a validated report without manually preparing instructions or moving result files.
-- A user configures a cloud provider session key, sees a cloud-processing label and approximate cost, completes analysis, and cannot retrieve the key from storage or diagnostics.
-- A Quick report starts with the latest 5,000 eligible English reviews, later refreshes with new or revised reviews, and creates a new immutable report version over the grown dataset while the old report still resolves its original Review Revisions.
-- Filtering for high-playtime reviews recalculates and reranks existing Theme metrics immediately, limits visible raw reviews and other evidence to the filter, and marks below-threshold Themes without a model call.
-- Missing screenshots or feature metadata appear as unknown while the review report still completes.
-- A mixed mechanic displays the agreed sentiment/prevalence line and every percentage reproduces from distinct-review evidence.
+- A user completes Full Import, skips testing, and creates a 1,000-review main report.
+- A user creates a 50-review test report without refreshing Steam, then later creates an independent main report.
+- A later test replaces only the prior test report.
+- Extend finds 200 new reviews and combines them with 300 prior unseen reviews in the newest segment.
+- A failed extension leaves the existing cumulative report readable and resumes only incomplete batches.
+- A successful extension replaces the 1,000-review report with one cumulative 2,000-review report.
+- Replace discards prior analysis state, reprocesses its scope, and preserves the old main report until success.
+- A Theme qualifies because it reaches 5% in the newest cohort despite lower total support.
+- A candidate retained at 2% becomes visible after later extensions.
+- A completed run with no qualifying Themes produces a valid empty report.
 
 ## Deferred work
 
-- Embedding-assisted semantic matching and clustering
-- Cohort Analysis that reruns theme discovery for a selected Review Cohort
-- Cross-game and cross-version comparison views
-- Automated translation and multilingual analysis with original-text provenance
+- Additional hosted or local analysis providers
+- Model and reasoning controls
+- Embedding-assisted grouping
+- Cross-game comparison
+- Automated translation and multilingual analysis
 - PDF export
-- Portable Report Archives containing all evidence needed for restore on another installation
-- Packaged macOS and Linux releases
-- Public multi-user hosting, authentication, quotas, and hosted persistence
-- Additional review platforms
-- Manual theme correction tools
-- Statistical analytics dashboards
+- Portable archives containing raw review text
+- Public multi-user hosting
 
-## Open questions requiring evidence or later judgment
+## Open questions requiring human judgment
 
-- What support and coherence thresholds produce reliable design Themes across games of different sizes?
-- What minimum cohort size supports meaningful future cohort-specific discovery?
-- What threshold makes technical feedback genuinely frequent enough for the secondary section?
-- How accurately does the no-embedding pipeline group paraphrases across the initial AI providers?
-- How should future taxonomy revisions be exposed while preserving immutable historical reports?
-- What Steam retention, attribution, and request-rate practices are required before a public release?
-- Who should be named as the copyright holder in the MIT license file?
+None.

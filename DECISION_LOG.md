@@ -1,5 +1,60 @@
 # Decision Log
 
+## 2026-09-29 - Progressive report implementation plan approved
+
+**What changed:**
+
+- Preserved Slices 0–15 as implementation history.
+- Added Slices 16–21 for Test Report, Main Report, extension and replacement, cleanup, exports, and verification.
+- Set Slice 16 as the execution frontier.
+- Blocked source release and packaging until progressive workflow verification passes.
+
+**Why:**
+
+- The redesign needs a staged replacement path that keeps each intermediate state testable.
+- Test Report behavior provides the smallest vertical slice for the new contracts and metrics.
+- Release work must use the approved report workflow instead of superseded Version 2 behavior.
+
+**New issues:**
+
+- `TASKS.md` still describes the earlier implementation and needs regeneration from the approved plan.
+
+**Needs human judgment:**
+
+- None. The user approved the slice order, blockers, and execution frontier on 2026-09-29.
+
+---
+
+## 2026-09-29 - Progressive aggregate reports replace evidence-heavy history
+
+**What changed:**
+
+- Replaced immutable report history with one progressive Main Report and one separate 50-review Test Report per game.
+- Defined 1,000-review main analysis steps using oldest and newest unseen review identities after Steam refresh.
+- Replaced Opinion Points and excerpts with internal Theme memberships, compact Theme candidates, and local metrics.
+- Limited visible results to five Themes per polarity that reach 5% support in either cohort.
+- Removed categories, Evidence Filters, mixed-reception linkage, direction labels, per-review evidence, and Version 2 compatibility.
+- Limited the new provider path to one supported Codex CLI model with low reasoning.
+- Cleared existing local application data while retaining the gitignored evaluation corpus.
+
+**Why:**
+
+- The user values fast, token-conscious summaries of the main review opinions over per-review auditability.
+- One current cumulative report matches the user's workflow better than saved reports for every 1,000-review stage.
+- A separate test report permits repeatable 50-review checks without changing the Main Report.
+
+**New issues:**
+
+- The implemented report, provider, metrics, export, and interface contracts still represent the superseded design.
+- Removing evidence means users cannot inspect individual Theme assignments.
+- Full review text and Codex CLI fixed overhead may still make large extensions slow or quota-intensive.
+
+**Needs human judgment:**
+
+- None. The user approved the revised `DESIGN.md` on 2026-09-29.
+
+---
+
 ## 2026-09-27 — Pilot reports require specific design evidence
 
 **What changed:**
