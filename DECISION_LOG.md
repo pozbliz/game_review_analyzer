@@ -1,5 +1,32 @@
 # Decision Log
 
+## 2026-09-29 - Standalone Version 3 Test Report implemented
+
+**What changed:**
+
+- Added Version 3 Theme candidates, internal memberships, and local aggregate metrics.
+- Added one replaceable Test Report slot with deterministic 25-oldest and 25-newest selection.
+- Added one-call Codex execution, aggregate API output, and a separate Test Report interface.
+- Kept Version 2 report history separate while the Main Report remains on the earlier path.
+- Added one retry for transient Theme-call failures. Invalid output still fails without retry.
+- Cleared obsolete run links atomically when a later Test Report replaces its slot.
+
+**Why:**
+
+- Slice 16 establishes the smallest complete path for the approved aggregate report design.
+- Separate storage lets users rerun the Test Report without changing the Main Report.
+
+**New issues:**
+
+- Character-based map packing and oversized-review handling remain in Slice 17.
+- The Version 2 Main Report stays active until Slice 17 replaces it.
+
+**Needs human judgment:**
+
+- None. Live Theme-quality review remains the final gate in Slice 21.
+
+---
+
 ## 2026-09-29 - Progressive report implementation plan approved
 
 **What changed:**

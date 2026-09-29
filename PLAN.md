@@ -2,7 +2,7 @@
 
 ## Status
 
-The progressive aggregate-report design and this strategic plan are approved. Slices 0–15 record the earlier implementation. Their Version 2 report behavior is superseded where it conflicts with `DESIGN.md`. Slices 16–21 replace that behavior. Slice 16 is the execution frontier. `TASKS.md` still describes the earlier implementation and must be revised through `$create-implementation-tasks` before code changes begin.
+The progressive aggregate-report design and this strategic plan are approved. Slices 0–15 record the earlier implementation. Their Version 2 report behavior is superseded where it conflicts with `DESIGN.md`. Slices 16–21 replace that behavior. Slice 16 is complete. Slice 17 is the execution frontier.
 
 ## Durable verification seams
 
@@ -258,13 +258,13 @@ This slice records superseded Version 2 behavior. Slices 16–21 replace its rep
 
 **Tradeoff:** The Main Report continues to use the superseded implementation until Slice 17.
 
-**Status:** Approved; execution frontier.
+**Status:** Complete with fixture-backed provider, persistence, API, interface, and failure-path verification.
 
 ## Slice 17 — Produce the first Main Report
 
 **Outcome:** Create the first aggregate Main Report from 500 oldest and 500 newest reviews.
 
-**Blocked by:** Slice 16.
+**Blocked by:** None.
 
 **Scope:** One Main Report slot per game, deterministic cohort selection, character-bounded map calls, Theme merging, retained candidates, durable batch checkpoints, aggregate metrics, report API, progress, and interface changes.
 
@@ -272,7 +272,7 @@ This slice records superseded Version 2 behavior. Slices 16–21 replace its rep
 
 **Tradeoff:** The Main Report cannot grow or reset through the interface until Slice 18.
 
-**Status:** Approved; blocked by Slice 16.
+**Status:** Approved; execution frontier.
 
 ## Slice 18 — Grow or replace the Main Report safely
 

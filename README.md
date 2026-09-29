@@ -26,7 +26,9 @@ Slices 1–8 and 10–12 implement the earlier evidence-heavy report system.
 
 The current code includes authenticated Codex CLI analysis, Ollama, Evidence Filters, immutable history, and exports.
 
-The progressive Version 3 redesign, implementation plan, and task packs are approved. Slice 16 is ready for implementation.
+The Version 3 Test Report is implemented. It analyzes 25 oldest and 25 newest reviews in one Codex call.
+
+The current Test Report is saved separately from Version 2 reports. Slice 17 is the next implementation step.
 
 Current application data was reset before this redesign. The gitignored evaluation corpus remains available.
 
