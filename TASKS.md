@@ -2,6 +2,16 @@
 
 ## 2026-09-29
 
+### Application diagnostics
+
+- [x] Persist structured application events in bounded rotating JSON logs.
+- [x] Log HTTP, import, analysis, and browser runtime failures with safe codes and identifiers.
+- [x] Classify Version 3 request, scope, and provenance failures separately.
+- [x] Keep unsupported uniqueness keywords out of the Codex schema and enforce them through instructions and validation.
+- [x] Keep diagnostics in bounded backend logs without a user-facing log panel.
+- [x] Display stored import and analysis error codes at their failure points.
+- [x] Verify backend tests, frontend tests, and TypeScript checks.
+
 ### Standalone Test Report
 
 - [x] Add failing Version 3 provider-contract tests.
@@ -13,6 +23,9 @@
 - [x] Connect one-call Codex execution with low reasoning.
 - [x] Add API and frontend tests for creating and replacing Test Reports.
 - [x] Verify invalid output never changes either report slot.
+- [x] Route the selected 50-review scope through the shared `Create report` action.
+- [x] Remove the separate Test Report button and obsolete 5,000-review option.
+- [x] Add collapsible helpful-first review evidence to each Test Report Theme.
 
 ### First Main Report
 

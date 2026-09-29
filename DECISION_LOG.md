@@ -1,5 +1,79 @@
 # Decision Log
 
+## 2026-09-29 - Aggregate Themes expose retained review evidence
+
+**What changed:**
+
+- Added an on-demand evidence endpoint for Version 3 Theme memberships.
+- Added an accessible Theme toggle with a five-review-height scrolling evidence area.
+- Sorted matching reviews by helpful votes descending with deterministic tie-breaking.
+
+**Why:**
+
+- Support counts must remain auditable against the complete reviews that produced them.
+- Loading evidence on demand avoids expanding the base report response, especially for future Main Reports.
+
+**New issues:**
+
+- Main Reports must reuse this evidence route when Slice 17 adds their report endpoint.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-09-29 - Report creation control follows the selected scope
+
+**What changed:**
+
+- Removed the separate `Run 50-review test` button.
+- Routed the shared `Create report` action to the Version 3 Test Report for the 50-review scope.
+- Replaced the obsolete 5,000-review option with a disabled 1,000-review Main Report option.
+
+**Why:**
+
+- The scope selector already communicates which report the user intends to create.
+- The 1,000-review Main Report backend remains scheduled for Slice 17 and must not use the Version 2 path.
+
+**New issues:**
+
+- The 1,000-review option remains unavailable until Slice 17 is complete.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-09-29 - Application-wide redacted diagnostics added
+
+**What changed:**
+
+- Added bounded rotating JSON logs beside the application database.
+- Kept diagnostics in backend logs without a user-facing read API or panel.
+- Added safe failure events for HTTP requests, imports, analysis, and browser runtime errors.
+- Split Version 3 request, scope, and provenance contract failures into distinct codes.
+- Added exact Theme-scope instructions to reduce invalid provider responses.
+- Kept uniqueness in provider instructions and post-response validation because Codex CLI rejects the JSON Schema `uniqueItems` keyword.
+- Added distinct codes for duplicate candidate, completion, and membership identifiers.
+
+**Why:**
+
+- The UI exposed only `Analysis failed`, while the underlying Version 3 contract rejection was discarded with the temporary provider output.
+- Local users need enough redacted context to diagnose failures without reading a server terminal.
+- Adding JSON Schema `uniqueItems` made Codex CLI exit before inference with no output, so the supported schema cannot express those rules directly.
+
+**New issues:**
+
+- Diagnostics identify the failed contract rule but intentionally omit raw provider output and user review content.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-29 - Standalone Version 3 Test Report implemented
 
 **What changed:**

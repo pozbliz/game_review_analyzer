@@ -324,8 +324,8 @@ describe("application shell", () => {
         thresholds_calibrated: false,
         created_at: "2026-08-14 12:00:00",
       }]);
-      if (url === "/api/games/1145350/analyses/codex-cli") {
-        return json(analysisRun("completed"));
+      if (url === "/api/games/1145350/reports/test") {
+        return json({ ...analysisRun("completed"), report_kind: "test", review_count: 50 });
       }
       if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
       return json(metadata());
@@ -337,8 +337,8 @@ describe("application shell", () => {
 
     expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/games/1145350/analyses/codex-cli",
-      expect.objectContaining({ method: "POST" }),
+      "/api/games/1145350/reports/test",
+      { method: "POST" },
     );
     expect(fetchMock).not.toHaveBeenCalledWith(
       "/api/games/1145350/imports/full",
@@ -355,8 +355,8 @@ describe("application shell", () => {
       if (url === "/api/providers/ollama") return json(ollamaProvider());
       if (url === "/api/games/1145350/reports") return json([]);
       if (url === "/api/games/1145350/workspace") return json(workspace(true));
-      if (url === "/api/games/1145350/analyses/codex-cli") {
-        return json(analysisRun("completed"));
+      if (url === "/api/games/1145350/reports/test") {
+        return json({ ...analysisRun("completed"), report_kind: "test", review_count: 50 });
       }
       return json(metadata());
     });
@@ -558,25 +558,29 @@ describe("application shell", () => {
       if (url.startsWith("/api/games/preview")) return json(metadata());
       if (url === "/api/games/1145350/reports") return json([]);
       if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
-      if (url === "/api/games/1145350/analyses/codex-cli") return json(analysisRun("queued"));
+      if (url === "/api/games/1145350/reports/test") {
+        return json({ ...analysisRun("queued"), report_kind: "test", review_count: 50 });
+      }
       analysisPolls += 1;
-      return json(analysisRun(analysisPolls > 1 ? "completed" : "running"));
+      return json({
+        ...analysisRun(analysisPolls > 1 ? "completed" : "running"),
+        report_kind: "test",
+        review_count: 50,
+      });
     });
 
     render(<App />);
     await previewGame();
     fireEvent.click(screen.getByRole("button", { name: "Create report" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Run Codex pilot" }));
+    await screen.findByRole("heading", { name: "Import complete" });
+    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
 
-    const link = await screen.findByRole("link", { name: "View report" });
-    expect(link).toHaveAttribute("href", "/reports/report-1");
+    const link = await screen.findByRole("link", { name: "View Test Report" });
+    expect(link).toHaveAttribute("href", "/test-reports/1145350");
     expect(screen.getByText(/120 input and 30 output tokens/i)).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/games/1145350/analyses/codex-cli",
-      expect.objectContaining({
-        method: "POST",
-        body: expect.stringContaining('"cohort_size":25'),
-      }),
+      "/api/games/1145350/reports/test",
+      { method: "POST" },
     );
   });
 
@@ -601,7 +605,9 @@ describe("application shell", () => {
 
     render(<App />);
     await previewGame();
-    fireEvent.click(await screen.findByRole("button", { name: "Run 50-review test" }));
+    expect(screen.queryByRole("button", { name: "Run 50-review test" })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Main · 1,000 reviews · coming soon" })).toBeDisabled();
+    fireEvent.click(await screen.findByRole("button", { name: "Create report" }));
 
     expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
     expect(screen.getByRole("link", { name: "View Test Report" })).toHaveAttribute(
@@ -642,7 +648,7 @@ describe("application shell", () => {
       "href",
       "/test-reports/1145350",
     );
-    fireEvent.click(screen.getByRole("button", { name: "Run 50-review test" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
     expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
   });
 

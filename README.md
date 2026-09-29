@@ -28,6 +28,10 @@ The current code includes authenticated Codex CLI analysis, Ollama, Evidence Fil
 
 The Version 3 Test Report is implemented. It analyzes 25 oldest and 25 newest reviews in one Codex call.
 
+The 50-review scope uses the shared `Create report` action. The 1,000-review Main Report option remains unavailable until Slice 17 is complete.
+
+Each Test Report Theme can reveal its matching local reviews. Evidence is sorted by helpful votes and loaded only when opened.
+
 The current Test Report is saved separately from Version 2 reports. Slice 17 is the next implementation step.
 
 Current application data was reset before this redesign. The gitignored evaluation corpus remains available.
@@ -108,6 +112,10 @@ FastAPI serves `frontend/dist/` with the API.
 Analysis runs emit redacted JSON timing events through the `game_review_analyzer` logger.
 
 Events time preparation, provider attempts, subprocesses, cache writes, consolidation, and report persistence.
+
+The backend writes these events to `backend/data/game-review-analyzer.log` and rotates three 1 MB backups.
+
+HTTP failures, import failures, analysis failures, and reported browser runtime errors include safe codes and identifiers when available.
 
 Set `OTEL_EXPORTER_OTLP_ENDPOINT` to export HTTP and analysis traces. Telemetry excludes review text, prompts, and model output.
 

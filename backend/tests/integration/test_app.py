@@ -12,6 +12,7 @@ from game_review_analyzer.interfaces.http.app import create_app
 from game_review_analyzer.infrastructure.codex_cli import CodexCliStatus
 from game_review_analyzer.infrastructure.ollama import OllamaModel, OllamaStatus
 from game_review_analyzer.shared.config import Settings
+from game_review_analyzer.shared.telemetry import read_events
 
 
 def test_health_endpoint_reports_ready_service(tmp_path: Path) -> None:
@@ -22,6 +23,42 @@ def test_health_endpoint_reports_ready_service(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "service": "game-review-analyzer"}
+
+
+def test_diagnostics_endpoint_exposes_redacted_application_errors(tmp_path: Path) -> None:
+    settings = Settings(database_path=tmp_path / "app.sqlite3")
+
+    with TestClient(create_app(settings)) as client:
+        missing = client.get("/api/missing")
+    events = read_events(settings.database_path.with_suffix(".log"))
+
+    assert missing.status_code == 404
+    event = events[-1]
+    assert event["event"] == "http.response_error"
+    assert event["path"] == "/api/missing"
+    assert event["status_code"] == 404
+    assert "query" not in event
+
+
+def test_browser_diagnostics_accept_only_redacted_failure_context(tmp_path: Path) -> None:
+    settings = Settings(database_path=tmp_path / "app.sqlite3")
+
+    with TestClient(create_app(settings)) as client:
+        recorded = client.post("/api/diagnostics/client", json={
+            "event": "frontend.error",
+            "path": "/reports/report-1",
+            "error_type": "TypeError",
+        })
+    events = read_events(settings.database_path.with_suffix(".log"))
+
+    assert recorded.status_code == 204
+    assert events[-1] == {
+        "timestamp": events[-1]["timestamp"],
+        "level": "error",
+        "event": "frontend.error",
+        "path": "/reports/report-1",
+        "error_type": "TypeError",
+    }
 
 
 def test_application_lifespan_applies_sqlite_migrations(tmp_path: Path) -> None:

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import {
   AggregateReport,
   AggregateTheme,
+  AggregateThemeEvidence,
+  getAggregateThemeEvidence,
   getTestReport,
 } from "../../api/reports";
 import StorefrontOverview from "../game/StorefrontOverview";
@@ -15,6 +17,9 @@ export default function AggregateReportView(
 ): JSX.Element {
   const [report, setReport] = useState<AggregateReport | null>(null);
   const [error, setError] = useState<string>("");
+  const [openThemeId, setOpenThemeId] = useState<string | null>(null);
+  const [evidence, setEvidence] = useState<Record<string, AggregateThemeEvidence>>({});
+  const [evidenceError, setEvidenceError] = useState<string>("");
 
   useEffect(() => {
     let active: boolean = true;
@@ -26,6 +31,19 @@ export default function AggregateReportView(
 
   if (error) return <main className="report-state"><p role="alert">{error}</p></main>;
   if (!report) return <main className="report-state"><p role="status">Loading report…</p></main>;
+
+  function toggleEvidence(theme: AggregateTheme): void {
+    if (openThemeId === theme.theme_id) {
+      setOpenThemeId(null);
+      return;
+    }
+    setOpenThemeId(theme.theme_id);
+    setEvidenceError("");
+    if (evidence[theme.theme_id]) return;
+    getAggregateThemeEvidence(appId, theme.theme_id)
+      .then((value) => setEvidence((current) => ({ ...current, [theme.theme_id]: value })))
+      .catch(() => setEvidenceError("Unable to load review evidence."));
+  }
 
   return (
     <main className="report-shell">
@@ -49,10 +67,23 @@ export default function AggregateReportView(
         </section>
       ) : (
         <div className="theme-columns aggregate-theme-columns">
-          <ThemeList title="Positive themes" themes={report.positive_themes} />
-          <ThemeList title="Negative themes" themes={report.negative_themes} />
+          <ThemeList
+            title="Positive themes"
+            themes={report.positive_themes}
+            openThemeId={openThemeId}
+            evidence={evidence}
+            toggleEvidence={toggleEvidence}
+          />
+          <ThemeList
+            title="Negative themes"
+            themes={report.negative_themes}
+            openThemeId={openThemeId}
+            evidence={evidence}
+            toggleEvidence={toggleEvidence}
+          />
         </div>
       )}
+      {evidenceError && <p className="error" role="alert">{evidenceError}</p>}
       {report.metadata.storefront_source_status !== "unavailable" && (
         <StorefrontOverview metadata={report.metadata} />
       )}
@@ -60,33 +91,82 @@ export default function AggregateReportView(
   );
 }
 
+interface ThemeListProps {
+  title: string;
+  themes: AggregateTheme[];
+  openThemeId: string | null;
+  evidence: Record<string, AggregateThemeEvidence>;
+  toggleEvidence: (theme: AggregateTheme) => void;
+}
+
 function ThemeList(
-  { title, themes }: { title: string; themes: AggregateTheme[] },
+  { title, themes, openThemeId, evidence, toggleEvidence }: ThemeListProps,
 ): JSX.Element {
   return (
     <section className="theme-section">
       <div className="theme-section-heading"><h2>{title}</h2></div>
       {themes.length === 0 ? <p className="empty-themes">No qualifying Themes.</p> : (
         <ol className="theme-list">
-          {themes.map((theme) => <ThemeItem key={theme.theme_id} theme={theme} />)}
+          {themes.map((theme) => (
+            <ThemeItem
+              key={theme.theme_id}
+              theme={theme}
+              expanded={openThemeId === theme.theme_id}
+              evidence={evidence[theme.theme_id]}
+              toggleEvidence={toggleEvidence}
+            />
+          ))}
         </ol>
       )}
     </section>
   );
 }
 
-function ThemeItem({ theme }: { theme: AggregateTheme }): JSX.Element {
+interface ThemeItemProps {
+  theme: AggregateTheme;
+  expanded: boolean;
+  evidence: AggregateThemeEvidence | undefined;
+  toggleEvidence: (theme: AggregateTheme) => void;
+}
+
+function ThemeItem(
+  { theme, expanded, evidence, toggleEvidence }: ThemeItemProps,
+): JSX.Element {
   const difference: string = theme.percentage_point_difference > 0
     ? `+${formatPercentage(theme.percentage_point_difference)}`
     : formatPercentage(theme.percentage_point_difference);
   return (
     <li className="aggregate-theme">
-      <h3>{theme.title}</h3>
+      <button
+        type="button"
+        className="aggregate-theme-toggle"
+        aria-expanded={expanded}
+        aria-label={`${expanded ? "Hide" : "Show"} review evidence for ${theme.title}`}
+        onClick={() => toggleEvidence(theme)}
+      >
+        <h3>{theme.title}</h3>
+        <span aria-hidden="true">{expanded ? "▴" : "▾"}</span>
+      </button>
       <p>{theme.summary}</p>
       <strong>{theme.support_count} reviews · {formatPercentage(theme.total_support_percentage)}% total</strong>
       <small>
         Oldest {formatPercentage(theme.oldest_support_percentage)}% · Newest {formatPercentage(theme.newest_support_percentage)}% · {difference} percentage points
       </small>
+      {expanded && (
+        <section
+          className="aggregate-theme-evidence"
+          aria-label={`Review evidence for ${theme.title}`}
+        >
+          {!evidence ? <p role="status">Loading review evidence…</p> : evidence.reviews.map((review) => (
+            <article key={review.review_revision_id}>
+              <p>{review.text}</p>
+              <small>
+                {review.recommended ? "Recommended" : "Not recommended"} · {review.votes_helpful} helpful votes
+              </small>
+            </article>
+          ))}
+        </section>
+      )}
     </li>
   );
 }

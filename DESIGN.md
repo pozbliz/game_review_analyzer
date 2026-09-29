@@ -113,8 +113,11 @@ Each Theme shows:
 - Oldest-cohort support percentage
 - Newest-cohort support percentage
 - Percentage-point difference between cohorts
+- A collapsible list of every matching review, sorted by helpful votes descending
 
-The interface shows no category, excerpts, review list, direction label, or AI-classification notice.
+The evidence list loads from retained local Review Revisions only when opened. Its viewport shows about five reviews before scrolling.
+
+The interface shows no category, excerpt-only evidence, direction label, or AI-classification notice.
 
 Positive and negative lists appear side by side on wide screens and stack on narrow screens. Game metadata follows the Theme summary.
 
@@ -281,7 +284,11 @@ No partial report becomes visible. Report replacement and its review bindings co
 
 One shared contract-version value controls provider requests, checkpoint lookup, and progress counting.
 
-Redacted telemetry may record stages, durations, usage, retry state, and safe failure codes. It excludes review text, prompts, and model output.
+Redacted telemetry records stages, durations, usage, retry state, safe failure codes, HTTP failures, background-job failures, and browser runtime failures.
+
+The backend writes bounded rotating JSON logs beside the database. Diagnostics remain a backend support surface rather than a user-facing interface.
+
+Telemetry excludes review text, prompts, model output, raw provider stderr, credentials, and API keys.
 
 ## State and ownership
 

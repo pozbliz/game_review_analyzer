@@ -184,6 +184,7 @@ def test_codex_cli_returns_theme_candidates_without_evidence(monkeypatch) -> Non
     assert run.result.themes == ()
     assert run.usage.input_tokens == 120
     assert "Return no excerpts" in processes[0].prompt
+    assert "Include every supplied review_revision_id exactly once" in processes[0].prompt
 
 
 def test_codex_cli_retries_one_transient_theme_failure(monkeypatch) -> None:
@@ -244,6 +245,66 @@ def test_codex_cli_does_not_retry_invalid_theme_output(monkeypatch) -> None:
 
     assert raised.value.code == "invalid_theme_result"
     assert len(processes) == 1
+
+
+def test_codex_cli_reports_incomplete_theme_scope(monkeypatch) -> None:
+    class IncompleteScopeProcess(CompletedProcess):
+        def communicate(
+            self,
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            stdout, stderr = super().communicate(input, timeout)
+            output_path: Path = Path(
+                self.command[self.command.index("--output-last-message") + 1]
+            )
+            result: dict[str, Any] = json.loads(output_path.read_text(encoding="utf-8"))
+            result["completed_review_revision_ids"] = ["wrong-review"]
+            output_path.write_text(json.dumps(result), encoding="utf-8")
+            return stdout, stderr
+
+    monkeypatch.setattr(
+        "subprocess.Popen",
+        lambda command, **options: IncompleteScopeProcess(command, **options),
+    )
+
+    with pytest.raises(CodexCliError) as raised:
+        CodexCliProvider(executable="codex.cmd").analyze_themes(theme_request())
+
+    assert raised.value.code == "theme_scope_incomplete"
+
+
+def test_codex_cli_reports_duplicate_theme_membership(monkeypatch) -> None:
+    class DuplicateMembershipProcess(CompletedProcess):
+        def communicate(
+            self,
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            stdout, stderr = super().communicate(input, timeout)
+            output_path: Path = Path(
+                self.command[self.command.index("--output-last-message") + 1]
+            )
+            result: dict[str, Any] = json.loads(output_path.read_text(encoding="utf-8"))
+            result["themes"] = [{
+                "candidate_id": "theme-1",
+                "title": "Responsive combat",
+                "summary": "Players praise responsive combat.",
+                "polarity": "positive",
+                "supporting_review_revision_ids": ["revision-1", "revision-1"],
+            }]
+            output_path.write_text(json.dumps(result), encoding="utf-8")
+            return stdout, stderr
+
+    monkeypatch.setattr(
+        "subprocess.Popen",
+        lambda command, **options: DuplicateMembershipProcess(command, **options),
+    )
+
+    with pytest.raises(CodexCliError) as raised:
+        CodexCliProvider(executable="codex.cmd").analyze_themes(theme_request())
+
+    assert raised.value.code == "theme_membership_duplicate"
 
 
 def test_codex_cli_consolidates_cached_points_with_cohort_audit(monkeypatch) -> None:

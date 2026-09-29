@@ -19,7 +19,6 @@ import {
   retryAnalysisRun,
   searchGames,
   startFullImport,
-  startCodexAnalysis,
   startOllamaAnalysis,
   startTestReport,
   SteamMetadata,
@@ -288,25 +287,13 @@ function CatalogApp(): JSX.Element {
       : null;
     const start = selectedModel
       ? startOllamaAnalysis(selectedAppId, selectedModel)
-      : startCodexAnalysis(selectedAppId, codexCohortSize);
+      : startTestReport(selectedAppId);
     start
       .then((run) => {
         window.localStorage.setItem("active-analysis-run", run.id);
         setAnalysisRun(run);
       })
       .catch(() => setAnalysisError("Unable to start the selected analysis provider."));
-  }
-
-  function beginTestReport(): void {
-    const selectedAppId: number | undefined = preview?.app_id ?? job?.app_id;
-    if (!selectedAppId) return;
-    setAnalysisError("");
-    startTestReport(selectedAppId)
-      .then((run) => {
-        window.localStorage.setItem("active-analysis-run", run.id);
-        setAnalysisRun(run);
-      })
-      .catch(() => setAnalysisError("Unable to start the 50-review test."));
   }
 
   function cancelAnalysis(): void {
@@ -444,6 +431,9 @@ function CatalogApp(): JSX.Element {
                     job.state === "cancelled" ? "Import cancelled" : "Downloading reviews"
                   }</h2>
                   <p>{job.imported_count.toLocaleString()} reviews scanned</p>
+                  {job.state === "failed" && job.error_code && (
+                    <p className="error">Error code: <code>{job.error_code}</code></p>
+                  )}
                   {job.state !== "completed" && <progress />}
                   {job.state === "failed" && <button type="button" onClick={retryImport}>Retry import</button>}
                   {["queued", "running"].includes(job.state) && (
@@ -483,9 +473,7 @@ function CatalogApp(): JSX.Element {
                               )
                         }
                       >
-                        {providerSelection === "codex-cli"
-                          ? codexCohortSize === 25 ? "Run Codex pilot" : "Analyze with Codex CLI"
-                          : "Run Ollama pilot"}
+                        {providerSelection.startsWith("ollama::") ? "Run Ollama pilot" : "Create report"}
                       </button>
                     </>
                   )}
@@ -500,6 +488,9 @@ function CatalogApp(): JSX.Element {
                     analysisRun.state === "cancelled" ? "Analysis cancelled" : "Analyzing reviews"
                   }</h3>
                   <p>{analysisRun.review_count.toLocaleString()} reviews · {analysisRun.model}</p>
+                  {analysisRun.state === "failed" && analysisRun.error_code && (
+                    <p className="error">Error code: <code>{analysisRun.error_code}</code></p>
+                  )}
                   {analysisRun.state === "running" && analysisRun.phase === "extracting" && (
                     <p>{analysisRun.extracted_review_count.toLocaleString()} of {analysisRun.review_count.toLocaleString()} reviews extracted and cached</p>
                   )}
@@ -590,7 +581,7 @@ function CatalogApp(): JSX.Element {
                 <p><strong>{providerSelection.startsWith("ollama::") || codexCohortSize === 25 ? "Oldest versus newest pilot" : "Oldest versus newest"}</strong><br />{
                   providerSelection.startsWith("ollama::") || codexCohortSize === 25
                     ? "Scans the complete available English review history, then analyzes 25 oldest and 25 newest reviews. Pilot results are less complete than a full report."
-                    : "Scans the complete available English review history, then analyzes up to the 2,500 oldest and 2,500 newest reviews."
+                    : "Scans the complete available English review history, then analyzes up to the 500 oldest and 500 newest reviews."
                 }</p>
                 <label htmlFor="analysis-provider">Analysis provider</label>
                 <select
@@ -616,8 +607,8 @@ function CatalogApp(): JSX.Element {
                       value={codexCohortSize}
                       onChange={(event) => setCodexCohortSize(Number(event.target.value))}
                     >
-                      <option value={25}>Pilot · 50 reviews</option>
-                      <option value={2500}>Full · up to 5,000 reviews</option>
+                      <option value={25}>Test · 50 reviews</option>
+                      <option value={500} disabled>Main · 1,000 reviews · coming soon</option>
                     </select>
                   </>
                 )}
@@ -650,22 +641,21 @@ function CatalogApp(): JSX.Element {
                     <p>Restart the app after the model download completes.</p>
                   </div>
                 )}
-                {fullHistoryReady && (
-                  <button
-                    type="button"
-                    onClick={beginTestReport}
-                    disabled={!codexStatus?.installed || !codexStatus.authenticated}
-                  >
-                    Run 50-review test
-                  </button>
-                )}
                 {testReportAvailable && (
                   <a href={`/test-reports/${preview.app_id}`}>View Test Report</a>
                 )}
                 <button
                   className={`create-report${reportHistory.length > 0 ? " create-report-secondary" : ""}`}
                   type="button"
-                  disabled={reportHistoryLoading || Boolean(reportHistoryError)}
+                  disabled={
+                    reportHistoryLoading
+                    || Boolean(reportHistoryError)
+                    || (
+                      (reportHistory.length > 0 || fullHistoryReady)
+                      && providerSelection === "codex-cli"
+                      && (!codexStatus?.installed || !codexStatus.authenticated)
+                    )
+                  }
                   onClick={reportHistory.length > 0 || fullHistoryReady ? beginAnalysis : beginImport}
                 >
                   {reportHistory.length > 0 ? "Create new report" : "Create report"}

@@ -2,8 +2,8 @@
 
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
-from collections.abc import Callable
-from pathlib import PurePosixPath
+from collections.abc import Awaitable, Callable
+from pathlib import Path, PurePosixPath
 import shutil
 from typing import Annotated, AsyncIterator, Literal
 
@@ -109,14 +109,16 @@ from game_review_analyzer.infrastructure.steam_catalog import (
 )
 from game_review_analyzer.infrastructure.steam_reviews import SteamReviewIngestionAdapter
 from game_review_analyzer.shared.config import Settings
-from game_review_analyzer.shared.telemetry import configure_telemetry
+from game_review_analyzer.shared.telemetry import configure_telemetry, log_event
 from game_review_analyzer.interfaces.http.reports import (
     AggregateReportResponse,
+    AggregateThemeEvidenceResponse,
     EvidenceFilterQuery,
     ReportResponse,
     ThemeEvidenceResponse,
     build_report_response,
     build_aggregate_report_response,
+    build_aggregate_theme_evidence_response,
     build_theme_evidence_response,
 )
 
@@ -218,6 +220,14 @@ class DeletionRequest(BaseModel):
     confirmation: str = Field(min_length=1)
 
 
+class ClientDiagnosticRequest(BaseModel):
+    """Accept one redacted browser failure without user content or stack traces."""
+
+    event: Literal["frontend.error", "frontend.unhandled_rejection"]
+    path: str = Field(min_length=1, max_length=500)
+    error_type: str = Field(min_length=1, max_length=100)
+
+
 def create_app(
     settings: Settings | None = None,
     metadata_source: SteamMetadataSource | None = None,
@@ -281,11 +291,47 @@ def create_app(
             analysis_executor.shutdown(wait=True)
 
     app = FastAPI(title="Game Review Analyzer", lifespan=lifespan)
-    configure_telemetry(app)
+    configure_telemetry(app, resolved_settings.database_path)
+
+    @app.middleware("http")
+    async def record_http_errors(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        try:
+            response: Response = await call_next(request)
+        except Exception as error:
+            log_event(
+                "http.request_failed",
+                level="error",
+                method=request.method,
+                path=request.url.path,
+                error_type=type(error).__name__,
+            )
+            raise
+        if response.status_code >= 400:
+            log_event(
+                "http.response_error",
+                level="warning",
+                method=request.method,
+                path=request.url.path,
+                status_code=response.status_code,
+            )
+        return response
 
     @app.get(f"{API_PREFIX}/health", response_model=HealthResponse)
     def health() -> HealthResponse:
         return HealthResponse(status="ok", service="game-review-analyzer")
+
+    @app.post(f"{API_PREFIX}/diagnostics/client", status_code=204)
+    def record_client_diagnostic(request: ClientDiagnosticRequest) -> Response:
+        log_event(
+            request.event,
+            level="error",
+            path=request.path,
+            error_type=request.error_type,
+        )
+        return Response(status_code=204)
 
     @app.get(f"{API_PREFIX}/config", response_model=PublicConfigResponse)
     def public_config() -> PublicConfigResponse:
@@ -411,6 +457,28 @@ def create_app(
         if report is None:
             raise HTTPException(status_code=404, detail={"code": "report_not_found"})
         return build_aggregate_report_response(report)
+
+    @app.get(
+        f"{API_PREFIX}/games/{{app_id}}/reports/test/themes/{{theme_id}}/evidence",
+        response_model=AggregateThemeEvidenceResponse,
+    )
+    def test_report_theme_evidence(
+        app_id: int,
+        theme_id: str,
+    ) -> AggregateThemeEvidenceResponse:
+        report = load_aggregate_report_slot(
+            resolved_settings.database_path, app_id, "test"
+        )
+        if report is None:
+            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
+        evidence = build_aggregate_theme_evidence_response(
+            resolved_settings.database_path,
+            report,
+            theme_id,
+        )
+        if evidence is None:
+            raise HTTPException(status_code=404, detail={"code": "theme_not_found"})
+        return evidence
 
     @app.post(
         f"{API_PREFIX}/games/{{app_id}}/analyses/ollama",

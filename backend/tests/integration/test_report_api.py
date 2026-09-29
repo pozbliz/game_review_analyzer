@@ -8,13 +8,22 @@ from fastapi.testclient import TestClient
 from game_review_analyzer.application.theme_metrics import calculate_theme_metrics
 from game_review_analyzer.application.provider import CancellationSignal, ProviderRun
 from game_review_analyzer.domain.analysis import AnalysisRequest, AnalysisResult, OpinionPoint, Theme
-from game_review_analyzer.domain.reports import ReportVersion, ThemeMetricPolicy
+from game_review_analyzer.domain.reports import (
+    AggregateReport,
+    AggregateThemeMetric,
+    AggregateThemeMetrics,
+    ReportVersion,
+    ThemeDefinition,
+    ThemeMembership,
+    ThemeMetricPolicy,
+)
 from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.persistence.game_datasets import save_game_dataset
 from game_review_analyzer.infrastructure.persistence.report_versions import (
     load_report_version,
+    save_aggregate_report,
     save_report_version,
 )
 from game_review_analyzer.infrastructure.persistence.review_revisions import (
@@ -75,6 +84,25 @@ def test_report_summary_and_complete_evidence_preserve_metrics_and_context(
     assert evidence["items"][0]["review"]["playtime_at_review_minutes"] == 120
     assert evidence["items"][0]["review"]["votes_helpful"] == 3
     assert evidence["items"][1]["review"]["playtime_at_review_minutes"] is None
+
+
+def test_aggregate_theme_evidence_returns_helpful_first_reviews(tmp_path: Path) -> None:
+    database_path: Path = tmp_path / "app.sqlite3"
+    seed_aggregate_report(database_path)
+
+    with TestClient(create_app(Settings(database_path=database_path))) as client:
+        response = client.get(
+            "/api/games/1145350/reports/test/themes/responsive-combat/evidence"
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["theme_id"] == "responsive-combat"
+    assert [item["votes_helpful"] for item in payload["reviews"]] == [20, 3]
+    assert [item["text"] for item in payload["reviews"]] == [
+        "Most helpful review.",
+        "Less helpful review.",
+    ]
 
 
 def test_report_compares_immutable_early_and_recent_cohorts_by_default(
@@ -165,6 +193,69 @@ class ForbiddenProvider:
     ) -> ProviderRun:
         self.calls += 1
         raise AssertionError("Evidence Filters must not invoke an analysis provider")
+
+
+def seed_aggregate_report(database_path: Path) -> None:
+    initialize_database(database_path)
+    game_metadata: SteamMetadata = metadata()
+    save_game_dataset(database_path, game_metadata)
+    save_review_revisions(
+        database_path,
+        1145350,
+        (
+            review("review-1", "Less helpful review.", True, 120, 3),
+            review("review-2", "Most helpful review.", True, 180, 20),
+        ),
+    )
+    with sqlite3.connect(database_path) as connection:
+        revision_ids: tuple[int, ...] = tuple(
+            row[0] for row in connection.execute(
+                "SELECT id FROM review_revisions ORDER BY id"
+            )
+        )
+    metric = AggregateThemeMetric(
+        theme_id="responsive-combat",
+        polarity="positive",
+        support_count=2,
+        total_support_percentage=100,
+        oldest_support_percentage=100,
+        newest_support_percentage=100,
+        percentage_point_difference=0,
+    )
+    save_aggregate_report(
+        database_path,
+        AggregateReport(
+            schema_version="3.0",
+            report_id="test-report",
+            kind="test",
+            app_id=1145350,
+            metadata_snapshot=game_metadata,
+            review_revision_ids=revision_ids,
+            oldest_review_revision_ids=(revision_ids[0],),
+            newest_review_revision_ids=(revision_ids[1],),
+            provider="codex-cli",
+            model="gpt-5.6-luna",
+            contract_version="3.0",
+            themes=(ThemeDefinition(
+                theme_id="responsive-combat",
+                title="Responsive combat",
+                summary="Players praise responsive combat.",
+                polarity="positive",
+            ),),
+            memberships=tuple(
+                ThemeMembership(
+                    theme_id="responsive-combat",
+                    review_revision_id=revision_id,
+                )
+                for revision_id in revision_ids
+            ),
+            theme_metrics=AggregateThemeMetrics(
+                all_themes=(metric,),
+                positive_headlines=(metric,),
+                negative_headlines=(),
+            ),
+        ),
+    )
 
 
 def seed_report(database_path: Path) -> None:
@@ -286,4 +377,20 @@ def review(
         written_during_early_access=False,
         playtime_forever_minutes=(playtime_at_review_minutes or 0) + 60,
         playtime_at_review_minutes=playtime_at_review_minutes,
+    )
+
+
+def metadata() -> SteamMetadata:
+    return SteamMetadata(
+        app_id=1145350,
+        title="Hades II",
+        developers=("Supergiant Games",),
+        capsule_image_url=None,
+        release_date=None,
+        release_status="unknown",
+        review_count=2,
+        source_status="partial",
+        missing_fields=frozenset(
+            {"capsule_image_url", "release_date", "release_status"}
+        ),
     )

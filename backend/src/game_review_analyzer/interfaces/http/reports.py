@@ -77,6 +77,23 @@ class AggregateReportResponse(BaseModel):
     negative_themes: tuple[AggregateThemeResponse, ...]
 
 
+class AggregateEvidenceReviewResponse(BaseModel):
+    """Expose one complete local review supporting an aggregate Theme."""
+
+    review_revision_id: int
+    text: str
+    recommended: bool
+    votes_helpful: int
+
+
+class AggregateThemeEvidenceResponse(BaseModel):
+    """Expose helpful-first review evidence for one aggregate Theme."""
+
+    theme_id: str
+    title: str
+    reviews: tuple[AggregateEvidenceReviewResponse, ...]
+
+
 def build_aggregate_report_response(report: AggregateReport) -> AggregateReportResponse:
     """Build a public aggregate response without internal memberships."""
 
@@ -121,6 +138,49 @@ def build_aggregate_report_response(report: AggregateReport) -> AggregateReportR
         negative_themes=tuple(
             theme_response(metric)
             for metric in report.theme_metrics.negative_headlines
+        ),
+    )
+
+
+def build_aggregate_theme_evidence_response(
+    database_path: Path,
+    report: AggregateReport,
+    theme_id: str,
+) -> AggregateThemeEvidenceResponse | None:
+    """Join one aggregate Theme's memberships to helpful-first local reviews."""
+
+    theme: ThemeDefinition | None = next(
+        (item for item in report.themes if item.theme_id == theme_id), None
+    )
+    if theme is None:
+        return None
+    revision_ids: tuple[int, ...] = tuple(
+        membership.review_revision_id
+        for membership in report.memberships
+        if membership.theme_id == theme_id
+    )
+    reviews_by_id: dict[int, SteamReview] = load_review_revisions_by_ids(
+        database_path, revision_ids
+    )
+    ordered: tuple[tuple[int, SteamReview], ...] = tuple(sorted(
+        reviews_by_id.items(),
+        key=lambda item: (
+            -item[1].votes_helpful,
+            -item[1].source_created_at,
+            item[0],
+        ),
+    ))
+    return AggregateThemeEvidenceResponse(
+        theme_id=theme.theme_id,
+        title=theme.title,
+        reviews=tuple(
+            AggregateEvidenceReviewResponse(
+                review_revision_id=revision_id,
+                text=review.text,
+                recommended=review.recommended,
+                votes_helpful=review.votes_helpful,
+            )
+            for revision_id, review in ordered
         ),
     )
 

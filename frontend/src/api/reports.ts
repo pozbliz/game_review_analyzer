@@ -29,6 +29,19 @@ export interface AggregateReport {
   negative_themes: AggregateTheme[];
 }
 
+export interface AggregateEvidenceReview {
+  review_revision_id: number;
+  text: string;
+  recommended: boolean;
+  votes_helpful: number;
+}
+
+export interface AggregateThemeEvidence {
+  theme_id: string;
+  title: string;
+  reviews: AggregateEvidenceReview[];
+}
+
 export interface RepresentativeEvidence {
   opinion_point_id: string;
   review_revision_id: string;
@@ -146,6 +159,15 @@ export async function getTestReport(appId: number): Promise<AggregateReport> {
   return parseAggregateReport(await requestJson(`/api/games/${appId}/reports/test`));
 }
 
+export async function getAggregateThemeEvidence(
+  appId: number,
+  themeId: string,
+): Promise<AggregateThemeEvidence> {
+  return parseAggregateThemeEvidence(await requestJson(
+    `/api/games/${appId}/reports/test/themes/${encodeURIComponent(themeId)}/evidence`,
+  ));
+}
+
 export async function getThemeEvidence(
   reportId: string,
   themeId: string,
@@ -252,6 +274,17 @@ function parseAggregateTheme(value: unknown): AggregateTheme {
     throw new Error("Invalid aggregate Theme response");
   }
   return value as unknown as AggregateTheme;
+}
+
+function parseAggregateThemeEvidence(payload: unknown): AggregateThemeEvidence {
+  if (!isRecord(payload) || !strings(payload, ["theme_id", "title"]) ||
+      !Array.isArray(payload.reviews) || !payload.reviews.every((review) =>
+        isRecord(review) && typeof review.review_revision_id === "number" &&
+        typeof review.text === "string" && typeof review.recommended === "boolean" &&
+        typeof review.votes_helpful === "number")) {
+    throw new Error("Invalid aggregate Theme evidence response");
+  }
+  return payload as unknown as AggregateThemeEvidence;
 }
 
 function parseTheme(value: unknown): ReportTheme {

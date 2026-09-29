@@ -398,19 +398,34 @@ class AnalysisRunner:
             finish_analysis_run(self._database_path, run.id, state, error_code=error.code)
             log_event(
                 f"analysis.{state}",
+                level="error" if state == "failed" else "info",
                 run_id=run.id,
                 duration_ms=round((monotonic() - started_at) * 1000),
                 error_code=error.code,
             )
-        except ValueError:
+        except ValueError as error:
             finish_analysis_run(
                 self._database_path, run.id, "failed", error_code="invalid_analysis_scope"
             )
             log_event(
                 "analysis.failed",
+                level="error",
                 run_id=run.id,
                 duration_ms=round((monotonic() - started_at) * 1000),
                 error_code="invalid_analysis_scope",
+                error_type=type(error).__name__,
+            )
+        except Exception as error:
+            finish_analysis_run(
+                self._database_path, run.id, "failed", error_code="internal_analysis_error"
+            )
+            log_event(
+                "analysis.failed",
+                level="error",
+                run_id=run.id,
+                duration_ms=round((monotonic() - started_at) * 1000),
+                error_code="internal_analysis_error",
+                error_type=type(error).__name__,
             )
 
     def _run_test_report(self, run: AnalysisRun, started_at: float) -> None:
@@ -538,9 +553,40 @@ class AnalysisRunner:
         except AnalysisProviderError as error:
             state = "cancelled" if error.code == "cancelled" else "failed"
             finish_analysis_run(self._database_path, run.id, state, error_code=error.code)
-        except ValueError:
+            log_event(
+                f"analysis.{state}",
+                level="error" if state == "failed" else "info",
+                run_id=run.id,
+                report_kind="test",
+                duration_ms=round((monotonic() - started_at) * 1000),
+                error_code=error.code,
+                error_type=type(error).__name__,
+            )
+        except ValueError as error:
             finish_analysis_run(
                 self._database_path, run.id, "failed", error_code="invalid_theme_result"
+            )
+            log_event(
+                "analysis.failed",
+                level="error",
+                run_id=run.id,
+                report_kind="test",
+                duration_ms=round((monotonic() - started_at) * 1000),
+                error_code="invalid_theme_result",
+                error_type=type(error).__name__,
+            )
+        except Exception as error:
+            finish_analysis_run(
+                self._database_path, run.id, "failed", error_code="internal_analysis_error"
+            )
+            log_event(
+                "analysis.failed",
+                level="error",
+                run_id=run.id,
+                report_kind="test",
+                duration_ms=round((monotonic() - started_at) * 1000),
+                error_code="internal_analysis_error",
+                error_type=type(error).__name__,
             )
 
     def _analysis_provider(self) -> AnalysisProvider:

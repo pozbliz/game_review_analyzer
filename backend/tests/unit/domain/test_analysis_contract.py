@@ -12,6 +12,15 @@ from game_review_analyzer.domain.analysis import (
 )
 
 
+def test_theme_schema_avoids_unsupported_unique_items_keyword() -> None:
+    schema: dict = ThemeAnalysisResult.model_json_schema()
+
+    assert "uniqueItems" not in schema["properties"]["completed_review_revision_ids"]
+    assert "uniqueItems" not in schema["$defs"]["ThemeCandidate"]["properties"][
+        "supporting_review_revision_ids"
+    ]
+
+
 def test_analysis_contracts_are_versioned_and_reject_unknown_fields() -> None:
     request_data: dict[str, object] = {
         "schema_version": "1.0",
