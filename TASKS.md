@@ -6,8 +6,8 @@
 
 - [x] Add failing Version 3 provider-contract tests.
 - [x] Implement Theme candidates and internal Theme memberships.
-- [ ] Add failing aggregate metric tests.
-- [ ] Implement cohort metrics, thresholds, ranking, caps, and empty results.
+- [x] Add failing aggregate metric tests.
+- [x] Implement cohort metrics, thresholds, ranking, caps, and empty results.
 - [ ] Add repository tests for one independent Test Report slot.
 - [ ] Implement deterministic 25-oldest and 25-newest selection.
 - [ ] Connect one-call Codex execution with low reasoning.

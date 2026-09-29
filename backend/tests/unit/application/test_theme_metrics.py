@@ -5,11 +5,18 @@ from pathlib import Path
 from typing import Any
 
 from game_review_analyzer.application.theme_metrics import (
+    calculate_aggregate_theme_metrics,
     calculate_filtered_theme_metrics,
     calculate_theme_metrics,
 )
-from game_review_analyzer.domain.analysis import OpinionPoint, Theme
-from game_review_analyzer.domain.reports import EvidenceFilterQuery, ThemeMetricPolicy
+from game_review_analyzer.domain.analysis import OpinionPoint, Theme, ThemePolarity
+from game_review_analyzer.domain.reports import (
+    AggregateThemeMetrics,
+    EvidenceFilterQuery,
+    ThemeDefinition,
+    ThemeMembership,
+    ThemeMetricPolicy,
+)
 from game_review_analyzer.domain.reviews import SteamReview
 
 
@@ -129,6 +136,107 @@ def test_filtered_metrics_return_zero_support_when_no_reviews_match() -> None:
     assert metrics.all_themes[0].support_count == 0
     assert metrics.all_themes[0].support_percentage == 0
     assert metrics.positive_headlines == ()
+
+
+def test_aggregate_metrics_use_distinct_memberships_and_cohort_denominators() -> None:
+    themes: tuple[ThemeDefinition, ...] = (
+        ThemeDefinition(
+            theme_id="positive-oldest",
+            title="Responsive combat",
+            summary="Players praise responsive combat.",
+            polarity=ThemePolarity.POSITIVE,
+        ),
+        ThemeDefinition(
+            theme_id="positive-newest",
+            title="Clear onboarding",
+            summary="Players praise clear onboarding.",
+            polarity=ThemePolarity.POSITIVE,
+        ),
+        ThemeDefinition(
+            theme_id="negative-both",
+            title="Slow progression",
+            summary="Players criticize slow progression.",
+            polarity=ThemePolarity.NEGATIVE,
+        ),
+        ThemeDefinition(
+            theme_id="hidden",
+            title="Rare opinion",
+            summary="One opinion remains below the threshold.",
+            polarity=ThemePolarity.NEGATIVE,
+        ),
+    )
+    memberships: tuple[ThemeMembership, ...] = (
+        ThemeMembership(theme_id="positive-oldest", review_revision_id=1),
+        ThemeMembership(theme_id="positive-oldest", review_revision_id=1),
+        ThemeMembership(theme_id="positive-newest", review_revision_id=21),
+        ThemeMembership(theme_id="negative-both", review_revision_id=2),
+        ThemeMembership(theme_id="negative-both", review_revision_id=22),
+    )
+
+    metrics: AggregateThemeMetrics = calculate_aggregate_theme_metrics(
+        scope_review_revision_ids=range(1, 41),
+        oldest_review_revision_ids=range(1, 21),
+        newest_review_revision_ids=range(21, 41),
+        themes=themes,
+        memberships=memberships,
+    )
+
+    oldest = next(
+        metric for metric in metrics.all_themes if metric.theme_id == "positive-oldest"
+    )
+    both = next(
+        metric for metric in metrics.all_themes if metric.theme_id == "negative-both"
+    )
+    assert oldest.support_count == 1
+    assert oldest.total_support_percentage == 2.5
+    assert oldest.oldest_support_percentage == 5
+    assert oldest.newest_support_percentage == 0
+    assert oldest.percentage_point_difference == -5
+    assert both.support_count == 2
+    assert both.total_support_percentage == 5
+    assert tuple(metric.theme_id for metric in metrics.positive_headlines) == (
+        "positive-newest",
+        "positive-oldest",
+    )
+    assert tuple(metric.theme_id for metric in metrics.negative_headlines) == (
+        "negative-both",
+    )
+
+
+def test_aggregate_metrics_cap_each_polarity_and_allow_no_visible_themes() -> None:
+    themes: tuple[ThemeDefinition, ...] = tuple(
+        ThemeDefinition(
+            theme_id=f"positive-{index}",
+            title=f"Positive {index}",
+            summary=f"Positive summary {index}.",
+            polarity=ThemePolarity.POSITIVE,
+        )
+        for index in range(6)
+    )
+    memberships: tuple[ThemeMembership, ...] = tuple(
+        ThemeMembership(theme_id=theme.theme_id, review_revision_id=index + 1)
+        for index, theme in enumerate(themes)
+    )
+
+    metrics: AggregateThemeMetrics = calculate_aggregate_theme_metrics(
+        scope_review_revision_ids=range(1, 21),
+        oldest_review_revision_ids=range(1, 11),
+        newest_review_revision_ids=range(11, 21),
+        themes=themes,
+        memberships=memberships,
+    )
+    empty: AggregateThemeMetrics = calculate_aggregate_theme_metrics(
+        scope_review_revision_ids=range(1, 41),
+        oldest_review_revision_ids=range(1, 21),
+        newest_review_revision_ids=range(21, 41),
+        themes=themes,
+        memberships=(),
+    )
+
+    assert len(metrics.positive_headlines) == 5
+    assert metrics.negative_headlines == ()
+    assert empty.positive_headlines == ()
+    assert empty.negative_headlines == ()
 
 
 def review(

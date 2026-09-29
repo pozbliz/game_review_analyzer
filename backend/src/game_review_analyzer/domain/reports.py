@@ -20,6 +20,42 @@ class ReportContractModel(ContractModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+class ThemeDefinition(ReportContractModel):
+    """Store one stable aggregate Theme definition without review evidence."""
+
+    theme_id: NonEmptyString
+    title: NonEmptyString
+    summary: NonEmptyString
+    polarity: ThemePolarity
+
+
+class ThemeMembership(ReportContractModel):
+    """Link one aggregate Theme to one local Review Revision."""
+
+    theme_id: NonEmptyString
+    review_revision_id: int = Field(gt=0)
+
+
+class AggregateThemeMetric(ReportContractModel):
+    """Expose deterministic aggregate support for one Theme."""
+
+    theme_id: NonEmptyString
+    polarity: ThemePolarity
+    support_count: int = Field(ge=0)
+    total_support_percentage: float = Field(ge=0, le=100)
+    oldest_support_percentage: float = Field(ge=0, le=100)
+    newest_support_percentage: float = Field(ge=0, le=100)
+    percentage_point_difference: float = Field(ge=-100, le=100)
+
+
+class AggregateThemeMetrics(ReportContractModel):
+    """Group all aggregate metrics and the visible polarity rankings."""
+
+    all_themes: tuple[AggregateThemeMetric, ...]
+    positive_headlines: tuple[AggregateThemeMetric, ...]
+    negative_headlines: tuple[AggregateThemeMetric, ...]
+
+
 class EvidenceFilterQuery(ReportContractModel):
     """Define temporary restrictions applied while exploring one report."""
 
