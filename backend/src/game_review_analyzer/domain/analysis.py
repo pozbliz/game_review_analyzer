@@ -3,11 +3,12 @@
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 
 
 NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 Sha256Digest = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
+ANALYSIS_CONTRACT_VERSION = "3.0"
 
 
 class ContractModel(BaseModel):
@@ -71,6 +72,67 @@ class AnalysisRequest(ContractModel):
     app_id: int = Field(gt=0)
     game_title: NonEmptyString
     reviews: tuple[AnalysisSourceReview, ...] = Field(min_length=1)
+
+
+class ThemeAnalysisRequest(ContractModel):
+    """Bind a Version 3 Theme candidate request to one exact review scope."""
+
+    schema_version: Literal["3.0"]
+    request_id: NonEmptyString
+    scope_sha256: Sha256Digest
+    app_id: int = Field(gt=0)
+    game_title: NonEmptyString
+    reviews: tuple[AnalysisSourceReview, ...] = Field(min_length=1)
+
+
+class ThemeCandidate(ContractModel):
+    """Describe one recurring opinion and its supporting batch reviews."""
+
+    candidate_id: NonEmptyString
+    title: NonEmptyString
+    summary: NonEmptyString
+    polarity: ThemePolarity
+    supporting_review_revision_ids: tuple[NonEmptyString, ...] = Field(min_length=1)
+
+    @field_validator("supporting_review_revision_ids")
+    @classmethod
+    def require_unique_memberships(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        """Reject repeated support from one review within a candidate."""
+
+        if len(value) != len(set(value)):
+            raise ValueError("Theme candidate memberships must be unique")
+        return value
+
+
+class ThemeAnalysisResult(ContractModel):
+    """Return validated Theme candidates for one complete review batch."""
+
+    schema_version: Literal["3.0"]
+    request_id: NonEmptyString
+    scope_sha256: Sha256Digest
+    provider: NonEmptyString
+    model: NonEmptyString
+    completed_review_revision_ids: tuple[NonEmptyString, ...] = Field(min_length=1)
+    themes: tuple[ThemeCandidate, ...]
+
+    @model_validator(mode="after")
+    def require_valid_identifiers(self) -> "ThemeAnalysisResult":
+        """Reject repeated identifiers and memberships outside the completed batch."""
+
+        completed_ids: set[str] = set(self.completed_review_revision_ids)
+        if len(completed_ids) != len(self.completed_review_revision_ids):
+            raise ValueError("Completed review identifiers must be unique")
+        candidate_ids: tuple[str, ...] = tuple(
+            candidate.candidate_id for candidate in self.themes
+        )
+        if len(candidate_ids) != len(set(candidate_ids)):
+            raise ValueError("Theme candidate identifiers must be unique")
+        if any(
+            not set(candidate.supporting_review_revision_ids) <= completed_ids
+            for candidate in self.themes
+        ):
+            raise ValueError("Theme candidates must reference completed reviews")
+        return self
 
 
 class OpinionPoint(ContractModel):

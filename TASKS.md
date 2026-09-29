@@ -4,8 +4,8 @@
 
 ### Standalone Test Report
 
-- [ ] Add failing Version 3 provider-contract tests.
-- [ ] Implement Theme candidates and internal Theme memberships.
+- [x] Add failing Version 3 provider-contract tests.
+- [x] Implement Theme candidates and internal Theme memberships.
 - [ ] Add failing aggregate metric tests.
 - [ ] Implement cohort metrics, thresholds, ranking, caps, and empty results.
 - [ ] Add repository tests for one independent Test Report slot.
