@@ -19,7 +19,10 @@ from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.persistence.game_datasets import save_game_dataset
 from game_review_analyzer.infrastructure.persistence.report_versions import (
+    list_recent_report_versions,
+    list_report_versions,
     load_aggregate_report_slot,
+    load_latest_report_version,
     load_report_version,
     save_aggregate_report,
     save_report_version,
@@ -135,6 +138,31 @@ def test_aggregate_report_slots_replace_independently(tmp_path: Path) -> None:
             "SELECT COUNT(*) FROM report_versions WHERE app_id = ?",
             (1145350,),
         ).fetchone()[0] == 2
+
+
+def test_aggregate_report_does_not_enter_version_2_history(tmp_path: Path) -> None:
+    database_path: Path = initialized_dataset(tmp_path)
+    with sqlite3.connect(database_path) as connection:
+        revision_ids: tuple[int, ...] = tuple(
+            row[0] for row in connection.execute(
+                "SELECT id FROM review_revisions ORDER BY id"
+            )
+        )
+    version_2: ReportVersion = report_version(revision_ids)
+    test_report: AggregateReport = aggregate_report(
+        "test-report", "test", revision_ids
+    )
+
+    save_report_version(database_path, version_2)
+    save_aggregate_report(database_path, test_report)
+
+    assert load_latest_report_version(database_path, 1145350) == version_2
+    assert tuple(entry.report_version_id for entry in list_report_versions(
+        database_path, 1145350
+    )) == (version_2.report_version_id,)
+    assert tuple(entry.report_version_id for entry in list_recent_report_versions(
+        database_path
+    )) == (version_2.report_version_id,)
 
 
 def initialized_dataset(tmp_path: Path) -> Path:

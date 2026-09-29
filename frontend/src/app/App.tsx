@@ -72,6 +72,7 @@ function CatalogApp(): JSX.Element {
   );
   const [codexCohortSize, setCodexCohortSize] = useState<number>(25);
   const [analysisRun, setAnalysisRun] = useState<AnalysisRun | null>(null);
+  const [testReportAvailable, setTestReportAvailable] = useState<boolean>(false);
   const [analysisError, setAnalysisError] = useState<string>("");
 
   useEffect(() => {
@@ -198,6 +199,7 @@ function CatalogApp(): JSX.Element {
     setReportHistoryLoading(true);
     setReportHistoryError("");
     setFullHistoryReady(false);
+    setTestReportAvailable(false);
     setJob(null);
     setAnalysisRun(null);
     window.localStorage.removeItem("active-import-job");
@@ -222,6 +224,7 @@ function CatalogApp(): JSX.Element {
           .then((workspace) => {
             if (requestId !== previewRequestId.current) return;
             setFullHistoryReady(workspace.full_history_ready);
+            setTestReportAvailable(workspace.test_report_available);
             if (workspace.latest_analysis_run?.state !== "completed") {
               const latestRun: AnalysisRun | null = workspace.latest_analysis_run;
               if (latestRun) {
@@ -655,6 +658,9 @@ function CatalogApp(): JSX.Element {
                   >
                     Run 50-review test
                   </button>
+                )}
+                {testReportAvailable && (
+                  <a href={`/test-reports/${preview.app_id}`}>View Test Report</a>
                 )}
                 <button
                   className={`create-report${reportHistory.length > 0 ? " create-report-secondary" : ""}`}

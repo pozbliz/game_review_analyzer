@@ -145,7 +145,8 @@ def load_latest_report_version(database_path: Path, app_id: int) -> ReportVersio
 
     with sqlite3.connect(database_path) as connection:
         row: tuple[str] | None = connection.execute(
-            "SELECT snapshot_json FROM report_versions WHERE app_id = ? "
+            "SELECT snapshot_json FROM report_versions "
+            "WHERE app_id = ? AND report_kind IS NULL "
             "ORDER BY created_at DESC, rowid DESC LIMIT 1",
             (app_id,),
         ).fetchone()
@@ -159,7 +160,8 @@ def list_report_versions(
 
     with sqlite3.connect(database_path) as connection:
         rows: list[tuple[str, str]] = connection.execute(
-            "SELECT snapshot_json, created_at FROM report_versions WHERE app_id = ? "
+            "SELECT snapshot_json, created_at FROM report_versions "
+            "WHERE app_id = ? AND report_kind IS NULL "
             "ORDER BY created_at DESC, rowid DESC",
             (app_id,),
         ).fetchall()
@@ -174,6 +176,7 @@ def list_recent_report_versions(
     with sqlite3.connect(database_path) as connection:
         rows: list[tuple[str, str]] = connection.execute(
             "SELECT snapshot_json, created_at FROM report_versions "
+            "WHERE report_kind IS NULL "
             "ORDER BY created_at DESC, rowid DESC LIMIT ?",
             (limit,),
         ).fetchall()

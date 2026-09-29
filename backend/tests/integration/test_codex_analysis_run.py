@@ -782,6 +782,7 @@ def test_api_creates_and_reads_the_standalone_test_report(tmp_path: Path) -> Non
                 break
             completed = client.get(f"/api/analysis-runs/{run_id}")
         report = client.get("/api/games/1145350/reports/test")
+        workspace = client.get("/api/games/1145350/workspace")
 
     assert started.status_code == 202
     assert started.json()["report_kind"] == "test"
@@ -797,6 +798,7 @@ def test_api_creates_and_reads_the_standalone_test_report(tmp_path: Path) -> Non
     }
     assert report.json()["positive_themes"] == []
     assert report.json()["negative_themes"] == []
+    assert workspace.json()["test_report_available"] is True
 
 
 def test_api_rejects_analysis_when_codex_is_not_authenticated(tmp_path: Path) -> None:

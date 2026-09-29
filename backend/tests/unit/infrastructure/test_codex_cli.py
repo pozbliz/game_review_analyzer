@@ -186,6 +186,66 @@ def test_codex_cli_returns_theme_candidates_without_evidence(monkeypatch) -> Non
     assert "Return no excerpts" in processes[0].prompt
 
 
+def test_codex_cli_retries_one_transient_theme_failure(monkeypatch) -> None:
+    class RateLimitedProcess(CompletedProcess):
+        returncode: int = 1
+
+        def communicate(
+            self,
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            del input, timeout
+            return "", "429 rate limit"
+
+    processes: list[CompletedProcess] = []
+
+    def start_process(command: list[str], **options: Any) -> CompletedProcess:
+        process = (
+            RateLimitedProcess(command, **options)
+            if not processes
+            else CompletedProcess(command, **options)
+        )
+        processes.append(process)
+        return process
+
+    monkeypatch.setattr("subprocess.Popen", start_process)
+
+    run = CodexCliProvider(executable="codex.cmd").analyze_themes(theme_request())
+
+    assert run.result.themes == ()
+    assert len(processes) == 2
+
+
+def test_codex_cli_does_not_retry_invalid_theme_output(monkeypatch) -> None:
+    processes: list[CompletedProcess] = []
+
+    def start_process(command: list[str], **options: Any) -> CompletedProcess:
+        process = CompletedProcess(command, **options)
+        processes.append(process)
+        original_communicate = process.communicate
+
+        def malformed(
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            stdout, stderr = original_communicate(input, timeout)
+            output_path = Path(command[command.index("--output-last-message") + 1])
+            output_path.write_text("not json", encoding="utf-8")
+            return stdout, stderr
+
+        process.communicate = malformed  # type: ignore[method-assign]
+        return process
+
+    monkeypatch.setattr("subprocess.Popen", start_process)
+
+    with pytest.raises(CodexCliError) as raised:
+        CodexCliProvider(executable="codex.cmd").analyze_themes(theme_request())
+
+    assert raised.value.code == "invalid_theme_result"
+    assert len(processes) == 1
+
+
 def test_codex_cli_consolidates_cached_points_with_cohort_audit(monkeypatch) -> None:
     processes: list[CompletedProcess] = []
     validated: list[str] = []

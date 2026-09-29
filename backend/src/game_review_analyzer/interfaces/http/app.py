@@ -52,6 +52,7 @@ from game_review_analyzer.infrastructure.codex_cli import (
 from game_review_analyzer.infrastructure.analysis_runner import (
     AnalysisProvider,
     AnalysisRunner,
+    ThemeAnalysisProvider,
 )
 from game_review_analyzer.infrastructure.ollama import (
     OllamaProvider,
@@ -202,6 +203,7 @@ class GameWorkspaceResponse(BaseModel):
 
     full_history_ready: bool
     latest_analysis_run: AnalysisRun | None
+    test_report_available: bool
 
 
 class QuickImportRequest(BaseModel):
@@ -224,7 +226,7 @@ def create_app(
     fallback_search_source: FallbackSearchSource | None = None,
     codex_status_source: Callable[[], CodexCliStatus] | None = None,
     ollama_status_source: Callable[[], OllamaStatus] | None = None,
-    analysis_provider: AnalysisProvider | None = None,
+    analysis_provider: AnalysisProvider | ThemeAnalysisProvider | None = None,
 ) -> FastAPI:
     """Create an application instance, optionally using test-specific settings."""
 
@@ -243,7 +245,7 @@ def create_app(
 
     def run_analysis(run_id: str) -> None:
         run = get_analysis_run(resolved_settings.database_path, run_id)
-        provider: AnalysisProvider
+        provider: AnalysisProvider | ThemeAnalysisProvider
         if analysis_provider is not None:
             provider = analysis_provider
         elif run.provider == "codex-cli":
@@ -664,6 +666,10 @@ def create_app(
             latest_analysis_run=load_latest_analysis_run(
                 resolved_settings.database_path, app_id
             ),
+            test_report_available=load_aggregate_report_slot(
+                resolved_settings.database_path, app_id, "test"
+            )
+            is not None,
         )
 
     @app.get(

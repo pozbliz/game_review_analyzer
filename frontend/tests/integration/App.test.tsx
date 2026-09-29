@@ -614,6 +614,29 @@ describe("application shell", () => {
     );
   });
 
+  it("reopens a saved Test Report independently from the latest analysis", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") return json([]);
+      if (url === "/api/games/1145350/workspace") {
+        return json(workspace(true, analysisRun("completed"), true));
+      }
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+
+    expect(await screen.findByRole("link", { name: "View Test Report" })).toHaveAttribute(
+      "href",
+      "/test-reports/1145350",
+    );
+  });
+
   it("selects an installed Ollama model and starts local analysis explicitly", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
       const url = request.toString();
@@ -909,9 +932,14 @@ function analysisRun(state: string): object {
   };
 }
 
-function workspace(fullHistoryReady: boolean, latestAnalysisRun: object | null = null): object {
+function workspace(
+  fullHistoryReady: boolean,
+  latestAnalysisRun: object | null = null,
+  testReportAvailable: boolean = false,
+): object {
   return {
     full_history_ready: fullHistoryReady,
     latest_analysis_run: latestAnalysisRun,
+    test_report_available: testReportAvailable,
   };
 }

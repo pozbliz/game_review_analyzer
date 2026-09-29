@@ -143,6 +143,7 @@ export interface AnalysisRun {
 export interface GameWorkspace {
   full_history_ready: boolean;
   latest_analysis_run: AnalysisRun | null;
+  test_report_available: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -226,11 +227,13 @@ export async function startTestReport(appId: number): Promise<AnalysisRun> {
 export async function getGameWorkspace(appId: number): Promise<GameWorkspace> {
   const payload: unknown = await requestJson(`/api/games/${appId}/workspace`);
   if (!isRecord(payload) || typeof payload.full_history_ready !== "boolean" ||
+      typeof payload.test_report_available !== "boolean" ||
       !(payload.latest_analysis_run === null || isRecord(payload.latest_analysis_run))) {
     throw new Error("Invalid game workspace response");
   }
   return {
     full_history_ready: payload.full_history_ready,
+    test_report_available: payload.test_report_available,
     latest_analysis_run: payload.latest_analysis_run === null
       ? null
       : parseAnalysisRun(payload.latest_analysis_run),

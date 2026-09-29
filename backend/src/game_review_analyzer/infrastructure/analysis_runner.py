@@ -4,7 +4,7 @@ import json
 from collections.abc import Iterator
 from pathlib import Path
 from time import monotonic
-from typing import Protocol
+from typing import Protocol, cast
 
 from game_review_analyzer.application.manual_codex import build_analysis_request
 from game_review_analyzer.application.opinion_consolidation import (
@@ -81,6 +81,12 @@ class AnalysisProvider(Protocol):
     ) -> ProviderRun:
         """Return shared Themes over already validated Opinion Points."""
 
+
+class ThemeAnalysisProvider(Protocol):
+    """Describe the provider behavior required by Version 3 reports."""
+
+    model: str
+
     def analyze_themes(
         self, request: ThemeAnalysisRequest, *, cancel_event: CancellationSignal
     ) -> ThemeProviderRun:
@@ -102,7 +108,7 @@ class AnalysisRunner:
     def __init__(
         self,
         database_path: Path,
-        provider: AnalysisProvider,
+        provider: AnalysisProvider | ThemeAnalysisProvider,
         *,
         batch_review_limit: int = 50,
         batch_character_limit: int = 32_000,
@@ -208,7 +214,7 @@ class AnalysisRunner:
                     },
                 ):
                     provider_started_at: float = monotonic()
-                    extraction = self._provider.extract(
+                    extraction = cast(AnalysisProvider, self._provider).extract(
                         batch_request, cancel_event=cancellation
                     )
                     provider_duration_ms: int = round(
@@ -303,7 +309,7 @@ class AnalysisRunner:
             ):
                 consolidation_started_at: float = monotonic()
                 if specific_points:
-                    consolidation = self._provider.consolidate(
+                    consolidation = cast(AnalysisProvider, self._provider).consolidate(
                         request,
                         cancel_event=cancellation,
                     )
@@ -434,7 +440,9 @@ class AnalysisRunner:
                     for revision_id in run.review_revision_ids
                 ),
             )
-            provider_run: ThemeProviderRun = self._provider.analyze_themes(
+            provider_run: ThemeProviderRun = cast(
+                ThemeAnalysisProvider, self._provider
+            ).analyze_themes(
                 request,
                 cancel_event=_DurableCancellation(self._database_path, run.id),
             )
