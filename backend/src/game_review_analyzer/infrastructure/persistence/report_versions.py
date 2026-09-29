@@ -79,6 +79,13 @@ def save_aggregate_report(database_path: Path, report: AggregateReport) -> None:
         if owned_revision_ids != set(report.review_revision_ids):
             raise ValueError("Report revisions must exist and belong to exactly one game")
         connection.execute(
+            "UPDATE analysis_runs SET report_version_id = NULL "
+            "WHERE report_version_id IN ("
+            "SELECT id FROM report_versions WHERE app_id = ? AND report_kind = ?"
+            ")",
+            (report.app_id, report.kind),
+        )
+        connection.execute(
             "DELETE FROM report_versions WHERE app_id = ? AND report_kind = ?",
             (report.app_id, report.kind),
         )

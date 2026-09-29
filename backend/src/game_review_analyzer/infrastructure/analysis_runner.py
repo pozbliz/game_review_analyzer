@@ -4,7 +4,7 @@ import json
 from collections.abc import Iterator
 from pathlib import Path
 from time import monotonic
-from typing import Protocol, cast
+from typing import Protocol, runtime_checkable
 
 from game_review_analyzer.application.manual_codex import build_analysis_request
 from game_review_analyzer.application.opinion_consolidation import (
@@ -61,6 +61,7 @@ from game_review_analyzer.shared.telemetry import TRACER, log_event
 EXTRACTION_CONTRACT_VERSION = "2.0"
 
 
+@runtime_checkable
 class AnalysisProvider(Protocol):
     """Describe the provider behavior required by the durable runner."""
 
@@ -82,6 +83,7 @@ class AnalysisProvider(Protocol):
         """Return shared Themes over already validated Opinion Points."""
 
 
+@runtime_checkable
 class ThemeAnalysisProvider(Protocol):
     """Describe the provider behavior required by Version 3 reports."""
 
@@ -214,7 +216,7 @@ class AnalysisRunner:
                     },
                 ):
                     provider_started_at: float = monotonic()
-                    extraction = cast(AnalysisProvider, self._provider).extract(
+                    extraction = self._analysis_provider().extract(
                         batch_request, cancel_event=cancellation
                     )
                     provider_duration_ms: int = round(
@@ -309,7 +311,7 @@ class AnalysisRunner:
             ):
                 consolidation_started_at: float = monotonic()
                 if specific_points:
-                    consolidation = cast(AnalysisProvider, self._provider).consolidate(
+                    consolidation = self._analysis_provider().consolidate(
                         request,
                         cancel_event=cancellation,
                     )
@@ -440,9 +442,7 @@ class AnalysisRunner:
                     for revision_id in run.review_revision_ids
                 ),
             )
-            provider_run: ThemeProviderRun = cast(
-                ThemeAnalysisProvider, self._provider
-            ).analyze_themes(
+            provider_run: ThemeProviderRun = self._theme_provider().analyze_themes(
                 request,
                 cancel_event=_DurableCancellation(self._database_path, run.id),
             )
@@ -542,6 +542,22 @@ class AnalysisRunner:
             finish_analysis_run(
                 self._database_path, run.id, "failed", error_code="invalid_theme_result"
             )
+
+    def _analysis_provider(self) -> AnalysisProvider:
+        if not isinstance(self._provider, AnalysisProvider):
+            raise AnalysisProviderError(
+                "provider_capability_mismatch",
+                "Provider does not support Version 2 analysis",
+            )
+        return self._provider
+
+    def _theme_provider(self) -> ThemeAnalysisProvider:
+        if not isinstance(self._provider, ThemeAnalysisProvider):
+            raise AnalysisProviderError(
+                "provider_capability_mismatch",
+                "Provider does not support Version 3 Theme analysis",
+            )
+        return self._provider
 
     def _batches(
         self,

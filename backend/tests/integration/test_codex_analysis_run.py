@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from time import sleep
 
 import pytest
 
@@ -782,6 +783,19 @@ def test_api_creates_and_reads_the_standalone_test_report(tmp_path: Path) -> Non
                 break
             completed = client.get(f"/api/analysis-runs/{run_id}")
         report = client.get("/api/games/1145350/reports/test")
+        replacement_started = client.post("/api/games/1145350/reports/test")
+        replacement_run_id: str = replacement_started.json()["id"]
+        replacement_completed = client.get(
+            f"/api/analysis-runs/{replacement_run_id}"
+        )
+        for _ in range(100):
+            if replacement_completed.json()["state"] == "completed":
+                break
+            sleep(0.01)
+            replacement_completed = client.get(
+                f"/api/analysis-runs/{replacement_run_id}"
+            )
+        replacement_report = client.get("/api/games/1145350/reports/test")
         workspace = client.get("/api/games/1145350/workspace")
 
     assert started.status_code == 202
@@ -798,6 +812,11 @@ def test_api_creates_and_reads_the_standalone_test_report(tmp_path: Path) -> Non
     }
     assert report.json()["positive_themes"] == []
     assert report.json()["negative_themes"] == []
+    assert replacement_completed.json()["state"] == "completed"
+    assert replacement_report.json()["report_id"] != report.json()["report_id"]
+    assert replacement_report.json()["report_id"] == (
+        replacement_completed.json()["report_version_id"]
+    )
     assert workspace.json()["test_report_available"] is True
 
 

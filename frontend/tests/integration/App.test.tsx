@@ -625,6 +625,13 @@ describe("application shell", () => {
       if (url === "/api/games/1145350/workspace") {
         return json(workspace(true, analysisRun("completed"), true));
       }
+      if (url === "/api/games/1145350/reports/test") {
+        return json({
+          ...analysisRun("completed"),
+          report_kind: "test",
+          review_count: 50,
+        });
+      }
       return json(metadata());
     });
 
@@ -635,6 +642,8 @@ describe("application shell", () => {
       "href",
       "/test-reports/1145350",
     );
+    fireEvent.click(screen.getByRole("button", { name: "Run 50-review test" }));
+    expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
   });
 
   it("selects an installed Ollama model and starts local analysis explicitly", async () => {
