@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 12
+CURRENT_SCHEMA_VERSION = 13
 
 
 def initialize_database(database_path: Path) -> None:
@@ -197,6 +197,12 @@ def initialize_database(database_path: Path) -> None:
                 "ON report_versions(app_id, report_kind) WHERE report_kind IS NOT NULL"
             )
             connection.execute("INSERT INTO schema_migrations(version) VALUES (12)")
+        if 13 not in applied_versions:
+            connection.execute(
+                "ALTER TABLE analysis_runs ADD COLUMN report_kind TEXT "
+                "CHECK (report_kind IN ('main', 'test'))"
+            )
+            connection.execute("INSERT INTO schema_migrations(version) VALUES (13)")
 
 
 def schema_version(database_path: Path) -> int:

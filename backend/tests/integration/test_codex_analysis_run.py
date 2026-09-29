@@ -8,6 +8,7 @@ import pytest
 from game_review_analyzer.application.provider import (
     CancellationSignal,
     ExtractionProviderRun,
+    ThemeProviderRun,
 )
 from game_review_analyzer.domain.analysis import (
     AnalysisRequest,
@@ -18,6 +19,8 @@ from game_review_analyzer.domain.analysis import (
     OpinionPoint,
     OpinionSentiment,
     Theme,
+    ThemeAnalysisResult,
+    ThemeCandidate,
     ThemeCategory,
     ThemePolarity,
 )
@@ -44,7 +47,10 @@ from game_review_analyzer.infrastructure.persistence.jobs import (
 from game_review_analyzer.infrastructure.persistence.opinion_extractions import (
     save_opinion_extraction_batch,
 )
-from game_review_analyzer.infrastructure.persistence.report_versions import load_report_version
+from game_review_analyzer.infrastructure.persistence.report_versions import (
+    load_aggregate_report_slot,
+    load_report_version,
+)
 from game_review_analyzer.infrastructure.persistence.review_revisions import (
     load_review_revisions_by_ids,
     save_review_revisions,
@@ -99,6 +105,23 @@ class FakeProvider:
 
     def consolidate(self, request, *, cancel_event=None) -> CodexCliRun:
         return self.analyze(request, cancel_event=cancel_event)
+
+    def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+        assert cancel_event is not None
+        return ThemeProviderRun(
+            ThemeAnalysisResult(
+                schema_version="3.0",
+                request_id=request.request_id,
+                scope_sha256=request.scope_sha256,
+                provider=self.provider,
+                model=self.model,
+                completed_review_revision_ids=tuple(
+                    review.review_revision_id for review in request.reviews
+                ),
+                themes=(),
+            ),
+            CodexCliUsage(10, 0, 2),
+        )
 
 
 def test_analysis_scope_selects_non_overlapping_oldest_and_newest_reviews(
@@ -182,6 +205,84 @@ def test_analysis_scope_accepts_a_smaller_oldest_and_newest_pilot(
         selected_reviews[identifier].source_created_at
         for identifier in run.recent_review_revision_ids
     ] == list(range(76, 101))
+
+
+def test_test_report_uses_one_call_and_replaces_only_its_slot(tmp_path: Path) -> None:
+    class ThemeProvider(FakeProvider):
+        def __init__(self) -> None:
+            self.calls: int = 0
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            self.calls += 1
+            supporting_ids: tuple[str, ...] = (
+                request.reviews[0].review_revision_id,
+                request.reviews[1].review_revision_id,
+                request.reviews[-2].review_revision_id,
+                request.reviews[-1].review_revision_id,
+            )
+            return ThemeProviderRun(
+                ThemeAnalysisResult(
+                    schema_version="3.0",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=tuple(
+                        review.review_revision_id for review in request.reviews
+                    ),
+                    themes=(
+                        ThemeCandidate(
+                            candidate_id="responsive-combat",
+                            title="Responsive combat",
+                            summary="Players praise responsive combat.",
+                            polarity="positive",
+                            supporting_review_revision_ids=supporting_ids,
+                        ),
+                    ),
+                ),
+                CodexCliUsage(100, 20, 30),
+            )
+
+    database_path: Path = tmp_path / "app.sqlite3"
+    initialize_database(database_path)
+    save_game_dataset(database_path, metadata())
+    save_review_revisions(
+        database_path,
+        1145350,
+        tuple(review_at(position) for position in range(1, 101)),
+    )
+    complete_full_import(database_path)
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=ThemeMetricPolicy(
+            minimum_support_count=2,
+            minimum_support_percentage=1,
+            technical_minimum_support_count=2,
+            technical_minimum_support_percentage=1,
+        ),
+        cohort_size=25,
+        report_kind="test",
+    )
+    provider = ThemeProvider()
+
+    AnalysisRunner(database_path, provider).run(run.id)
+
+    completed = get_analysis_run(database_path, run.id)
+    report = load_aggregate_report_slot(database_path, 1145350, "test")
+    assert provider.calls == 1
+    assert completed.state == "completed"
+    assert completed.review_count == 50
+    assert completed.input_tokens == 100
+    assert report is not None
+    assert report.report_id == completed.report_version_id
+    assert report.kind == "test"
+    assert len(report.oldest_review_revision_ids) == 25
+    assert len(report.newest_review_revision_ids) == 25
+    assert report.theme_metrics.positive_headlines[0].support_count == 4
+    assert load_aggregate_report_slot(database_path, 1145350, "main") is None
 
 
 def test_analysis_scope_requires_a_completed_full_history_import(tmp_path: Path) -> None:

@@ -30,6 +30,7 @@ class AnalysisRun(BaseModel):
     cached_input_tokens: int | None
     output_tokens: int | None
     extracted_review_count: int
+    report_kind: Literal["main", "test"] | None
 
     @computed_field
     @property
@@ -38,9 +39,11 @@ class AnalysisRun(BaseModel):
 
     @computed_field
     @property
-    def phase(self) -> Literal["queued", "extracting", "consolidating", "completed", "failed", "cancelled"]:
+    def phase(self) -> Literal["queued", "analyzing", "extracting", "consolidating", "completed", "failed", "cancelled"]:
         if self.state != "running":
             return self.state
+        if self.report_kind is not None:
+            return "analyzing"
         return (
             "consolidating"
             if self.extracted_review_count >= self.review_count
@@ -64,6 +67,7 @@ def create_analysis_run(
     model: str,
     metric_policy: ThemeMetricPolicy,
     cohort_size: int = 2_500,
+    report_kind: Literal["main", "test"] | None = None,
 ) -> AnalysisRun:
     """Queue a provider run over non-overlapping oldest and newest review cohorts."""
 
@@ -109,7 +113,8 @@ def create_analysis_run(
             "INSERT INTO analysis_runs("
             "id, app_id, provider, model, state, review_revision_ids_json, "
             "early_review_revision_ids_json, recent_review_revision_ids_json, "
-            "metric_policy_json) VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?)",
+            "metric_policy_json, report_kind) "
+            "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?)",
             (
                 run_id,
                 app_id,
@@ -119,6 +124,7 @@ def create_analysis_run(
                 json.dumps(early_revision_ids),
                 json.dumps(recent_revision_ids),
                 metric_policy.model_dump_json(),
+                report_kind,
             ),
         )
     return get_analysis_run(database_path, run_id)
@@ -133,6 +139,7 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
             "metric_policy_json, cancel_requested, error_code, report_version_id, "
             "input_tokens, cached_input_tokens, output_tokens, "
             "early_review_revision_ids_json, recent_review_revision_ids_json, "
+            "report_kind, "
             "(SELECT COUNT(*) FROM review_opinion_extractions extraction "
             "WHERE extraction.provider = analysis_runs.provider "
             "AND extraction.model = analysis_runs.model "
@@ -152,7 +159,8 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
         input_tokens=row[10], cached_input_tokens=row[11], output_tokens=row[12],
         early_review_revision_ids=tuple(json.loads(row[13])),
         recent_review_revision_ids=tuple(json.loads(row[14])),
-        extracted_review_count=int(row[15]),
+        report_kind=row[15],
+        extracted_review_count=int(row[16]),
     )
 
 

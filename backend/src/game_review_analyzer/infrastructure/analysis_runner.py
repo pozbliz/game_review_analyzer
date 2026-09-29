@@ -13,15 +13,27 @@ from game_review_analyzer.application.opinion_consolidation import (
 from game_review_analyzer.application.report_creation import create_report
 from game_review_analyzer.application.provider import (
     AnalysisProviderError,
+    build_theme_analysis_request,
     CancellationSignal,
     ExtractionProviderRun,
     ProviderRun,
+    ThemeProviderRun,
+    validate_theme_provider_result,
 )
+from game_review_analyzer.application.theme_metrics import calculate_aggregate_theme_metrics
 from game_review_analyzer.domain.analysis import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisSourceReview,
+    ANALYSIS_CONTRACT_VERSION,
     ExtractedOpinionPoint,
+    ThemeAnalysisRequest,
+)
+from game_review_analyzer.domain.reports import (
+    AggregateReport,
+    AggregateThemeMetrics,
+    ThemeDefinition,
+    ThemeMembership,
 )
 from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
@@ -31,7 +43,11 @@ from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     start_analysis_run,
 )
 from game_review_analyzer.infrastructure.persistence.game_datasets import load_game_dataset
-from game_review_analyzer.infrastructure.persistence.report_versions import load_report_version
+from game_review_analyzer.infrastructure.persistence.report_versions import (
+    load_aggregate_report_slot,
+    load_report_version,
+    save_aggregate_report,
+)
 from game_review_analyzer.infrastructure.persistence.opinion_extractions import (
     load_opinion_extractions,
     save_opinion_extraction_batch,
@@ -64,6 +80,11 @@ class AnalysisProvider(Protocol):
         self, request: AnalysisRequest, *, cancel_event: CancellationSignal
     ) -> ProviderRun:
         """Return shared Themes over already validated Opinion Points."""
+
+    def analyze_themes(
+        self, request: ThemeAnalysisRequest, *, cancel_event: CancellationSignal
+    ) -> ThemeProviderRun:
+        """Return Version 3 Theme candidates for one complete batch."""
 
 
 class _DurableCancellation:
@@ -117,6 +138,9 @@ class AnalysisRunner:
             self._run_started(run, started_at)
 
     def _run_started(self, run: AnalysisRun, started_at: float) -> None:
+        if run.report_kind == "test":
+            self._run_test_report(run, started_at)
+            return
         report_id = f"analysis-{run.id}"
         if load_report_version(self._database_path, report_id) is not None:
             finish_analysis_run(
@@ -379,6 +403,136 @@ class AnalysisRunner:
                 run_id=run.id,
                 duration_ms=round((monotonic() - started_at) * 1000),
                 error_code="invalid_analysis_scope",
+            )
+
+    def _run_test_report(self, run: AnalysisRun, started_at: float) -> None:
+        report_id: str = f"analysis-{run.id}"
+        current_report: AggregateReport | None = load_aggregate_report_slot(
+            self._database_path, run.app_id, "test"
+        )
+        if current_report is not None and current_report.report_id == report_id:
+            finish_analysis_run(
+                self._database_path, run.id, "completed", report_version_id=report_id
+            )
+            return
+        try:
+            metadata = load_game_dataset(self._database_path, run.app_id)
+            if metadata is None:
+                raise ValueError("Matching Game Dataset metadata is unavailable")
+            revisions: dict[int, SteamReview] = load_review_revisions_by_ids(
+                self._database_path, run.review_revision_ids
+            )
+            request = build_theme_analysis_request(
+                request_id=run.id,
+                app_id=run.app_id,
+                game_title=metadata.title,
+                reviews=(
+                    AnalysisSourceReview(
+                        review_revision_id=revisions[revision_id].review_id,
+                        text=revisions[revision_id].text,
+                    )
+                    for revision_id in run.review_revision_ids
+                ),
+            )
+            provider_run: ThemeProviderRun = self._provider.analyze_themes(
+                request,
+                cancel_event=_DurableCancellation(self._database_path, run.id),
+            )
+            validate_theme_provider_result(
+                request,
+                provider_run.result,
+                expected_provider=run.provider,
+                expected_model=run.model,
+            )
+            revision_id_by_review_id: dict[str, int] = {
+                review.review_id: revision_id
+                for revision_id, review in revisions.items()
+            }
+            themes: tuple[ThemeDefinition, ...] = tuple(
+                ThemeDefinition(
+                    theme_id=candidate.candidate_id,
+                    title=candidate.title,
+                    summary=candidate.summary,
+                    polarity=candidate.polarity,
+                )
+                for candidate in provider_run.result.themes
+            )
+            memberships: tuple[ThemeMembership, ...] = tuple(
+                ThemeMembership(
+                    theme_id=candidate.candidate_id,
+                    review_revision_id=revision_id_by_review_id[review_id],
+                )
+                for candidate in provider_run.result.themes
+                for review_id in candidate.supporting_review_revision_ids
+            )
+            all_metrics: AggregateThemeMetrics = calculate_aggregate_theme_metrics(
+                run.review_revision_ids,
+                run.early_review_revision_ids,
+                run.recent_review_revision_ids,
+                themes,
+                memberships,
+            )
+            visible_ids: set[str] = {
+                metric.theme_id
+                for metric in (
+                    all_metrics.positive_headlines + all_metrics.negative_headlines
+                )
+            }
+            visible_themes: tuple[ThemeDefinition, ...] = tuple(
+                theme for theme in themes if theme.theme_id in visible_ids
+            )
+            visible_memberships: tuple[ThemeMembership, ...] = tuple(
+                membership
+                for membership in memberships
+                if membership.theme_id in visible_ids
+            )
+            visible_metrics = AggregateThemeMetrics(
+                all_themes=tuple(
+                    metric
+                    for metric in all_metrics.all_themes
+                    if metric.theme_id in visible_ids
+                ),
+                positive_headlines=all_metrics.positive_headlines,
+                negative_headlines=all_metrics.negative_headlines,
+            )
+            report = AggregateReport(
+                schema_version="3.0",
+                report_id=report_id,
+                kind="test",
+                app_id=run.app_id,
+                metadata_snapshot=metadata,
+                review_revision_ids=run.review_revision_ids,
+                oldest_review_revision_ids=run.early_review_revision_ids,
+                newest_review_revision_ids=run.recent_review_revision_ids,
+                provider=run.provider,
+                model=run.model,
+                contract_version=ANALYSIS_CONTRACT_VERSION,
+                themes=visible_themes,
+                memberships=visible_memberships,
+                theme_metrics=visible_metrics,
+            )
+            save_aggregate_report(self._database_path, report)
+            finish_analysis_run(
+                self._database_path,
+                run.id,
+                "completed",
+                report_version_id=report_id,
+                input_tokens=provider_run.usage.input_tokens,
+                cached_input_tokens=provider_run.usage.cached_input_tokens,
+                output_tokens=provider_run.usage.output_tokens,
+            )
+            log_event(
+                "analysis.completed",
+                run_id=run.id,
+                duration_ms=round((monotonic() - started_at) * 1000),
+                theme_count=len(visible_themes),
+            )
+        except AnalysisProviderError as error:
+            state = "cancelled" if error.code == "cancelled" else "failed"
+            finish_analysis_run(self._database_path, run.id, state, error_code=error.code)
+        except ValueError:
+            finish_analysis_run(
+                self._database_path, run.id, "failed", error_code="invalid_theme_result"
             )
 
     def _batches(

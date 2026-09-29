@@ -13,6 +13,7 @@ from game_review_analyzer.domain.analysis import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisSourceReview,
+    ThemeAnalysisRequest,
 )
 from game_review_analyzer.infrastructure.codex_cli import (
     CodexCliError,
@@ -45,7 +46,7 @@ class CompletedProcess:
             request_data: dict[str, Any] = json.loads(input.split("REQUEST_JSON\n", 1)[1])
             extraction: bool = "sentence- or clause-level opinions" in input
             result: dict[str, Any] = {
-                "schema_version": "1.0",
+                "schema_version": request_data["schema_version"],
                 "request_id": request_data["request_id"],
                 "scope_sha256": request_data["scope_sha256"],
                 "provider": "codex-cli",
@@ -53,7 +54,10 @@ class CompletedProcess:
                 "completed_review_revision_ids": ["revision-1"],
                 "opinion_points": [],
             }
-            if not extraction:
+            if request_data["schema_version"] == "3.0":
+                result.pop("opinion_points")
+                result["themes"] = []
+            elif not extraction:
                 result.update({"themes": [], "mechanic_classifications": []})
             output_path.write_text(
                 json.dumps(result),
@@ -161,6 +165,25 @@ def test_codex_cli_extracts_one_bounded_opinion_batch(monkeypatch) -> None:
     assert "Do not extract vague overall verdicts" in processes[0].prompt
     assert "this game is amazing" in processes[0].prompt
     assert "dialogue pacing feels unnatural" in processes[0].prompt
+
+
+def test_codex_cli_returns_theme_candidates_without_evidence(monkeypatch) -> None:
+    processes: list[CompletedProcess] = []
+
+    def start_process(command: list[str], **options: Any) -> CompletedProcess:
+        process = CompletedProcess(command, **options)
+        processes.append(process)
+        return process
+
+    monkeypatch.setattr("subprocess.Popen", start_process)
+
+    run = CodexCliProvider(executable="codex.cmd").analyze_themes(theme_request())
+
+    assert run.result.schema_version == "3.0"
+    assert run.result.completed_review_revision_ids == ("revision-1",)
+    assert run.result.themes == ()
+    assert run.usage.input_tokens == 120
+    assert "Return no excerpts" in processes[0].prompt
 
 
 def test_codex_cli_consolidates_cached_points_with_cohort_audit(monkeypatch) -> None:
@@ -363,6 +386,20 @@ def test_codex_cli_status_reports_unavailable_without_starting_a_process(
 def request() -> AnalysisRequest:
     return build_analysis_request(
         request_id="request-1",
+        app_id=1145350,
+        game_title="Hades II",
+        reviews=(AnalysisSourceReview(
+            review_revision_id="revision-1",
+            text="Combat feels responsive.",
+        ),),
+    )
+
+
+def theme_request() -> ThemeAnalysisRequest:
+    return ThemeAnalysisRequest(
+        schema_version="3.0",
+        request_id="request-3",
+        scope_sha256="b" * 64,
         app_id=1145350,
         game_title="Hades II",
         reviews=(AnalysisSourceReview(

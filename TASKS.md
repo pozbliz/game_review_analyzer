@@ -9,8 +9,8 @@
 - [x] Add failing aggregate metric tests.
 - [x] Implement cohort metrics, thresholds, ranking, caps, and empty results.
 - [x] Add repository tests for one independent Test Report slot.
-- [ ] Implement deterministic 25-oldest and 25-newest selection.
-- [ ] Connect one-call Codex execution with low reasoning.
+- [x] Implement deterministic 25-oldest and 25-newest selection.
+- [x] Connect one-call Codex execution with low reasoning.
 - [ ] Add API and frontend tests for creating and replacing Test Reports.
 - [ ] Verify invalid output never changes either report slot.
 
