@@ -5,7 +5,7 @@ import sqlite3
 
 from pydantic import BaseModel
 
-from game_review_analyzer.domain.reports import ReportVersion
+from game_review_analyzer.domain.reports import AggregateReport, ReportVersion
 
 
 class ReportHistoryEntry(BaseModel):
@@ -61,6 +61,58 @@ def save_report_version(database_path: Path, report: ReportVersion) -> None:
         )
 
 
+def save_aggregate_report(database_path: Path, report: AggregateReport) -> None:
+    """Atomically replace one Version 3 report slot and its exact bindings."""
+
+    placeholders: str = ",".join("?" for _ in report.review_revision_ids)
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("PRAGMA foreign_keys = ON")
+        owned_revision_ids: set[int] = {
+            int(row[0])
+            for row in connection.execute(
+                "SELECT review_revisions.id FROM review_revisions "
+                "JOIN reviews ON reviews.id = review_revisions.review_id "
+                f"WHERE reviews.app_id = ? AND review_revisions.id IN ({placeholders})",
+                (report.app_id, *report.review_revision_ids),
+            )
+        }
+        if owned_revision_ids != set(report.review_revision_ids):
+            raise ValueError("Report revisions must exist and belong to exactly one game")
+        connection.execute(
+            "DELETE FROM report_versions WHERE app_id = ? AND report_kind = ?",
+            (report.app_id, report.kind),
+        )
+        connection.execute(
+            "INSERT INTO report_versions(id, app_id, snapshot_json, report_kind) "
+            "VALUES (?, ?, ?, ?)",
+            (report.report_id, report.app_id, report.model_dump_json(), report.kind),
+        )
+        connection.executemany(
+            "INSERT INTO report_version_review_revisions("
+            "report_version_id, review_revision_id) VALUES (?, ?)",
+            (
+                (report.report_id, revision_id)
+                for revision_id in report.review_revision_ids
+            ),
+        )
+
+
+def load_aggregate_report_slot(
+    database_path: Path,
+    app_id: int,
+    kind: str,
+) -> AggregateReport | None:
+    """Load the current Version 3 report from one game slot."""
+
+    with sqlite3.connect(database_path) as connection:
+        row: tuple[str] | None = connection.execute(
+            "SELECT snapshot_json FROM report_versions "
+            "WHERE app_id = ? AND report_kind = ?",
+            (app_id, kind),
+        ).fetchone()
+    return AggregateReport.model_validate_json(row[0]) if row else None
+
+
 def load_report_version(
     database_path: Path, report_version_id: str
 ) -> ReportVersion | None:
@@ -68,7 +120,8 @@ def load_report_version(
 
     with sqlite3.connect(database_path) as connection:
         row: tuple[str] | None = connection.execute(
-            "SELECT snapshot_json FROM report_versions WHERE id = ?",
+            "SELECT snapshot_json FROM report_versions "
+            "WHERE id = ? AND report_kind IS NULL",
             (report_version_id,),
         ).fetchone()
         if row is None:

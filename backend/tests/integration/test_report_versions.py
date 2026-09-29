@@ -8,6 +8,8 @@ import pytest
 
 from game_review_analyzer.domain.analysis import AnalysisResult
 from game_review_analyzer.domain.reports import (
+    AggregateReport,
+    AggregateThemeMetrics,
     ReportVersion,
     ThemeMetricPolicy,
     ThemeMetrics,
@@ -17,7 +19,9 @@ from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.persistence.game_datasets import save_game_dataset
 from game_review_analyzer.infrastructure.persistence.report_versions import (
+    load_aggregate_report_slot,
     load_report_version,
+    save_aggregate_report,
     save_report_version,
 )
 from game_review_analyzer.infrastructure.persistence.review_revisions import (
@@ -97,6 +101,40 @@ def test_migration_upgrades_existing_report_to_typed_metadata_snapshot(
     assert migrated is not None
     assert migrated.schema_version == "2.0"
     assert migrated.metadata_snapshot.title == "Hades II"
+
+
+def test_aggregate_report_slots_replace_independently(tmp_path: Path) -> None:
+    database_path: Path = initialized_dataset(tmp_path)
+    with sqlite3.connect(database_path) as connection:
+        revision_ids: tuple[int, ...] = tuple(
+            row[0] for row in connection.execute(
+                "SELECT id FROM review_revisions ORDER BY id"
+            )
+        )
+    main_report: AggregateReport = aggregate_report(
+        "main-report", "main", revision_ids
+    )
+    first_test_report: AggregateReport = aggregate_report(
+        "test-report-1", "test", revision_ids
+    )
+    second_test_report: AggregateReport = aggregate_report(
+        "test-report-2", "test", revision_ids
+    )
+
+    save_aggregate_report(database_path, main_report)
+    save_aggregate_report(database_path, first_test_report)
+    save_aggregate_report(database_path, second_test_report)
+
+    assert load_aggregate_report_slot(database_path, 1145350, "main") == main_report
+    assert (
+        load_aggregate_report_slot(database_path, 1145350, "test")
+        == second_test_report
+    )
+    with sqlite3.connect(database_path) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM report_versions WHERE app_id = ?",
+            (1145350,),
+        ).fetchone()[0] == 2
 
 
 def initialized_dataset(tmp_path: Path) -> Path:
@@ -185,4 +223,43 @@ def report_version(revision_ids: tuple[int, ...]) -> ReportVersion:
             mixed_reception=(),
         ),
         thresholds_calibrated=False,
+    )
+
+
+def aggregate_report(
+    report_id: str,
+    kind: str,
+    revision_ids: tuple[int, ...],
+) -> AggregateReport:
+    return AggregateReport(
+        schema_version="3.0",
+        report_id=report_id,
+        kind=kind,
+        app_id=1145350,
+        metadata_snapshot=SteamMetadata(
+            app_id=1145350,
+            title="Hades II",
+            developers=("Supergiant Games",),
+            capsule_image_url=None,
+            release_date=None,
+            release_status="unknown",
+            review_count=None,
+            source_status="partial",
+            missing_fields=frozenset(
+                {"capsule_image_url", "release_date", "release_status", "review_count"}
+            ),
+        ),
+        review_revision_ids=revision_ids,
+        oldest_review_revision_ids=(revision_ids[0],),
+        newest_review_revision_ids=(revision_ids[1],),
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        contract_version="3.0",
+        themes=(),
+        memberships=(),
+        theme_metrics=AggregateThemeMetrics(
+            all_themes=(),
+            positive_headlines=(),
+            negative_headlines=(),
+        ),
     )

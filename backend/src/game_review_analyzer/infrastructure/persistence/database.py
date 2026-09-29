@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 11
+CURRENT_SCHEMA_VERSION = 12
 
 
 def initialize_database(database_path: Path) -> None:
@@ -187,6 +187,16 @@ def initialize_database(database_path: Path) -> None:
                 "PRIMARY KEY(review_revision_id, provider, model, contract_version))"
             )
             connection.execute("INSERT INTO schema_migrations(version) VALUES (11)")
+        if 12 not in applied_versions:
+            connection.execute(
+                "ALTER TABLE report_versions ADD COLUMN report_kind TEXT "
+                "CHECK (report_kind IN ('main', 'test'))"
+            )
+            connection.execute(
+                "CREATE UNIQUE INDEX report_versions_current_slot "
+                "ON report_versions(app_id, report_kind) WHERE report_kind IS NOT NULL"
+            )
+            connection.execute("INSERT INTO schema_migrations(version) VALUES (12)")
 
 
 def schema_version(database_path: Path) -> int:

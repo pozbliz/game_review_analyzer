@@ -56,6 +56,61 @@ class AggregateThemeMetrics(ReportContractModel):
     negative_headlines: tuple[AggregateThemeMetric, ...]
 
 
+class AggregateReport(ReportContractModel):
+    """Store one current Version 3 Main Report or Test Report."""
+
+    schema_version: Literal["3.0"]
+    report_id: NonEmptyString
+    kind: Literal["main", "test"]
+    app_id: int = Field(gt=0)
+    metadata_snapshot: SteamMetadata
+    review_revision_ids: tuple[int, ...] = Field(min_length=1)
+    oldest_review_revision_ids: tuple[int, ...]
+    newest_review_revision_ids: tuple[int, ...]
+    provider: NonEmptyString
+    model: NonEmptyString
+    contract_version: NonEmptyString
+    themes: tuple[ThemeDefinition, ...]
+    memberships: tuple[ThemeMembership, ...]
+    theme_metrics: AggregateThemeMetrics
+
+    @model_validator(mode="after")
+    def require_consistent_scope(self) -> "AggregateReport":
+        """Bind metadata, cohorts, Themes, and memberships to one exact scope."""
+
+        scope_ids: set[int] = set(self.review_revision_ids)
+        oldest_ids: set[int] = set(self.oldest_review_revision_ids)
+        newest_ids: set[int] = set(self.newest_review_revision_ids)
+        if len(scope_ids) != len(self.review_revision_ids) or any(
+            identifier <= 0 for identifier in scope_ids
+        ):
+            raise ValueError("Report Review Revision identifiers must be unique and positive")
+        if oldest_ids & newest_ids or oldest_ids | newest_ids != scope_ids:
+            raise ValueError("Report cohorts must be non-overlapping and cover the scope")
+        if self.metadata_snapshot.app_id != self.app_id:
+            raise ValueError("Report metadata must match the report AppID")
+        theme_ids: tuple[str, ...] = tuple(theme.theme_id for theme in self.themes)
+        if len(theme_ids) != len(set(theme_ids)):
+            raise ValueError("Report Theme identifiers must be unique")
+        membership_pairs: tuple[tuple[str, int], ...] = tuple(
+            (membership.theme_id, membership.review_revision_id)
+            for membership in self.memberships
+        )
+        if len(membership_pairs) != len(set(membership_pairs)):
+            raise ValueError("Report Theme Memberships must be unique")
+        if any(
+            theme_id not in set(theme_ids) or revision_id not in scope_ids
+            for theme_id, revision_id in membership_pairs
+        ):
+            raise ValueError("Report Theme Membership is outside the report scope")
+        metric_ids: set[str] = {
+            metric.theme_id for metric in self.theme_metrics.all_themes
+        }
+        if metric_ids != set(theme_ids):
+            raise ValueError("Report Theme metrics must match its Theme definitions")
+        return self
+
+
 class EvidenceFilterQuery(ReportContractModel):
     """Define temporary restrictions applied while exploring one report."""
 
