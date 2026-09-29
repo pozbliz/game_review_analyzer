@@ -136,7 +136,8 @@ export interface AnalysisRun {
   cached_input_tokens: number | null;
   output_tokens: number | null;
   extracted_review_count: number;
-  phase: "queued" | "extracting" | "consolidating" | "completed" | "failed" | "cancelled";
+  report_kind: "main" | "test" | null;
+  phase: "queued" | "analyzing" | "extracting" | "consolidating" | "completed" | "failed" | "cancelled";
 }
 
 export interface GameWorkspace {
@@ -191,7 +192,8 @@ function parseAnalysisRun(payload: unknown): AnalysisRun {
       !["queued", "running", "completed", "failed", "cancelled"].includes(String(payload.state)) ||
       typeof payload.review_count !== "number" || typeof payload.cancel_requested !== "boolean" ||
       typeof payload.extracted_review_count !== "number" ||
-      !["queued", "extracting", "consolidating", "completed", "failed", "cancelled"].includes(String(payload.phase)) ||
+      !(payload.report_kind === null || payload.report_kind === "main" || payload.report_kind === "test") ||
+      !["queued", "analyzing", "extracting", "consolidating", "completed", "failed", "cancelled"].includes(String(payload.phase)) ||
       !(payload.error_code === null || typeof payload.error_code === "string") ||
       !(payload.report_version_id === null || typeof payload.report_version_id === "string")) {
     throw new Error("Invalid analysis run response");
@@ -212,6 +214,12 @@ export async function startCodexAnalysis(
       technical_minimum_support_count: 2,
       technical_minimum_support_percentage: 1,
     }),
+  }));
+}
+
+export async function startTestReport(appId: number): Promise<AnalysisRun> {
+  return parseAnalysisRun(await requestJson(`/api/games/${appId}/reports/test`, {
+    method: "POST",
   }));
 }
 

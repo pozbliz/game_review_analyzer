@@ -11,8 +11,8 @@
 - [x] Add repository tests for one independent Test Report slot.
 - [x] Implement deterministic 25-oldest and 25-newest selection.
 - [x] Connect one-call Codex execution with low reasoning.
-- [ ] Add API and frontend tests for creating and replacing Test Reports.
-- [ ] Verify invalid output never changes either report slot.
+- [x] Add API and frontend tests for creating and replacing Test Reports.
+- [x] Verify invalid output never changes either report slot.
 
 ### First Main Report
 

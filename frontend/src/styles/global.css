@@ -157,6 +157,10 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .theme-section-heading small { margin-left: auto; color: var(--muted); }
 .theme-list { margin: 0; padding: 0; list-style: none; }
 .theme-list > li + li { border-top: 1px solid var(--line); }
+.aggregate-theme-columns { margin-top: 1rem; }
+.aggregate-theme { display: grid; gap: .45rem; padding: 1.15rem; }
+.aggregate-theme h3, .aggregate-theme p { margin: 0; }
+.aggregate-theme p, .aggregate-theme small { color: var(--muted); }
 .theme-toggle { display: grid; width: 100%; grid-template-columns: 2.5rem minmax(0, 1fr) auto 1.5rem; gap: 1rem; align-items: center; padding: 1.15rem; border: 0; color: inherit; background: transparent; text-align: left; }
 .theme-toggle:hover { background: #f6f3ea; }
 .theme-toggle[aria-expanded="true"] { background: #eef3e9; }

@@ -93,6 +93,7 @@ from game_review_analyzer.infrastructure.persistence.report_versions import (
     list_recent_report_versions,
     list_report_versions,
     load_report_version,
+    load_aggregate_report_slot,
 )
 from game_review_analyzer.infrastructure.steam_metadata import (
     SteamGameNotFound,
@@ -109,10 +110,12 @@ from game_review_analyzer.infrastructure.steam_reviews import SteamReviewIngesti
 from game_review_analyzer.shared.config import Settings
 from game_review_analyzer.shared.telemetry import configure_telemetry
 from game_review_analyzer.interfaces.http.reports import (
+    AggregateReportResponse,
     EvidenceFilterQuery,
     ReportResponse,
     ThemeEvidenceResponse,
     build_report_response,
+    build_aggregate_report_response,
     build_theme_evidence_response,
 )
 
@@ -354,6 +357,58 @@ def create_app(
             ) from error
         app.state.analysis_executor.submit(run_analysis, run.id)
         return run
+
+    @app.post(
+        f"{API_PREFIX}/games/{{app_id}}/reports/test",
+        response_model=AnalysisRun,
+        status_code=202,
+    )
+    def start_test_report(app_id: int) -> AnalysisRun:
+        status: CodexCliStatus = resolved_codex_status_source()
+        if not status.installed or not status.authenticated:
+            raise HTTPException(
+                status_code=409, detail={"code": "codex_cli_not_ready"}
+            )
+        if load_game_dataset(resolved_settings.database_path, app_id) is None:
+            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
+        try:
+            run: AnalysisRun = create_analysis_run(
+                resolved_settings.database_path,
+                app_id=app_id,
+                provider="codex-cli",
+                model=status.model,
+                metric_policy=ThemeMetricPolicy(
+                    minimum_support_count=1,
+                    minimum_support_percentage=5,
+                    technical_minimum_support_count=1,
+                    technical_minimum_support_percentage=5,
+                    maximum_headlines_per_polarity=5,
+                ),
+                cohort_size=25,
+                report_kind="test",
+            )
+        except FullHistoryRequired as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "analysis_requires_full_history"}
+            ) from error
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "analysis_requires_reviews"}
+            ) from error
+        app.state.analysis_executor.submit(run_analysis, run.id)
+        return run
+
+    @app.get(
+        f"{API_PREFIX}/games/{{app_id}}/reports/test",
+        response_model=AggregateReportResponse,
+    )
+    def test_report(app_id: int) -> AggregateReportResponse:
+        report = load_aggregate_report_slot(
+            resolved_settings.database_path, app_id, "test"
+        )
+        if report is None:
+            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
+        return build_aggregate_report_response(report)
 
     @app.post(
         f"{API_PREFIX}/games/{{app_id}}/analyses/ollama",

@@ -21,9 +21,11 @@ import {
   startFullImport,
   startCodexAnalysis,
   startOllamaAnalysis,
+  startTestReport,
   SteamMetadata,
 } from "../api/shell";
 import ReportView from "../features/report/ReportView";
+import AggregateReportView from "../features/report/AggregateReportView";
 import { getRecentReports, getReportHistory, ReportHistoryEntry } from "../api/reports";
 import { deleteIncompleteJob } from "../api/storage";
 import StorefrontOverview from "../features/game/StorefrontOverview";
@@ -31,8 +33,13 @@ import StorefrontOverview from "../features/game/StorefrontOverview";
 type HealthState = "loading" | "ready" | "unavailable";
 
 export default function App(): JSX.Element {
+  const testReportMatch: RegExpMatchArray | null = window.location.pathname.match(
+    /^\/test-reports\/(\d+)$/,
+  );
   const reportMatch: RegExpMatchArray | null = window.location.pathname.match(/^\/reports\/([^/]+)$/);
-  return reportMatch
+  return testReportMatch
+    ? <AggregateReportView appId={Number(testReportMatch[1])} />
+    : reportMatch
     ? <ReportView reportId={decodeURIComponent(reportMatch[1])} />
     : <CatalogApp />;
 }
@@ -287,6 +294,18 @@ function CatalogApp(): JSX.Element {
       .catch(() => setAnalysisError("Unable to start the selected analysis provider."));
   }
 
+  function beginTestReport(): void {
+    const selectedAppId: number | undefined = preview?.app_id ?? job?.app_id;
+    if (!selectedAppId) return;
+    setAnalysisError("");
+    startTestReport(selectedAppId)
+      .then((run) => {
+        window.localStorage.setItem("active-analysis-run", run.id);
+        setAnalysisRun(run);
+      })
+      .catch(() => setAnalysisError("Unable to start the 50-review test."));
+  }
+
   function cancelAnalysis(): void {
     if (!analysisRun) return;
     cancelAnalysisRun(analysisRun.id)
@@ -484,6 +503,9 @@ function CatalogApp(): JSX.Element {
                   {analysisRun.state === "running" && analysisRun.phase === "consolidating" && (
                     <p>Consolidating shared themes and cohort comparisons</p>
                   )}
+                  {analysisRun.state === "running" && analysisRun.phase === "analyzing" && (
+                    <p>Finding aggregate Themes</p>
+                  )}
                   {["queued", "running"].includes(analysisRun.state) && (
                     <button type="button" onClick={cancelAnalysis}>Cancel analysis</button>
                   )}
@@ -494,7 +516,13 @@ function CatalogApp(): JSX.Element {
                           Measured usage: {analysisRun.input_tokens.toLocaleString()} input and {analysisRun.output_tokens.toLocaleString()} output tokens.{analysisRun.provider === "codex-cli" ? " Remaining subscription quota is unavailable." : " Processing stayed on this device."}
                         </p>
                       )}
-                      <a href={`/reports/${encodeURIComponent(analysisRun.report_version_id)}`}>View report</a>
+                      <a href={
+                        analysisRun.report_kind === "test"
+                          ? `/test-reports/${analysisRun.app_id}`
+                          : `/reports/${encodeURIComponent(analysisRun.report_version_id)}`
+                      }>
+                        {analysisRun.report_kind === "test" ? "View Test Report" : "View report"}
+                      </a>
                     </>
                   )}
                   {["failed", "cancelled"].includes(analysisRun.state) && (
@@ -618,6 +646,15 @@ function CatalogApp(): JSX.Element {
                     <code>ollama pull qwen3.5:9b</code>
                     <p>Restart the app after the model download completes.</p>
                   </div>
+                )}
+                {fullHistoryReady && (
+                  <button
+                    type="button"
+                    onClick={beginTestReport}
+                    disabled={!codexStatus?.installed || !codexStatus.authenticated}
+                  >
+                    Run 50-review test
+                  </button>
                 )}
                 <button
                   className={`create-report${reportHistory.length > 0 ? " create-report-secondary" : ""}`}

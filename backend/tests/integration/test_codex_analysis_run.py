@@ -285,6 +285,75 @@ def test_test_report_uses_one_call_and_replaces_only_its_slot(tmp_path: Path) ->
     assert load_aggregate_report_slot(database_path, 1145350, "main") is None
 
 
+def test_invalid_theme_output_keeps_the_current_test_report(tmp_path: Path) -> None:
+    class IncompleteThemeProvider(FakeProvider):
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            return ThemeProviderRun(
+                ThemeAnalysisResult(
+                    schema_version="3.0",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=tuple(
+                        review.review_revision_id for review in request.reviews[:-1]
+                    ),
+                    themes=(),
+                ),
+                CodexCliUsage(10, 0, 2),
+            )
+
+    database_path: Path = tmp_path / "app.sqlite3"
+    initialize_database(database_path)
+    save_game_dataset(database_path, metadata())
+    save_review_revisions(
+        database_path,
+        1145350,
+        tuple(review_at(position) for position in range(1, 101)),
+    )
+    complete_full_import(database_path)
+    first_run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=ThemeMetricPolicy(
+            minimum_support_count=1,
+            minimum_support_percentage=5,
+            technical_minimum_support_count=1,
+            technical_minimum_support_percentage=5,
+        ),
+        cohort_size=25,
+        report_kind="test",
+    )
+    AnalysisRunner(database_path, FakeProvider()).run(first_run.id)
+    current = load_aggregate_report_slot(database_path, 1145350, "test")
+    assert current is not None
+
+    failed_run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=ThemeMetricPolicy(
+            minimum_support_count=1,
+            minimum_support_percentage=5,
+            technical_minimum_support_count=1,
+            technical_minimum_support_percentage=5,
+        ),
+        cohort_size=25,
+        report_kind="test",
+    )
+    AnalysisRunner(database_path, IncompleteThemeProvider()).run(failed_run.id)
+
+    failed = get_analysis_run(database_path, failed_run.id)
+    retained = load_aggregate_report_slot(database_path, 1145350, "test")
+    assert failed.state == "failed"
+    assert failed.error_code == "invalid_theme_result"
+    assert retained is not None
+    assert retained.report_id == current.report_id
+
+
 def test_analysis_scope_requires_a_completed_full_history_import(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
     initialize_database(database_path)
@@ -682,6 +751,52 @@ def test_api_starts_and_exposes_completed_codex_analysis(tmp_path: Path) -> None
     assert completed.json()["review_count"] == 50
     assert completed.json()["report_version_id"] is not None
     assert provider.extraction_batch_sizes == [10, 10, 10, 10, 10]
+
+
+def test_api_creates_and_reads_the_standalone_test_report(tmp_path: Path) -> None:
+    database_path: Path = tmp_path / "app.sqlite3"
+    provider = FakeProvider()
+    status = lambda: CodexCliStatus(
+        True, True, "codex-cli test", "gpt-5.6-luna", "low"
+    )
+    with TestClient(
+        create_app(
+            Settings(database_path=database_path),
+            codex_status_source=status,
+            analysis_provider=provider,
+        )
+    ) as client:
+        save_game_dataset(database_path, metadata())
+        save_review_revisions(
+            database_path,
+            1145350,
+            tuple(review_at(position) for position in range(1, 101)),
+        )
+        complete_full_import(database_path)
+
+        started = client.post("/api/games/1145350/reports/test")
+        run_id: str = started.json()["id"]
+        completed = client.get(f"/api/analysis-runs/{run_id}")
+        for _ in range(100):
+            if completed.json()["state"] == "completed":
+                break
+            completed = client.get(f"/api/analysis-runs/{run_id}")
+        report = client.get("/api/games/1145350/reports/test")
+
+    assert started.status_code == 202
+    assert started.json()["report_kind"] == "test"
+    assert started.json()["review_count"] == 50
+    assert completed.json()["state"] == "completed"
+    assert report.status_code == 200
+    assert report.json()["schema_version"] == "3.0"
+    assert report.json()["kind"] == "test"
+    assert report.json()["scope"] == {
+        "review_count": 50,
+        "oldest_review_count": 25,
+        "newest_review_count": 25,
+    }
+    assert report.json()["positive_themes"] == []
+    assert report.json()["negative_themes"] == []
 
 
 def test_api_rejects_analysis_when_codex_is_not_authenticated(tmp_path: Path) -> None:

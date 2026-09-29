@@ -580,6 +580,40 @@ describe("application shell", () => {
     );
   });
 
+  it("creates a standalone Test Report from a completed Full Import", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") return json([]);
+      if (url === "/api/games/1145350/workspace") return json(workspace(true));
+      if (url === "/api/games/1145350/reports/test") {
+        return json({
+          ...analysisRun("completed"),
+          report_kind: "test",
+          review_count: 50,
+        });
+      }
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+    fireEvent.click(await screen.findByRole("button", { name: "Run 50-review test" }));
+
+    expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "View Test Report" })).toHaveAttribute(
+      "href",
+      "/test-reports/1145350",
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/games/1145350/reports/test",
+      { method: "POST" },
+    );
+  });
+
   it("selects an installed Ollama model and starts local analysis explicitly", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
       const url = request.toString();
@@ -870,6 +904,7 @@ function analysisRun(state: string): object {
     cached_input_tokens: state === "completed" ? 20 : null,
     output_tokens: state === "completed" ? 30 : null,
     extracted_review_count: state === "completed" ? 1 : 0,
+    report_kind: null,
     phase: state === "running" ? "extracting" : state,
   };
 }
