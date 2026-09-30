@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-09-30 - Provider output identity is schema-bound
+
+**What changed:**
+
+- Restricted each map and merge result to the exact request ID and scope digest.
+- Kept the existing post-response request validation.
+
+**Why:**
+
+- A live replacement completed six batches, then batch 7 copied mismatched request metadata.
+- The previous schema restricted review identifiers but allowed any request ID and digest strings.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Main Reports support explicit 1,000-review extension
 
 **What changed:**

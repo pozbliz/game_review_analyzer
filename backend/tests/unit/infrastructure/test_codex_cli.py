@@ -248,6 +248,12 @@ def test_codex_cli_constrains_theme_memberships_to_the_requested_reviews(
     assert completed_schema["minItems"] == 1
     assert completed_schema["maxItems"] == 1
     assert membership_schema["items"]["enum"] == ["revision-1"]
+    assert processes[0].schema["properties"]["request_id"]["enum"] == [
+        "request-3"
+    ]
+    assert processes[0].schema["properties"]["scope_sha256"]["enum"] == [
+        theme_request().scope_sha256
+    ]
 
 
 def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
@@ -326,6 +332,10 @@ def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
         "enum": ["1:combat"],
         "type": "string",
     }
+    assert processes[0].schema["properties"]["request_id"]["enum"] == ["merge-1"]
+    assert processes[0].schema["properties"]["scope_sha256"]["enum"] == [
+        request.scope_sha256
+    ]
 
 
 def test_codex_cli_reports_incomplete_merge_scope(monkeypatch) -> None:

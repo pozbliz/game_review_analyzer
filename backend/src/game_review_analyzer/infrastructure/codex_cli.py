@@ -151,6 +151,7 @@ class CodexCliProvider:
         """Return Version 3 Theme candidates for one exact review batch."""
 
         result_schema: dict[str, Any] = ThemeAnalysisResult.model_json_schema()
+        _bind_result_identity(result_schema, request.request_id, request.scope_sha256)
         review_revision_ids: list[str] = [
             review.review_revision_id for review in request.reviews
         ]
@@ -229,6 +230,7 @@ class CodexCliProvider:
         """Merge every validated map candidate into a Theme or discard it."""
 
         result_schema: dict[str, Any] = ThemeMergeResult.model_json_schema()
+        _bind_result_identity(result_schema, request.request_id, request.scope_sha256)
         candidate_keys: list[str] = [
             candidate.candidate_key for candidate in request.candidates
         ]
@@ -677,6 +679,23 @@ def _process_error_code(stderr: str, output_exists: bool) -> str:
     if "context length" in normalized or "token limit" in normalized:
         return "provider_context_exceeded"
     return "provider_nonzero_exit" if output_exists else "provider_missing_output"
+
+
+def _bind_result_identity(
+    result_schema: dict[str, Any],
+    request_id: str,
+    scope_sha256: str,
+) -> None:
+    """Require provider output to copy the exact request identity."""
+
+    result_schema["properties"]["request_id"] = {
+        "enum": [request_id],
+        "type": "string",
+    }
+    result_schema["properties"]["scope_sha256"] = {
+        "enum": [scope_sha256],
+        "type": "string",
+    }
 
 
 def _theme_validation_error_code(error: ValidationError | ValueError) -> str:
