@@ -9,6 +9,7 @@ import {
 } from "../../api/reports";
 import StorefrontOverview from "../game/StorefrontOverview";
 import { extendMainReport } from "../../api/shell";
+import { deleteReport } from "../../api/storage";
 
 interface AggregateReportViewProps {
   appId: number;
@@ -24,6 +25,9 @@ export default function AggregateReportView(
   const [evidence, setEvidence] = useState<Record<string, AggregateThemeEvidence>>({});
   const [evidenceError, setEvidenceError] = useState<string>("");
   const [extensionState, setExtensionState] = useState<"idle" | "starting" | "started" | "failed">("idle");
+  const [deleteOpen, setDeleteOpen] = useState<boolean>(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<string>("");
+  const [deleteState, setDeleteState] = useState<"idle" | "deleting" | "deleted" | "failed">("idle");
 
   useEffect(() => {
     let active: boolean = true;
@@ -35,6 +39,7 @@ export default function AggregateReportView(
 
   if (error) return <main className="report-state"><p role="alert">{error}</p></main>;
   if (!report) return <main className="report-state"><p role="status">Loading report…</p></main>;
+  const reportId: string = report.report_id;
 
   function toggleEvidence(theme: AggregateTheme): void {
     if (openThemeId === theme.theme_id) {
@@ -59,6 +64,24 @@ export default function AggregateReportView(
       .catch(() => setExtensionState("failed"));
   }
 
+  function removeReport(): void {
+    setDeleteState("deleting");
+    deleteReport(reportId, deleteConfirmation)
+      .then(() => setDeleteState("deleted"))
+      .catch(() => setDeleteState("failed"));
+  }
+
+  if (deleteState === "deleted") {
+    return (
+      <main className="report-state">
+        <div>
+          <p role="status">Report deleted.</p>
+          <a href={`/?appid=${appId}`}>Return to game</a>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="report-shell">
       <header className="report-header">
@@ -72,12 +95,14 @@ export default function AggregateReportView(
       <section className="report-facts" aria-label="Report scope and provenance">
         <div className="report-review-count">
           <span>Reviews</span>
-          <strong>{report.scope.review_count}</strong>
-          {kind === "main" && (
-            <button type="button" onClick={extendReport} disabled={extensionState !== "idle"}>
-              {extensionState === "starting" ? "Startingâ€¦" : "Extend Report"}
-            </button>
-          )}
+          <p className="report-review-value">
+            <strong>{report.scope.review_count}</strong>
+            {kind === "main" && (
+              <button type="button" onClick={extendReport} disabled={extensionState !== "idle"}>
+                {extensionState === "starting" ? "Starting..." : "Extend Report"}
+              </button>
+            )}
+          </p>
         </div>
         <div><span>Created</span><strong>{formatDate(report.created_at)}</strong></div>
         <div><span>Oldest cohort</span><strong>{report.scope.oldest_review_count}</strong></div>
@@ -115,6 +140,30 @@ export default function AggregateReportView(
       {report.metadata.storefront_source_status !== "unavailable" && (
         <StorefrontOverview metadata={report.metadata} />
       )}
+      <section className="report-delete" aria-label="Delete report">
+        {!deleteOpen ? (
+          <button type="button" onClick={() => setDeleteOpen(true)}>Delete Report</button>
+        ) : (
+          <>
+            <p>Deletion cannot be undone.</p>
+            <label>
+              Type {report.report_id} to confirm
+              <input
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              disabled={deleteConfirmation !== report.report_id || deleteState === "deleting"}
+              onClick={removeReport}
+            >
+              {deleteState === "deleting" ? "Deleting..." : "Delete Report Permanently"}
+            </button>
+            {deleteState === "failed" && <p className="error" role="alert">Report deletion was rejected.</p>}
+          </>
+        )}
+      </section>
     </main>
   );
 }

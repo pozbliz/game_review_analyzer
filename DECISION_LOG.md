@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-09-30 - Aggregate reports can be deleted from their report page
+
+**What changed:**
+
+- Kept `Extend Report` inline to the right of the Main Report review count.
+- Added a delete control at the bottom of each Test and Main Report.
+- Required the exact report identifier before enabling permanent deletion.
+
+**Why:**
+
+- The extension control rendered below the count because both elements were block-level children.
+- Aggregate reports had no deletion control on their report page despite the existing deletion endpoint.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Provider output identity is schema-bound
 
 **What changed:**

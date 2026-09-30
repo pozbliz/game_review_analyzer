@@ -100,12 +100,50 @@ describe("aggregate Test Report", () => {
     });
 
     render(<AggregateReportView appId={1145350} kind="main" />);
-    fireEvent.click(await screen.findByRole("button", { name: "Extend Report" }));
+    const extendButton: HTMLElement = await screen.findByRole("button", { name: "Extend Report" });
+    expect(extendButton.closest(".report-review-value")).toHaveTextContent("1000");
+    fireEvent.click(extendButton);
 
     expect(await screen.findByText(/Report extension started/)).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/games/1145350/reports/main/extend",
       { method: "POST" },
+    );
+  });
+
+  it("deletes a report from the bottom after exact confirmation", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
+      if (options?.method === "POST") return new Response(null, { status: 204 });
+      return new Response(JSON.stringify({
+        schema_version: "3.0", report_id: "main-report",
+        created_at: "2026-09-30 04:06:47", kind: "main",
+        game: { app_id: 1145350, title: "Hades II" }, metadata: metadata(),
+        scope: { review_count: 1_000, oldest_review_count: 500, newest_review_count: 500, oversized_review_count: 0 },
+        provider: "codex-cli", model: "gpt-5.6-luna",
+        positive_themes: [], negative_themes: [],
+      }), { status: 200 });
+    });
+
+    render(<AggregateReportView appId={1145350} kind="main" />);
+    const deleteButton: HTMLElement = await screen.findByRole("button", { name: "Delete Report" });
+    expect(deleteButton.closest(".report-delete")).toBe(document.querySelector("main")?.lastElementChild);
+    fireEvent.click(deleteButton);
+
+    const confirmButton: HTMLButtonElement = screen.getByRole("button", { name: "Delete Report Permanently" });
+    expect(confirmButton).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Type main-report to confirm"), {
+      target: { value: "main-report" },
+    });
+    fireEvent.click(confirmButton);
+
+    expect(await screen.findByText("Report deleted.")).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/reports/main-report/delete",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation: "main-report" }),
+      },
     );
   });
 });

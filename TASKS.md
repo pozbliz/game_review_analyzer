@@ -49,6 +49,8 @@
 
 - [x] Show dated Test and Main Report cards above the `Create Report` action.
 - [x] Add `Extend Report` beside the Main Report review count.
+- [x] Keep `Extend Report` inline to the right of the review count.
+- [x] Add exact-confirmation deletion at the bottom of each aggregate report.
 - [x] Analyze up to 1,000 unseen reviews and replace the Main Report only after success.
 - [x] Let `Create Report` run a fresh 1,000-review replacement while preserving the current report until success.
 - [ ] Add refresh and unseen-review selection tests.
