@@ -32,9 +32,9 @@
 - [x] Add selection tests for 500 oldest and 500 newest reviews.
 - [x] Cover overlap removal, complete text, and oversized-review replacement.
 - [x] Add character-based packing tests with the 250-review limit.
-- [ ] Implement map batching and validated checkpoints.
-- [ ] Add merge tests for Themes, discarded candidates, and retained 2% candidates.
-- [ ] Add repository tests for the single Main Report slot.
+- [x] Implement map batching and validated checkpoints.
+- [x] Add merge tests for Themes, discarded candidates, and retained 2% candidates.
+- [x] Add repository tests for the single Main Report slot.
 - [ ] Build the Main Report API, progress flow, and interface.
 - [ ] Verify visible 5% thresholds and valid empty reports.
 

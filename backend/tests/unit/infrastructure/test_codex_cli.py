@@ -9,11 +9,13 @@ from typing import Any
 import pytest
 
 from game_review_analyzer.application.manual_codex import build_analysis_request
+from game_review_analyzer.application.provider import build_theme_merge_request
 from game_review_analyzer.domain.analysis import (
     AnalysisRequest,
     AnalysisResult,
     AnalysisSourceReview,
     ThemeAnalysisRequest,
+    ThemeMergeCandidate,
 )
 from game_review_analyzer.infrastructure.codex_cli import (
     CodexCliError,
@@ -185,6 +187,71 @@ def test_codex_cli_returns_theme_candidates_without_evidence(monkeypatch) -> Non
     assert run.usage.input_tokens == 120
     assert "Return no excerpts" in processes[0].prompt
     assert "Include every supplied review_revision_id exactly once" in processes[0].prompt
+
+
+def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
+    class MergeProcess(CompletedProcess):
+        def communicate(
+            self,
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            del timeout
+            assert input is not None
+            self.prompt = input
+            output_path: Path = Path(
+                self.command[self.command.index("--output-last-message") + 1]
+            )
+            request_data: dict[str, Any] = json.loads(
+                input.split("REQUEST_JSON\n", 1)[1]
+            )
+            output_path.write_text(
+                json.dumps({
+                    "schema_version": "3.0",
+                    "request_id": request_data["request_id"],
+                    "scope_sha256": request_data["scope_sha256"],
+                    "provider": "codex-cli",
+                    "model": "gpt-5.6-luna",
+                    "completed_candidate_keys": ["1:combat"],
+                    "themes": [{
+                        "theme_id": "responsive-combat",
+                        "title": "Responsive combat",
+                        "summary": "Players praise responsive combat.",
+                        "polarity": "positive",
+                        "source_candidate_keys": ["1:combat"],
+                    }],
+                    "discarded_candidate_keys": [],
+                }),
+                encoding="utf-8",
+            )
+            return super().communicate(None)
+
+    processes: list[MergeProcess] = []
+
+    def start_process(command: list[str], **options: Any) -> MergeProcess:
+        process = MergeProcess(command, **options)
+        processes.append(process)
+        return process
+
+    monkeypatch.setattr("subprocess.Popen", start_process)
+    request = build_theme_merge_request(
+        "merge-1",
+        1145350,
+        "Hades II",
+        (ThemeMergeCandidate(
+            candidate_key="1:combat",
+            title="Combat",
+            summary="Combat feels responsive.",
+            polarity="positive",
+            supporting_review_revision_ids=("revision-1",),
+        ),),
+    )
+
+    run = CodexCliProvider(executable="codex.cmd").merge_themes(request)
+
+    assert run.result.themes[0].theme_id == "responsive-combat"
+    assert run.usage.input_tokens == 120
+    assert "Map or discard every supplied candidate" in processes[0].prompt
 
 
 def test_codex_cli_retries_one_transient_theme_failure(monkeypatch) -> None:

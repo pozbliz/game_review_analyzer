@@ -14,11 +14,15 @@ from game_review_analyzer.application.opinion_consolidation import (
 from game_review_analyzer.application.report_creation import create_report
 from game_review_analyzer.application.provider import (
     AnalysisProviderError,
+    build_theme_merge_request,
     build_theme_analysis_request,
     CancellationSignal,
     ExtractionProviderRun,
     ProviderRun,
     ThemeProviderRun,
+    ThemeMergeProviderRun,
+    ProviderUsage,
+    validate_theme_merge_result,
     validate_theme_provider_result,
 )
 from game_review_analyzer.application.theme_metrics import calculate_aggregate_theme_metrics
@@ -29,6 +33,8 @@ from game_review_analyzer.domain.analysis import (
     ANALYSIS_CONTRACT_VERSION,
     ExtractedOpinionPoint,
     ThemeAnalysisRequest,
+    ThemeMergeCandidate,
+    ThemeMergeRequest,
 )
 from game_review_analyzer.domain.reports import (
     AggregateReport,
@@ -55,6 +61,10 @@ from game_review_analyzer.infrastructure.persistence.opinion_extractions import 
 )
 from game_review_analyzer.infrastructure.persistence.review_revisions import (
     load_review_revisions_by_ids,
+)
+from game_review_analyzer.infrastructure.persistence.theme_batches import (
+    load_theme_batch,
+    save_theme_batch,
 )
 from game_review_analyzer.shared.telemetry import TRACER, log_event
 
@@ -94,6 +104,18 @@ class ThemeAnalysisProvider(Protocol):
         self, request: ThemeAnalysisRequest, *, cancel_event: CancellationSignal
     ) -> ThemeProviderRun:
         """Return Version 3 Theme candidates for one complete batch."""
+
+
+@runtime_checkable
+class ThemeMergeProvider(Protocol):
+    """Describe the provider behavior required to merge mapped candidates."""
+
+    model: str
+
+    def merge_themes(
+        self, request: ThemeMergeRequest, *, cancel_event: CancellationSignal
+    ) -> ThemeMergeProviderRun:
+        """Return mappings for every validated map candidate."""
 
 
 class _DurableCancellation:
@@ -149,6 +171,9 @@ class AnalysisRunner:
     def _run_started(self, run: AnalysisRun, started_at: float) -> None:
         if run.report_kind == "test":
             self._run_test_report(run, started_at)
+            return
+        if run.report_kind == "main":
+            self._run_main_report(run, started_at)
             return
         report_id = f"analysis-{run.id}"
         if load_report_version(self._database_path, report_id) is not None:
@@ -429,6 +454,216 @@ class AnalysisRunner:
                 error_type=type(error).__name__,
             )
 
+    def _run_main_report(self, run: AnalysisRun, started_at: float) -> None:
+        report_id: str = f"analysis-{run.id}"
+        current_report: AggregateReport | None = load_aggregate_report_slot(
+            self._database_path, run.app_id, "main"
+        )
+        if current_report is not None and current_report.report_id == report_id:
+            finish_analysis_run(
+                self._database_path, run.id, "completed", report_version_id=report_id
+            )
+            return
+        try:
+            metadata = load_game_dataset(self._database_path, run.app_id)
+            if metadata is None:
+                raise ValueError("Matching Game Dataset metadata is unavailable")
+            revisions: dict[int, SteamReview] = load_review_revisions_by_ids(
+                self._database_path, run.review_revision_ids
+            )
+            cancellation = _DurableCancellation(self._database_path, run.id)
+            map_runs: list[ThemeProviderRun] = []
+            merge_candidates: list[ThemeMergeCandidate] = []
+            for batch_number, batch_revision_ids in enumerate(
+                self._batches(run.review_revision_ids, revisions), start=1
+            ):
+                request = build_theme_analysis_request(
+                    request_id=f"{run.id}-map-{batch_number}",
+                    app_id=run.app_id,
+                    game_title=metadata.title,
+                    reviews=(
+                        AnalysisSourceReview(
+                            review_revision_id=revisions[revision_id].review_id,
+                            text=revisions[revision_id].text,
+                        )
+                        for revision_id in batch_revision_ids
+                    ),
+                )
+                provider_run: ThemeProviderRun | None = load_theme_batch(
+                    self._database_path,
+                    run_id=run.id,
+                    batch_number=batch_number,
+                    input_digest=request.scope_sha256,
+                    provider=run.provider,
+                    model=run.model,
+                    contract_version=ANALYSIS_CONTRACT_VERSION,
+                )
+                if provider_run is None:
+                    provider_run = self._theme_provider().analyze_themes(
+                        request,
+                        cancel_event=cancellation,
+                    )
+                    validate_theme_provider_result(
+                        request,
+                        provider_run.result,
+                        expected_provider=run.provider,
+                        expected_model=run.model,
+                    )
+                    save_theme_batch(
+                        self._database_path,
+                        run_id=run.id,
+                        batch_number=batch_number,
+                        input_digest=request.scope_sha256,
+                        provider=run.provider,
+                        model=run.model,
+                        contract_version=ANALYSIS_CONTRACT_VERSION,
+                        provider_run=provider_run,
+                    )
+                map_runs.append(provider_run)
+                merge_candidates.extend(
+                    ThemeMergeCandidate(
+                        candidate_key=f"{batch_number}:{candidate.candidate_id}",
+                        title=candidate.title,
+                        summary=candidate.summary,
+                        polarity=candidate.polarity,
+                        supporting_review_revision_ids=(
+                            candidate.supporting_review_revision_ids
+                        ),
+                    )
+                    for candidate in provider_run.result.themes
+                )
+
+            merge_usage = ProviderUsage(None, None, None)
+            themes: tuple[ThemeDefinition, ...] = ()
+            memberships: tuple[ThemeMembership, ...] = ()
+            if merge_candidates:
+                merge_request = build_theme_merge_request(
+                    request_id=f"{run.id}-merge",
+                    app_id=run.app_id,
+                    game_title=metadata.title,
+                    candidates=merge_candidates,
+                )
+                merge_run = self._theme_merge_provider().merge_themes(
+                    merge_request,
+                    cancel_event=cancellation,
+                )
+                validate_theme_merge_result(
+                    merge_request,
+                    merge_run.result,
+                    expected_provider=run.provider,
+                    expected_model=run.model,
+                )
+                merge_usage = merge_run.usage
+                candidate_by_key: dict[str, ThemeMergeCandidate] = {
+                    candidate.candidate_key: candidate
+                    for candidate in merge_candidates
+                }
+                revision_id_by_review_id: dict[str, int] = {
+                    review.review_id: revision_id
+                    for revision_id, review in revisions.items()
+                }
+                themes = tuple(
+                    ThemeDefinition(
+                        theme_id=theme.theme_id,
+                        title=theme.title,
+                        summary=theme.summary,
+                        polarity=theme.polarity,
+                    )
+                    for theme in merge_run.result.themes
+                )
+                membership_pairs: set[tuple[str, int]] = {
+                    (
+                        theme.theme_id,
+                        revision_id_by_review_id[review_id],
+                    )
+                    for theme in merge_run.result.themes
+                    for candidate_key in theme.source_candidate_keys
+                    for review_id in candidate_by_key[
+                        candidate_key
+                    ].supporting_review_revision_ids
+                }
+                memberships = tuple(
+                    ThemeMembership(
+                        theme_id=theme_id,
+                        review_revision_id=revision_id,
+                    )
+                    for theme_id, revision_id in sorted(membership_pairs)
+                )
+
+            all_metrics: AggregateThemeMetrics = calculate_aggregate_theme_metrics(
+                run.review_revision_ids,
+                run.early_review_revision_ids,
+                run.recent_review_revision_ids,
+                themes,
+                memberships,
+            )
+            retained_ids: set[str] = {
+                metric.theme_id
+                for metric in all_metrics.all_themes
+                if max(
+                    metric.oldest_support_percentage,
+                    metric.newest_support_percentage,
+                )
+                >= 2
+            }
+            retained_themes: tuple[ThemeDefinition, ...] = tuple(
+                theme for theme in themes if theme.theme_id in retained_ids
+            )
+            retained_memberships: tuple[ThemeMembership, ...] = tuple(
+                membership
+                for membership in memberships
+                if membership.theme_id in retained_ids
+            )
+            retained_metrics: AggregateThemeMetrics = (
+                calculate_aggregate_theme_metrics(
+                    run.review_revision_ids,
+                    run.early_review_revision_ids,
+                    run.recent_review_revision_ids,
+                    retained_themes,
+                    retained_memberships,
+                )
+            )
+            report = AggregateReport(
+                schema_version="3.0",
+                report_id=report_id,
+                kind="main",
+                app_id=run.app_id,
+                metadata_snapshot=metadata,
+                review_revision_ids=run.review_revision_ids,
+                oldest_review_revision_ids=run.early_review_revision_ids,
+                newest_review_revision_ids=run.recent_review_revision_ids,
+                provider=run.provider,
+                model=run.model,
+                contract_version=ANALYSIS_CONTRACT_VERSION,
+                themes=retained_themes,
+                memberships=retained_memberships,
+                theme_metrics=retained_metrics,
+            )
+            save_aggregate_report(self._database_path, report)
+            usages: tuple[ProviderUsage, ...] = tuple(
+                provider_run.usage for provider_run in map_runs
+            ) + (merge_usage,)
+            finish_analysis_run(
+                self._database_path,
+                run.id,
+                "completed",
+                report_version_id=report_id,
+                input_tokens=_sum_usage(usages, "input_tokens"),
+                cached_input_tokens=_sum_usage(usages, "cached_input_tokens"),
+                output_tokens=_sum_usage(usages, "output_tokens"),
+            )
+        except AnalysisProviderError as error:
+            state = "cancelled" if error.code == "cancelled" else "failed"
+            finish_analysis_run(self._database_path, run.id, state, error_code=error.code)
+        except ValueError:
+            finish_analysis_run(
+                self._database_path, run.id, "failed", error_code="invalid_theme_result"
+            )
+        except Exception:
+            finish_analysis_run(
+                self._database_path, run.id, "failed", error_code="internal_analysis_error"
+            )
+
     def _run_test_report(self, run: AnalysisRun, started_at: float) -> None:
         report_id: str = f"analysis-{run.id}"
         current_report: AggregateReport | None = load_aggregate_report_slot(
@@ -606,6 +841,14 @@ class AnalysisRunner:
             )
         return self._provider
 
+    def _theme_merge_provider(self) -> ThemeMergeProvider:
+        if not isinstance(self._provider, ThemeMergeProvider):
+            raise AnalysisProviderError(
+                "provider_capability_mismatch",
+                "Provider does not support Version 3 Theme merging",
+            )
+        return self._provider
+
     def _batches(
         self,
         revision_ids: tuple[int, ...],
@@ -617,3 +860,15 @@ class AnalysisRunner:
             min(self._batch_character_limit, 32_000),
             self._batch_review_limit,
         )
+
+
+def _sum_usage(
+    usages: tuple[ProviderUsage, ...],
+    field: str,
+) -> int | None:
+    values: tuple[int, ...] = tuple(
+        value
+        for usage in usages
+        if (value := getattr(usage, field)) is not None
+    )
+    return sum(values) if values else None

@@ -2,11 +2,25 @@
 
 from pathlib import Path
 
+from game_review_analyzer.application.provider import (
+    AnalysisProviderError,
+    ProviderUsage,
+    ThemeMergeProviderRun,
+    ThemeProviderRun,
+)
+from game_review_analyzer.domain.analysis import (
+    ThemeAnalysisResult,
+    ThemeCandidate,
+    ThemeMergeResult,
+    ThemeMergeTheme,
+)
 from game_review_analyzer.domain.reports import ThemeMetricPolicy
 from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     create_analysis_run,
+    get_analysis_run,
+    retry_analysis_run,
 )
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.persistence.game_datasets import save_game_dataset
@@ -18,6 +32,10 @@ from game_review_analyzer.infrastructure.persistence.jobs import (
 from game_review_analyzer.infrastructure.persistence.review_revisions import (
     load_review_revisions_by_ids,
     save_review_revisions,
+)
+from game_review_analyzer.infrastructure.analysis_runner import AnalysisRunner
+from game_review_analyzer.infrastructure.persistence.report_versions import (
+    load_aggregate_report_slot,
 )
 
 
@@ -53,6 +71,113 @@ def test_main_report_selects_500_oldest_and_500_newest_complete_reviews(
     assert oldest_times == list(range(2, 502))
     assert newest_times == list(range(503, 1_003))
     assert reviews[run.early_review_revision_ids[0]].text == "Review 2"
+
+
+def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
+    tmp_path: Path,
+) -> None:
+    class CheckpointingProvider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def __init__(self) -> None:
+            self.map_calls: int = 0
+            self.failed_once: bool = False
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            self.map_calls += 1
+            if self.map_calls == 2 and not self.failed_once:
+                self.failed_once = True
+                raise AnalysisProviderError("provider_nonzero_exit", "test failure")
+            themes: tuple[ThemeCandidate, ...] = ()
+            if request.request_id.endswith("map-1"):
+                ids: tuple[str, ...] = tuple(
+                    review.review_revision_id for review in request.reviews
+                )
+                themes = (
+                    candidate("visible", ids[:25]),
+                    candidate("retained", ids[25:35]),
+                    candidate("small", ids[35:44]),
+                    candidate("discarded", ids[44:45]),
+                )
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version="3.0",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=tuple(
+                        review.review_revision_id for review in request.reviews
+                    ),
+                    themes=themes,
+                ),
+                usage=ProviderUsage(100, 0, 10),
+            )
+
+        def merge_themes(self, request, *, cancel_event=None) -> ThemeMergeProviderRun:
+            by_title = {item.title: item.candidate_key for item in request.candidates}
+            return ThemeMergeProviderRun(
+                result=ThemeMergeResult(
+                    schema_version="3.0",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_candidate_keys=tuple(by_title.values()),
+                    themes=tuple(
+                        ThemeMergeTheme(
+                            theme_id=title,
+                            title=title.title(),
+                            summary=f"{title.title()} summary.",
+                            polarity="positive",
+                            source_candidate_keys=(by_title[title],),
+                        )
+                        for title in ("visible", "retained", "small")
+                    ),
+                    discarded_candidate_keys=(by_title["discarded"],),
+                ),
+                usage=ProviderUsage(50, 0, 5),
+            )
+
+    database_path: Path = seeded_database(tmp_path, review_count=1_000)
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+        cohort_size=500,
+        report_kind="main",
+    )
+    provider = CheckpointingProvider()
+
+    AnalysisRunner(database_path, provider, batch_review_limit=250).run(run.id)
+    assert get_analysis_run(database_path, run.id).state == "failed"
+
+    retry_analysis_run(database_path, run.id)
+    AnalysisRunner(database_path, provider, batch_review_limit=250).run(run.id)
+
+    completed = get_analysis_run(database_path, run.id)
+    report = load_aggregate_report_slot(database_path, 1145350, "main")
+    assert provider.map_calls == 5
+    assert completed.state == "completed"
+    assert completed.input_tokens == 450
+    assert report is not None
+    assert {theme.theme_id for theme in report.themes} == {"visible", "retained"}
+    assert tuple(
+        metric.theme_id for metric in report.theme_metrics.positive_headlines
+    ) == ("visible",)
+
+
+def candidate(candidate_id: str, review_ids: tuple[str, ...]) -> ThemeCandidate:
+    return ThemeCandidate(
+        candidate_id=candidate_id,
+        title=candidate_id,
+        summary=f"{candidate_id.title()} summary.",
+        polarity="positive",
+        supporting_review_revision_ids=review_ids,
+    )
 
 
 def seeded_database(

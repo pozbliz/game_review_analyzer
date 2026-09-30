@@ -13,6 +13,9 @@ from game_review_analyzer.domain.analysis import (
     OpinionExtractionResult,
     ThemeAnalysisRequest,
     ThemeAnalysisResult,
+    ThemeMergeCandidate,
+    ThemeMergeRequest,
+    ThemeMergeResult,
 )
 
 
@@ -79,6 +82,46 @@ class ThemeProviderRun:
     usage: ProviderUsage
 
 
+@dataclass(frozen=True)
+class ThemeMergeProviderRun:
+    """Return one validated Theme merge result and its measured usage."""
+
+    result: ThemeMergeResult
+    usage: ProviderUsage
+
+
+def build_theme_merge_request(
+    request_id: str,
+    app_id: int,
+    game_title: str,
+    candidates: Iterable[ThemeMergeCandidate],
+) -> ThemeMergeRequest:
+    """Create a Version 3 merge request bound to every mapped candidate."""
+
+    source_candidates: tuple[ThemeMergeCandidate, ...] = tuple(candidates)
+    scope_data: dict[str, Any] = {
+        "app_id": app_id,
+        "game_title": game_title,
+        "candidates": [
+            candidate.model_dump(mode="json") for candidate in source_candidates
+        ],
+    }
+    canonical_scope: str = json.dumps(
+        scope_data,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return ThemeMergeRequest(
+        schema_version=ANALYSIS_CONTRACT_VERSION,
+        request_id=request_id,
+        scope_sha256=sha256(canonical_scope.encode("utf-8")).hexdigest(),
+        app_id=app_id,
+        game_title=game_title,
+        candidates=source_candidates,
+    )
+
+
 def validate_theme_provider_result(
     request: ThemeAnalysisRequest,
     result: ThemeAnalysisResult,
@@ -100,6 +143,38 @@ def validate_theme_provider_result(
         raise ValueError("Theme result does not complete the exact review scope")
     if result.provider != expected_provider or result.model != expected_model:
         raise ValueError("Theme result provenance does not match the selected provider")
+
+
+def validate_theme_merge_result(
+    request: ThemeMergeRequest,
+    result: ThemeMergeResult,
+    *,
+    expected_provider: str,
+    expected_model: str,
+) -> None:
+    """Validate one merge result against every exact source candidate."""
+
+    if result.request_id != request.request_id or result.scope_sha256 != request.scope_sha256:
+        raise ValueError("Theme merge result does not match its request")
+    candidate_by_key: dict[str, ThemeMergeCandidate] = {
+        candidate.candidate_key: candidate for candidate in request.candidates
+    }
+    expected_keys: set[str] = set(candidate_by_key)
+    mapped_keys: set[str] = {
+        key for theme in result.themes for key in theme.source_candidate_keys
+    }
+    if set(result.completed_candidate_keys) != expected_keys:
+        raise ValueError("Theme merge does not complete the exact candidate scope")
+    if mapped_keys | set(result.discarded_candidate_keys) != expected_keys:
+        raise ValueError("Theme merge must map or discard every candidate")
+    if any(
+        candidate_by_key[key].polarity != theme.polarity
+        for theme in result.themes
+        for key in theme.source_candidate_keys
+    ):
+        raise ValueError("Merged Theme polarity must match its source candidates")
+    if result.provider != expected_provider or result.model != expected_model:
+        raise ValueError("Theme merge provenance does not match the selected provider")
 
 
 class AnalysisProviderError(RuntimeError):

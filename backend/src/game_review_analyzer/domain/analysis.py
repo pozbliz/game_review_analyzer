@@ -135,6 +135,70 @@ class ThemeAnalysisResult(ContractModel):
         return self
 
 
+class ThemeMergeCandidate(ContractModel):
+    """Identify one validated map candidate for cross-batch merging."""
+
+    candidate_key: NonEmptyString
+    title: NonEmptyString
+    summary: NonEmptyString
+    polarity: ThemePolarity
+    supporting_review_revision_ids: tuple[NonEmptyString, ...] = Field(min_length=1)
+
+
+class ThemeMergeRequest(ContractModel):
+    """Bind one merge call to the complete set of mapped candidates."""
+
+    schema_version: Literal["3.0"]
+    request_id: NonEmptyString
+    scope_sha256: Sha256Digest
+    app_id: int = Field(gt=0)
+    game_title: NonEmptyString
+    candidates: tuple[ThemeMergeCandidate, ...] = Field(min_length=1)
+
+
+class ThemeMergeTheme(ContractModel):
+    """Map source candidates into one merged Theme definition."""
+
+    theme_id: NonEmptyString
+    title: NonEmptyString
+    summary: NonEmptyString
+    polarity: ThemePolarity
+    source_candidate_keys: tuple[NonEmptyString, ...] = Field(min_length=1)
+
+
+class ThemeMergeResult(ContractModel):
+    """Return Theme mappings and explicit discards for every source candidate."""
+
+    schema_version: Literal["3.0"]
+    request_id: NonEmptyString
+    scope_sha256: Sha256Digest
+    provider: NonEmptyString
+    model: NonEmptyString
+    completed_candidate_keys: tuple[NonEmptyString, ...] = Field(min_length=1)
+    themes: tuple[ThemeMergeTheme, ...]
+    discarded_candidate_keys: tuple[NonEmptyString, ...]
+
+    @model_validator(mode="after")
+    def require_unique_identifiers(self) -> "ThemeMergeResult":
+        """Reject repeated Theme, completion, mapping, and discard identifiers."""
+
+        completed: tuple[str, ...] = self.completed_candidate_keys
+        theme_ids: tuple[str, ...] = tuple(theme.theme_id for theme in self.themes)
+        mapped: tuple[str, ...] = tuple(
+            key for theme in self.themes for key in theme.source_candidate_keys
+        )
+        discarded: tuple[str, ...] = self.discarded_candidate_keys
+        if len(completed) != len(set(completed)):
+            raise ValueError("Completed candidate keys must be unique")
+        if len(theme_ids) != len(set(theme_ids)):
+            raise ValueError("Merged Theme identifiers must be unique")
+        if len(mapped) != len(set(mapped)):
+            raise ValueError("Source candidates must map at most once")
+        if len(discarded) != len(set(discarded)) or set(mapped) & set(discarded):
+            raise ValueError("Discarded candidate keys must be unique and unmapped")
+        return self
+
+
 class OpinionPoint(ContractModel):
     """Represent one exact opinion excerpt extracted from a supplied review."""
 
