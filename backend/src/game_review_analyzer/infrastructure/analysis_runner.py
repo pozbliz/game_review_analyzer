@@ -7,6 +7,7 @@ from time import monotonic
 from typing import Protocol, runtime_checkable
 
 from game_review_analyzer.application.manual_codex import build_analysis_request
+from game_review_analyzer.application.main_report import pack_review_batches
 from game_review_analyzer.application.opinion_consolidation import (
     exclude_known_generic_opinion_points,
 )
@@ -610,18 +611,9 @@ class AnalysisRunner:
         revision_ids: tuple[int, ...],
         revisions: dict[int, SteamReview],
     ) -> Iterator[tuple[int, ...]]:
-        batch: list[int] = []
-        characters: int = 0
-        for revision_id in revision_ids:
-            text_length: int = len(revisions[revision_id].text)
-            if batch and (
-                len(batch) >= self._batch_review_limit
-                or characters + text_length > self._batch_character_limit
-            ):
-                yield tuple(batch)
-                batch = []
-                characters = 0
-            batch.append(revision_id)
-            characters += text_length
-        if batch:
-            yield tuple(batch)
+        yield from pack_review_batches(
+            revision_ids,
+            revisions,
+            min(self._batch_character_limit, 32_000),
+            self._batch_review_limit,
+        )
