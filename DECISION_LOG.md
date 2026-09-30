@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-09-30 - Reports show up to 10 qualifying Themes per polarity
+
+**What changed:**
+
+- Raised the Version 3 visible Theme cap from 5 to 10 for each polarity.
+- Kept the 5% support threshold, so reports do not add weak Themes to fill the cap.
+- Enlarged and boxed the evidence chevron.
+- Added a restrained sage background and boundary around expanded review evidence.
+
+**Why:**
+
+- Reports with many major Themes should expose more of them without overstating sparse results.
+- The evidence control and expanded reviews needed clearer visual affordance and separation.
+
+**New issues:**
+
+- Reports can become taller when more than five Themes qualify.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Theme validation failures receive one corrective retry
 
 **What changed:**

@@ -211,7 +211,7 @@ def test_aggregate_metrics_cap_each_polarity_and_allow_no_visible_themes() -> No
             summary=f"Positive summary {index}.",
             polarity=ThemePolarity.POSITIVE,
         )
-        for index in range(6)
+        for index in range(11)
     )
     memberships: tuple[ThemeMembership, ...] = tuple(
         ThemeMembership(theme_id=theme.theme_id, review_revision_id=index + 1)
@@ -233,7 +233,7 @@ def test_aggregate_metrics_cap_each_polarity_and_allow_no_visible_themes() -> No
         memberships=(),
     )
 
-    assert len(metrics.positive_headlines) == 5
+    assert len(metrics.positive_headlines) == 10
     assert metrics.negative_headlines == ()
     assert empty.positive_headlines == ()
     assert empty.negative_headlines == ()

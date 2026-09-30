@@ -38,6 +38,7 @@ Each Test Report Theme can reveal its matching local reviews. Evidence is sorted
 
 The current Test and Main Reports are saved separately from Version 2 reports. Remaining extension edge cases are still open.
 Invalid Theme batch or merge output is retried once with a safe correction before the run fails; completed batch checkpoints remain reusable.
+Reports show up to 10 positive and 10 negative Themes that meet the 5% cohort threshold. Evidence opens on a distinct sage review surface.
 
 Current application data was reset before this redesign. The gitignored evaluation corpus remains available.
 

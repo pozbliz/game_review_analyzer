@@ -102,10 +102,10 @@ def calculate_aggregate_theme_metrics(
         all_themes=tuple(metrics),
         positive_headlines=tuple(
             metric for metric in visible if metric.polarity == ThemePolarity.POSITIVE
-        )[:5],
+        )[:10],
         negative_headlines=tuple(
             metric for metric in visible if metric.polarity == ThemePolarity.NEGATIVE
-        )[:5],
+        )[:10],
     )
 
 

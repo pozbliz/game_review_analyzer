@@ -202,7 +202,9 @@ function ThemeItem(
         onClick={() => toggleEvidence(theme)}
       >
         <h3>{theme.title}</h3>
-        <span aria-hidden="true">{expanded ? "▴" : "▾"}</span>
+        <span className="aggregate-theme-chevron" aria-hidden="true">
+          {expanded ? "▴" : "▾"}
+        </span>
       </button>
       <p>{theme.summary}</p>
       <strong>{theme.support_count} reviews · {formatPercentage(theme.total_support_percentage)}% total</strong>

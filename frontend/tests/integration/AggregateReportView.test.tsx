@@ -61,6 +61,7 @@ describe("aggregate Test Report", () => {
     expect(screen.getByText("4 reviews · 8% total")).toBeVisible();
     expect(screen.getByText("Oldest 4% · Newest 12% · +8 percentage points")).toBeVisible();
     const toggle = screen.getByRole("button", { name: "Show review evidence for Responsive combat" });
+    expect(toggle.querySelector(".aggregate-theme-chevron")).toBeVisible();
     fireEvent.click(toggle);
 
     const evidenceList = await screen.findByRole("region", { name: "Review evidence for Responsive combat" });
