@@ -45,7 +45,7 @@
 - [x] Replace grouped merge keys with one validated assignment item per candidate.
 - [x] Stop stalled Codex batches after 120 seconds and preserve completed checkpoints.
 - [x] Retry invalid Theme batches and merges once with safe corrective instructions.
-- [x] Show up to 10 qualifying Themes per polarity without padding sparse reports.
+- [x] Show up to 10 qualifying Themes per polarity without padding or matching positive and negative counts.
 - [x] Enlarge and box the evidence disclosure chevron and distinguish review evidence with a sage surface.
 - [x] Let each evidence review collapse independently while keeping reviews expanded by default.
 

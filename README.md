@@ -38,7 +38,7 @@ Each Test Report Theme can reveal its matching local reviews. Evidence is sorted
 
 The current Test and Main Reports are saved separately from Version 2 reports. Remaining extension edge cases are still open.
 Invalid Theme batch or merge output is retried once with a safe correction before the run fails; completed batch checkpoints remain reusable.
-Reports show up to 10 positive and 10 negative Themes that meet the 5% cohort threshold. Evidence opens on a distinct sage review surface.
+Reports independently show up to 10 positive and 10 negative Themes that meet the 5% cohort threshold. The two lists can have different counts. Evidence opens on a distinct sage review surface.
 
 Current application data was reset before this redesign. The gitignored evaluation corpus remains available.
 
@@ -48,7 +48,7 @@ Current application data was reset before this redesign. The gitignored evaluati
 - Complete a Full Import of eligible English reviews before analysis.
 - Refresh stored datasets before extending or replacing the Main Report.
 - Grow one Main Report in 1,000-review increments split between oldest and newest unseen reviews.
-- Show up to five positive and five negative Themes that reach 5% support in either cohort.
+- Show up to 10 positive and 10 negative Themes that reach 5% support in either cohort, with independent counts per polarity.
 - Keep one separate 50-review Test Report for provider testing.
 - Include tags, regional price, descriptions, features, platforms, DLC/storefront information, screenshots, and opt-in Steam-hosted trailers when available.
 - Export aggregated Theme metrics without review text or reviewer identity.

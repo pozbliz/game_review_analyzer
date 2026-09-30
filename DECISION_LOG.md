@@ -48,6 +48,7 @@
 
 - Raised the Version 3 visible Theme cap from 5 to 10 for each polarity.
 - Kept the 5% support threshold, so reports do not add weak Themes to fill the cap.
+- Select positive and negative Themes independently; their visible counts do not need to match.
 - Enlarged and boxed the evidence chevron.
 - Added a restrained sage background and boundary around expanded review evidence.
 

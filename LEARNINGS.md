@@ -14,3 +14,7 @@
 
 - Returning users want saved reports surfaced before creation controls, with visible dates in report history and **Open latest report** as the primary action.
 - The normal workflow is download and prepare once, then create another immutable report only when explicitly requested; Dataset maintenance and the scope digest should not occupy the report view.
+
+## 2026-09-30
+
+- Positive and negative Theme lists are independent. Their counts can differ, and neither list should be padded to match the other.
