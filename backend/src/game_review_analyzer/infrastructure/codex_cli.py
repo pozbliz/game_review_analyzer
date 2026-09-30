@@ -281,8 +281,21 @@ class CodexCliProvider:
                     expected_model=self.model,
                 )
             except (ValidationError, ValueError) as error:
+                error_code: str = _theme_merge_validation_error_code(error)
+                log_event(
+                    "provider.attempt_failed",
+                    level="error",
+                    provider="codex-cli",
+                    model=self.model,
+                    request_id=request.request_id,
+                    operation="theme_merge",
+                    attempt=attempt,
+                    stage="validation",
+                    error_code=error_code,
+                    retrying=False,
+                )
                 raise CodexCliError(
-                    "invalid_theme_merge_result",
+                    error_code,
                     "Codex CLI returned invalid Theme merge output",
                 ) from error
             return ThemeMergeProviderRun(result=result, usage=self._usage(stdout))
@@ -695,6 +708,46 @@ def _theme_validation_error_code(error: ValidationError | ValueError) -> str:
         "Theme result does not complete the exact review scope": "theme_scope_incomplete",
         "Theme result provenance does not match the selected provider": "theme_provenance_mismatch",
     }.get(str(error), "invalid_theme_result")
+
+
+def _theme_merge_validation_error_code(error: ValidationError | ValueError) -> str:
+    """Classify Theme merge failures without retaining model output."""
+
+    if isinstance(error, ValidationError):
+        messages: tuple[str, ...] = tuple(
+            str(detail["msg"]) for detail in error.errors(include_input=False)
+        )
+        classifications: tuple[tuple[str, str], ...] = (
+            (
+                "Completed candidate keys must be unique",
+                "theme_merge_completed_keys_duplicate",
+            ),
+            ("Merged Theme identifiers must be unique", "theme_merge_ids_duplicate"),
+            ("Source candidates must map at most once", "theme_merge_mapping_duplicate"),
+            (
+                "Discarded candidate keys must be unique and unmapped",
+                "theme_merge_discard_invalid",
+            ),
+        )
+        for message, error_code in classifications:
+            if any(message in validation_message for validation_message in messages):
+                return error_code
+        return "invalid_theme_merge_result"
+    return {
+        "Theme merge result does not match its request": "theme_merge_request_mismatch",
+        "Theme merge does not complete the exact candidate scope": (
+            "theme_merge_completion_incomplete"
+        ),
+        "Theme merge must map or discard every candidate": (
+            "theme_merge_scope_incomplete"
+        ),
+        "Merged Theme polarity must match its source candidates": (
+            "theme_merge_polarity_mismatch"
+        ),
+        "Theme merge provenance does not match the selected provider": (
+            "theme_merge_provenance_mismatch"
+        ),
+    }.get(str(error), "invalid_theme_merge_result")
 
 
 def codex_cli_status(

@@ -329,6 +329,59 @@ def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
     assert discarded_schema["items"]["enum"] == ["1:combat"]
 
 
+def test_codex_cli_reports_incomplete_merge_scope(monkeypatch) -> None:
+    class IncompleteMergeProcess(CompletedProcess):
+        def communicate(
+            self,
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            del timeout
+            assert input is not None
+            output_path: Path = Path(
+                self.command[self.command.index("--output-last-message") + 1]
+            )
+            request_data: dict[str, Any] = json.loads(
+                input.split("REQUEST_JSON\n", 1)[1]
+            )
+            output_path.write_text(
+                json.dumps({
+                    "schema_version": "3.0",
+                    "request_id": request_data["request_id"],
+                    "scope_sha256": request_data["scope_sha256"],
+                    "provider": "codex-cli",
+                    "model": "gpt-5.6-luna",
+                    "completed_candidate_keys": ["1:combat"],
+                    "themes": [],
+                    "discarded_candidate_keys": [],
+                }),
+                encoding="utf-8",
+            )
+            return super().communicate(None)
+
+    monkeypatch.setattr(
+        "subprocess.Popen",
+        lambda command, **options: IncompleteMergeProcess(command, **options),
+    )
+    request = build_theme_merge_request(
+        "merge-1",
+        1145350,
+        "Hades II",
+        (ThemeMergeCandidate(
+            candidate_key="1:combat",
+            title="Combat",
+            summary="Combat feels responsive.",
+            polarity="positive",
+            supporting_review_revision_ids=("revision-1",),
+        ),),
+    )
+
+    with pytest.raises(CodexCliError) as raised:
+        CodexCliProvider(executable="codex.cmd").merge_themes(request)
+
+    assert raised.value.code == "theme_merge_scope_incomplete"
+
+
 def test_codex_cli_retries_one_transient_theme_failure(monkeypatch) -> None:
     class RateLimitedProcess(CompletedProcess):
         returncode: int = 1

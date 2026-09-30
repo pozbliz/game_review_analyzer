@@ -39,6 +39,7 @@
 - [x] Verify visible 5% thresholds and valid empty reports.
 - [x] Bind Codex Theme memberships to the exact review IDs in each batch.
 - [x] Bind Codex merge mappings to the exact candidate keys.
+- [x] Classify merge-contract failures without retaining provider output.
 - [x] Stop stalled Codex batches after 120 seconds and preserve completed checkpoints.
 
 ### Extend and Replace Main Report
