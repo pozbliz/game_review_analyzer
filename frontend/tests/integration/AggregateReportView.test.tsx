@@ -69,6 +69,13 @@ describe("aggregate Test Report", () => {
     expect(reviews[0]).toHaveTextContent("Most helpful review");
     expect(reviews[0]).toHaveTextContent("20 helpful votes");
     expect(reviews[1]).toHaveTextContent("Less helpful review");
+    const firstReviewDetails: HTMLDetailsElement | null = reviews[0].querySelector("details");
+    const firstReviewSummary: HTMLElement | null = reviews[0].querySelector("summary");
+    expect(firstReviewDetails).toHaveAttribute("open");
+    expect(firstReviewSummary).not.toBeNull();
+    fireEvent.click(firstReviewSummary as HTMLElement);
+    expect(firstReviewDetails).not.toHaveAttribute("open");
+    expect(reviews[1].querySelector("details")).toHaveAttribute("open");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/games/1145350/reports/test/themes/responsive-combat/evidence",
     );

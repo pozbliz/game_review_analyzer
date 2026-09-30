@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-09-30 - Evidence reviews collapse independently
+
+**What changed:**
+
+- Wrapped each evidence review in an expanded native disclosure control.
+- Kept each review's recommendation and helpful-vote count visible when collapsed.
+
+**Why:**
+
+- Long evidence lists need per-review scan control without hiding evidence by default.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Report deletion returns to the game page
 
 **What changed:**

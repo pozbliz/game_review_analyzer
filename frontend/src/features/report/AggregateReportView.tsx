@@ -211,10 +211,12 @@ function ThemeItem(
         >
           {!evidence ? <p role="status">Loading review evidence…</p> : evidence.reviews.map((review) => (
             <article key={review.review_revision_id}>
-              <p>{review.text}</p>
-              <small>
-                {review.recommended ? "Recommended" : "Not recommended"} · {review.votes_helpful} helpful votes
-              </small>
+              <details open>
+                <summary>
+                  {review.recommended ? "Recommended" : "Not recommended"} · {review.votes_helpful} helpful votes
+                </summary>
+                <p>{review.text}</p>
+              </details>
             </article>
           ))}
         </section>

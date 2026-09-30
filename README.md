@@ -34,7 +34,7 @@ The shared `Create Report` action supports the 50-review Test Report and 1,000-r
 
 Available reports appear as dated cards above `Create Report`. A Main Report can add 500 oldest and 500 newest unseen reviews through `Extend Report` beside its review count. Each report has a delete control at the bottom and returns to its game page after deletion.
 
-Each Test Report Theme can reveal its matching local reviews. Evidence is sorted by helpful votes and loaded only when opened.
+Each Test Report Theme can reveal its matching local reviews. Evidence is sorted by helpful votes and loaded only when opened. Individual reviews start expanded and can collapse independently.
 
 The current Test and Main Reports are saved separately from Version 2 reports. Remaining extension edge cases are still open.
 Invalid Theme batch or merge output is retried once with a safe correction before the run fails; completed batch checkpoints remain reusable.
