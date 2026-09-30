@@ -124,6 +124,26 @@ class CodexCliProvider:
     ) -> ThemeProviderRun:
         """Return Version 3 Theme candidates for one exact review batch."""
 
+        result_schema: dict[str, Any] = ThemeAnalysisResult.model_json_schema()
+        review_revision_ids: list[str] = [
+            review.review_revision_id for review in request.reviews
+        ]
+        completed_schema: dict[str, Any] = result_schema["properties"][
+            "completed_review_revision_ids"
+        ]
+        completed_schema["items"] = {
+            "enum": review_revision_ids,
+            "type": "string",
+        }
+        completed_schema["minItems"] = len(review_revision_ids)
+        completed_schema["maxItems"] = len(review_revision_ids)
+        membership_schema: dict[str, Any] = result_schema["$defs"]["ThemeCandidate"][
+            "properties"
+        ]["supporting_review_revision_ids"]
+        membership_schema["items"] = {
+            "enum": review_revision_ids,
+            "type": "string",
+        }
         for attempt in range(1, self.max_attempts + 1):
             if cancel_event is not None and cancel_event.is_set():
                 raise CodexCliError("cancelled", "Codex CLI analysis was cancelled")
@@ -131,7 +151,7 @@ class CodexCliProvider:
                 result_json, stdout = self._run_once(
                     request,
                     cancel_event,
-                    result_schema=ThemeAnalysisResult.model_json_schema(),
+                    result_schema=result_schema,
                     instructions=THEME_ANALYSIS_INSTRUCTIONS,
                     operation="theme_analysis",
                     attempt=attempt,

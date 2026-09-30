@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-09-30 - Theme output schema bound to each batch
+
+**What changed:**
+
+- Restricted completed-review and Theme-membership identifiers to the current batch in the Codex output schema.
+- Kept the existing post-response scope validation.
+
+**Why:**
+
+- A live 1,000-review run failed when Codex returned one membership identifier outside its first 63-review batch.
+- The prompt requested exact identifiers, but the generated schema previously accepted any non-empty string.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - First progressive Main Report implemented
 
 **What changed:**

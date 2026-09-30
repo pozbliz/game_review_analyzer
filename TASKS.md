@@ -37,6 +37,7 @@
 - [x] Add repository tests for the single Main Report slot.
 - [x] Build the Main Report API, progress flow, and interface.
 - [x] Verify visible 5% thresholds and valid empty reports.
+- [x] Bind Codex Theme memberships to the exact review IDs in each batch.
 
 ### Extend and Replace Main Report
 

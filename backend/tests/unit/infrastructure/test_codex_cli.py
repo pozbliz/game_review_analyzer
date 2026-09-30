@@ -33,6 +33,8 @@ class CompletedProcess:
         self.command: list[str] = command
         self.options: dict[str, Any] = options
         self.prompt: str = ""
+        schema_path: Path = Path(command[command.index("--output-schema") + 1])
+        self.schema: dict[str, Any] = json.loads(schema_path.read_text(encoding="utf-8"))
 
     def communicate(
         self,
@@ -187,6 +189,32 @@ def test_codex_cli_returns_theme_candidates_without_evidence(monkeypatch) -> Non
     assert run.usage.input_tokens == 120
     assert "Return no excerpts" in processes[0].prompt
     assert "Include every supplied review_revision_id exactly once" in processes[0].prompt
+
+
+def test_codex_cli_constrains_theme_memberships_to_the_requested_reviews(
+    monkeypatch,
+) -> None:
+    processes: list[CompletedProcess] = []
+
+    def start_process(command: list[str], **options: Any) -> CompletedProcess:
+        process = CompletedProcess(command, **options)
+        processes.append(process)
+        return process
+
+    monkeypatch.setattr("subprocess.Popen", start_process)
+
+    CodexCliProvider(executable="codex.cmd").analyze_themes(theme_request())
+
+    completed_schema: dict[str, Any] = processes[0].schema["properties"][
+        "completed_review_revision_ids"
+    ]
+    membership_schema: dict[str, Any] = processes[0].schema["$defs"][
+        "ThemeCandidate"
+    ]["properties"]["supporting_review_revision_ids"]
+    assert completed_schema["items"]["enum"] == ["revision-1"]
+    assert completed_schema["minItems"] == 1
+    assert completed_schema["maxItems"] == 1
+    assert membership_schema["items"]["enum"] == ["revision-1"]
 
 
 def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
