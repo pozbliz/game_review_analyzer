@@ -103,9 +103,25 @@ npm test
 npm run build
 ```
 
-For development, run `uv run uvicorn game_review_analyzer.interfaces.http.app:app --reload` from `backend/`.
+### Start the app
 
-Run `npm run dev` from `frontend/`. For production, build the frontend and run only the backend.
+Start the backend in one PowerShell terminal:
+
+```powershell
+cd backend
+uv run uvicorn game_review_analyzer.interfaces.http.app:app --reload
+```
+
+Start the frontend in a second PowerShell terminal:
+
+```powershell
+cd frontend
+npm run dev
+```
+
+Open <http://localhost:5173> in a browser.
+
+For production, build the frontend and run only the backend.
 
 FastAPI serves `frontend/dist/` with the API.
 
