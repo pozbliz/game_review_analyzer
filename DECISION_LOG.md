@@ -6,6 +6,7 @@
 
 - Restricted each map and merge result to the exact request ID and scope digest.
 - Kept the existing post-response request validation.
+- Verified the failed live run resumed from 468 reviews and completed all 1,000 reviews.
 
 **Why:**
 
