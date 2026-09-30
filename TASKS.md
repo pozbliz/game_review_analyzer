@@ -40,6 +40,7 @@
 - [x] Bind Codex Theme memberships to the exact review IDs in each batch.
 - [x] Bind Codex merge mappings to the exact candidate keys.
 - [x] Classify merge-contract failures without retaining provider output.
+- [x] Require a cross-Theme duplicate-key check in the merge prompt.
 - [x] Stop stalled Codex batches after 120 seconds and preserve completed checkpoints.
 
 ### Extend and Replace Main Report

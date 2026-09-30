@@ -30,6 +30,7 @@
 - Restricted completed-review and Theme-membership identifiers to the current batch in the Codex output schema.
 - Restricted completed, mapped, and discarded merge keys to the current candidate set.
 - Added safe merge-specific validation codes for request, scope, uniqueness, polarity, and provenance failures.
+- Required Codex to check that each candidate key appears once across all mapped and discarded keys.
 - Kept the existing post-response scope validation.
 
 **Why:**

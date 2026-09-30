@@ -313,6 +313,7 @@ def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
     assert run.result.themes[0].theme_id == "responsive-combat"
     assert run.usage.input_tokens == 120
     assert "Map or discard every supplied candidate" in processes[0].prompt
+    assert "A candidate key must appear exactly once across" in processes[0].prompt
     completed_schema: dict[str, Any] = processes[0].schema["properties"][
         "completed_candidate_keys"
     ]
