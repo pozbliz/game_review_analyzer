@@ -11,6 +11,9 @@ from game_review_analyzer.domain.reports import ThemeMetricPolicy
 from game_review_analyzer.infrastructure.persistence.jobs import connect
 
 
+MAIN_REPORT_BATCH_CHARACTER_LIMIT = 32_000
+
+
 class AnalysisRun(BaseModel):
     """Expose one exact provider run and its measured usage."""
 
@@ -84,10 +87,11 @@ def create_analysis_run(
             raise FullHistoryRequired(
                 "Analysis requires a completed full-history import"
             )
-        ordered_revision_ids: tuple[int, ...] = tuple(
-            int(row[0])
+        ordered_revisions: tuple[tuple[int, str], ...] = tuple(
+            (int(row[0]), str(row[1]))
             for row in connection.execute(
-                "SELECT review_revisions.id FROM review_revisions "
+                "SELECT review_revisions.id, review_revisions.content_json "
+                "FROM review_revisions "
                 "JOIN reviews ON reviews.id = review_revisions.review_id "
                 "WHERE reviews.app_id = ? AND NOT EXISTS ("
                 "SELECT 1 FROM review_revisions newer "
@@ -97,6 +101,13 @@ def create_analysis_run(
                 "reviews.id, review_revisions.id",
                 (app_id,),
             )
+        )
+        ordered_revision_ids: tuple[int, ...] = tuple(
+            revision_id
+            for revision_id, content_json in ordered_revisions
+            if report_kind != "main"
+            or len(str(json.loads(content_json)["text"]))
+            <= MAIN_REPORT_BATCH_CHARACTER_LIMIT
         )
         if not ordered_revision_ids:
             raise ValueError("Analysis requires an existing review dataset")

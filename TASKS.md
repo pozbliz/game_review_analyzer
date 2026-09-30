@@ -29,8 +29,8 @@
 
 ### First Main Report
 
-- [ ] Add selection tests for 500 oldest and 500 newest reviews.
-- [ ] Cover overlap removal, complete text, and oversized-review replacement.
+- [x] Add selection tests for 500 oldest and 500 newest reviews.
+- [x] Cover overlap removal, complete text, and oversized-review replacement.
 - [ ] Add character-based packing tests with the 250-review limit.
 - [ ] Implement map batching and validated checkpoints.
 - [ ] Add merge tests for Themes, discarded candidates, and retained 2% candidates.
