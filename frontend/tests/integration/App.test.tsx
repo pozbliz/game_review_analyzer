@@ -655,6 +655,61 @@ describe("application shell", () => {
     );
   });
 
+  it("does not offer Main Report recreation before Slice 18", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") return json([]);
+      if (url === "/api/games/1145350/workspace") {
+        return json({ ...workspace(true), main_report_available: true });
+      }
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+
+    expect(screen.getByRole("option", { name: "Main · 1,000 reviews" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "View Main Report" })).toHaveAttribute(
+      "href",
+      "/main-reports/1145350",
+    );
+  });
+
+  it("describes Main Report map progress truthfully", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") return json([]);
+      if (url === "/api/games/1145350/workspace") return json(workspace(true));
+      if (url === "/api/games/1145350/reports/main" || url === "/api/analysis-runs/analysis-1") {
+        return json({
+          ...analysisRun("running"),
+          report_kind: "main",
+          review_count: 1_000,
+          extracted_review_count: 250,
+          phase: "extracting",
+        });
+      }
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+    fireEvent.change(screen.getByRole("combobox", { name: "Analysis scope" }), {
+      target: { value: "500" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+
+    expect(await screen.findByText("250 of 1,000 reviews analyzed and checkpointed")).toBeVisible();
+  });
+
   it("reopens a saved Test Report independently from the latest analysis", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url: string = request.toString();

@@ -233,6 +233,7 @@ function CatalogApp(): JSX.Element {
             setFullHistoryReady(workspace.full_history_ready);
             setTestReportAvailable(workspace.test_report_available);
             setMainReportAvailable(workspace.main_report_available);
+            if (workspace.main_report_available) setCodexCohortSize(25);
             if (workspace.latest_analysis_run?.state !== "completed") {
               const latestRun: AnalysisRun | null = workspace.latest_analysis_run;
               if (latestRun) {
@@ -503,10 +504,10 @@ function CatalogApp(): JSX.Element {
                     <p className="error">Error code: <code>{analysisRun.error_code}</code></p>
                   )}
                   {analysisRun.state === "running" && analysisRun.phase === "extracting" && (
-                    <p>{analysisRun.extracted_review_count.toLocaleString()} of {analysisRun.review_count.toLocaleString()} reviews extracted and cached</p>
+                    <p>{analysisRun.extracted_review_count.toLocaleString()} of {analysisRun.review_count.toLocaleString()} reviews {analysisRun.report_kind === "main" ? "analyzed and checkpointed" : "extracted and cached"}</p>
                   )}
                   {analysisRun.state === "running" && analysisRun.phase === "consolidating" && (
-                    <p>Consolidating shared themes and cohort comparisons</p>
+                    <p>{analysisRun.report_kind === "main" ? "Merging Theme candidates and calculating metrics" : "Consolidating shared themes and cohort comparisons"}</p>
                   )}
                   {analysisRun.state === "running" && analysisRun.phase === "analyzing" && (
                     <p>Finding aggregate Themes</p>
@@ -625,7 +626,7 @@ function CatalogApp(): JSX.Element {
                       onChange={(event) => setCodexCohortSize(Number(event.target.value))}
                     >
                       <option value={25}>Test · 50 reviews</option>
-                      <option value={500}>Main · 1,000 reviews</option>
+                      <option value={500} disabled={mainReportAvailable}>Main · 1,000 reviews</option>
                     </select>
                   </>
                 )}

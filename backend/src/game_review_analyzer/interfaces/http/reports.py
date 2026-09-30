@@ -151,6 +151,15 @@ def build_aggregate_theme_evidence_response(
 ) -> AggregateThemeEvidenceResponse | None:
     """Join one aggregate Theme's memberships to helpful-first local reviews."""
 
+    visible_theme_ids: set[str] = {
+        metric.theme_id
+        for metric in (
+            report.theme_metrics.positive_headlines
+            + report.theme_metrics.negative_headlines
+        )
+    }
+    if theme_id not in visible_theme_ids:
+        return None
     theme: ThemeDefinition | None = next(
         (item for item in report.themes if item.theme_id == theme_id), None
     )

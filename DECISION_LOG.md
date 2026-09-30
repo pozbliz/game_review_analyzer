@@ -10,6 +10,9 @@
 - Retained candidates at 2% cohort support and exposed Themes at 5% support.
 - Added one current Main Report slot, API routes, progress, evidence, and interface access.
 - Replaced oversized reviews when possible and disclosed the skipped count.
+- Blocked recreation while the current slot exists; Slice 18 owns replacement.
+- Kept retained 2% Theme candidates internal by limiting evidence to visible Themes.
+- Counted only oversized reviews skipped while filling the selected cohorts.
 
 **Why:**
 

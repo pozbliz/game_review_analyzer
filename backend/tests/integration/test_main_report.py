@@ -46,7 +46,11 @@ from fastapi.testclient import TestClient
 def test_main_report_selects_500_oldest_and_500_newest_complete_reviews(
     tmp_path: Path,
 ) -> None:
-    database_path: Path = seeded_database(tmp_path, review_count=1_002, oversized=1)
+    database_path: Path = seeded_database(
+        tmp_path,
+        review_count=2_000,
+        oversized=(1, 1_000),
+    )
 
     run = create_analysis_run(
         database_path,
@@ -74,7 +78,7 @@ def test_main_report_selects_500_oldest_and_500_newest_complete_reviews(
     assert run.oversized_review_count == 1
     assert set(run.early_review_revision_ids).isdisjoint(run.recent_review_revision_ids)
     assert oldest_times == list(range(2, 502))
-    assert newest_times == list(range(503, 1_003))
+    assert newest_times == list(range(1_501, 2_001))
     assert reviews[run.early_review_revision_ids[0]].text == "Review 2"
 
 
@@ -173,6 +177,20 @@ def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
     assert tuple(
         metric.theme_id for metric in report.theme_metrics.positive_headlines
     ) == ("visible",)
+    with TestClient(
+        create_app(
+            Settings(database_path=database_path),
+            analysis_provider=provider,
+        )
+    ) as client:
+        visible_evidence = client.get(
+            "/api/games/1145350/reports/main/themes/visible/evidence"
+        )
+        retained_evidence = client.get(
+            "/api/games/1145350/reports/main/themes/retained/evidence"
+        )
+    assert visible_evidence.status_code == 200
+    assert retained_evidence.status_code == 404
 
 
 def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
@@ -215,6 +233,7 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
                 break
             completed = client.get(f"/api/analysis-runs/{run_id}")
         report = client.get("/api/games/1145350/reports/main")
+        duplicate = client.post("/api/games/1145350/reports/main")
         workspace = client.get("/api/games/1145350/workspace")
 
     assert started.status_code == 202
@@ -232,6 +251,8 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
     }
     assert report.json()["positive_themes"] == []
     assert report.json()["negative_themes"] == []
+    assert duplicate.status_code == 409
+    assert duplicate.json()["detail"]["code"] == "main_report_exists"
     assert workspace.json()["main_report_available"] is True
 
 
@@ -249,7 +270,7 @@ def seeded_database(
     tmp_path: Path,
     *,
     review_count: int,
-    oversized: int | None = None,
+    oversized: int | tuple[int, ...] | None = None,
 ) -> Path:
     database_path: Path = tmp_path / "app.sqlite3"
     initialize_database(database_path)
@@ -269,11 +290,14 @@ def seeded_database(
             ),
         ),
     )
+    oversized_positions: set[int] = (
+        set(oversized) if isinstance(oversized, tuple) else {oversized}
+    ) if oversized is not None else set()
     reviews: tuple[SteamReview, ...] = tuple(
         SteamReview(
             review_id=f"review-{position:04d}",
             language="english",
-            text="x" * 32_001 if position == oversized else f"Review {position}",
+            text="x" * 32_001 if position in oversized_positions else f"Review {position}",
             source_created_at=position,
             source_updated_at=position,
             recommended=True,

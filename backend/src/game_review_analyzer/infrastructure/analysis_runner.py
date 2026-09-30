@@ -43,6 +43,7 @@ from game_review_analyzer.domain.reports import (
     ThemeMembership,
 )
 from game_review_analyzer.domain.reviews import SteamReview
+from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     AnalysisRun,
     finish_analysis_run,
@@ -183,13 +184,17 @@ class AnalysisRunner:
             return
         try:
             preparation_started_at: float = monotonic()
-            metadata = load_game_dataset(self._database_path, run.app_id)
+            metadata: SteamMetadata | None = load_game_dataset(
+                self._database_path, run.app_id
+            )
             if metadata is None:
                 raise ValueError("Matching Game Dataset metadata is unavailable")
             revisions = load_review_revisions_by_ids(
                 self._database_path, run.review_revision_ids
             )
-            cancellation = _DurableCancellation(self._database_path, run.id)
+            cancellation: _DurableCancellation = _DurableCancellation(
+                self._database_path, run.id
+            )
             cached = load_opinion_extractions(
                 self._database_path,
                 revision_ids=run.review_revision_ids,
@@ -477,7 +482,7 @@ class AnalysisRunner:
             for batch_number, batch_revision_ids in enumerate(
                 self._batches(run.review_revision_ids, revisions), start=1
             ):
-                request = build_theme_analysis_request(
+                request: ThemeAnalysisRequest = build_theme_analysis_request(
                     request_id=f"{run.id}-map-{batch_number}",
                     app_id=run.app_id,
                     game_title=metadata.title,
@@ -533,19 +538,21 @@ class AnalysisRunner:
                     for candidate in provider_run.result.themes
                 )
 
-            merge_usage = ProviderUsage(None, None, None)
+            merge_usage: ProviderUsage = ProviderUsage(None, None, None)
             themes: tuple[ThemeDefinition, ...] = ()
             memberships: tuple[ThemeMembership, ...] = ()
             if merge_candidates:
-                merge_request = build_theme_merge_request(
+                merge_request: ThemeMergeRequest = build_theme_merge_request(
                     request_id=f"{run.id}-merge",
                     app_id=run.app_id,
                     game_title=metadata.title,
                     candidates=merge_candidates,
                 )
-                merge_run = self._theme_merge_provider().merge_themes(
-                    merge_request,
-                    cancel_event=cancellation,
+                merge_run: ThemeMergeProviderRun = (
+                    self._theme_merge_provider().merge_themes(
+                        merge_request,
+                        cancel_event=cancellation,
+                    )
                 )
                 validate_theme_merge_result(
                     merge_request,
@@ -623,7 +630,7 @@ class AnalysisRunner:
                     retained_memberships,
                 )
             )
-            report = AggregateReport(
+            report: AggregateReport = AggregateReport(
                 schema_version="3.0",
                 report_id=report_id,
                 kind="main",
@@ -653,16 +660,50 @@ class AnalysisRunner:
                 cached_input_tokens=_sum_usage(usages, "cached_input_tokens"),
                 output_tokens=_sum_usage(usages, "output_tokens"),
             )
+            log_event(
+                "analysis.completed",
+                run_id=run.id,
+                report_kind="main",
+                duration_ms=round((monotonic() - started_at) * 1000),
+                theme_count=len(retained_themes),
+            )
         except AnalysisProviderError as error:
             state = "cancelled" if error.code == "cancelled" else "failed"
             finish_analysis_run(self._database_path, run.id, state, error_code=error.code)
-        except ValueError:
+            log_event(
+                f"analysis.{state}",
+                level="error" if state == "failed" else "info",
+                run_id=run.id,
+                report_kind="main",
+                duration_ms=round((monotonic() - started_at) * 1000),
+                error_code=error.code,
+                error_type=type(error).__name__,
+            )
+        except ValueError as error:
             finish_analysis_run(
                 self._database_path, run.id, "failed", error_code="invalid_theme_result"
             )
-        except Exception:
+            log_event(
+                "analysis.failed",
+                level="error",
+                run_id=run.id,
+                report_kind="main",
+                duration_ms=round((monotonic() - started_at) * 1000),
+                error_code="invalid_theme_result",
+                error_type=type(error).__name__,
+            )
+        except Exception as error:
             finish_analysis_run(
                 self._database_path, run.id, "failed", error_code="internal_analysis_error"
+            )
+            log_event(
+                "analysis.failed",
+                level="error",
+                run_id=run.id,
+                report_kind="main",
+                duration_ms=round((monotonic() - started_at) * 1000),
+                error_code="internal_analysis_error",
+                error_type=type(error).__name__,
             )
 
     def _run_test_report(self, run: AnalysisRun, started_at: float) -> None:

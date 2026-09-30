@@ -103,20 +103,54 @@ def create_analysis_run(
                 (app_id,),
             )
         )
+        eligible_by_id: dict[int, bool] = {
+            revision_id: (
+                report_kind != "main"
+                or len(str(json.loads(content_json)["text"]))
+                <= MAIN_REPORT_BATCH_CHARACTER_LIMIT
+            )
+            for revision_id, content_json in ordered_revisions
+        }
         ordered_revision_ids: tuple[int, ...] = tuple(
             revision_id
-            for revision_id, content_json in ordered_revisions
-            if report_kind != "main"
-            or len(str(json.loads(content_json)["text"]))
-            <= MAIN_REPORT_BATCH_CHARACTER_LIMIT
+            for revision_id, _ in ordered_revisions
+            if eligible_by_id[revision_id]
         )
-        oversized_review_count: int = len(ordered_revisions) - len(ordered_revision_ids)
         if not ordered_revision_ids:
             raise ValueError("Analysis requires an existing review dataset")
-        if len(ordered_revision_ids) <= cohort_size * 2:
+        oversized_review_count: int = 0
+        if report_kind == "main" and len(ordered_revision_ids) > cohort_size * 2:
+            early_list: list[int] = []
+            skipped_ids: set[int] = set()
+            for revision_id, _ in ordered_revisions:
+                if eligible_by_id[revision_id]:
+                    early_list.append(revision_id)
+                    if len(early_list) == cohort_size:
+                        break
+                else:
+                    skipped_ids.add(revision_id)
+            early_revision_ids = tuple(early_list)
+            early_ids: set[int] = set(early_revision_ids)
+            recent_list: list[int] = []
+            for revision_id, _ in reversed(ordered_revisions):
+                if revision_id in early_ids:
+                    continue
+                if eligible_by_id[revision_id]:
+                    recent_list.append(revision_id)
+                    if len(recent_list) == cohort_size:
+                        break
+                else:
+                    skipped_ids.add(revision_id)
+            recent_revision_ids = tuple(reversed(recent_list))
+            oversized_review_count = len(skipped_ids)
+        elif len(ordered_revision_ids) <= cohort_size * 2:
             midpoint: int = len(ordered_revision_ids) // 2
             early_revision_ids: tuple[int, ...] = ordered_revision_ids[:midpoint]
             recent_revision_ids: tuple[int, ...] = ordered_revision_ids[midpoint:]
+            if report_kind == "main":
+                oversized_review_count = len(ordered_revisions) - len(
+                    ordered_revision_ids
+                )
         else:
             early_revision_ids = ordered_revision_ids[:cohort_size]
             recent_revision_ids = ordered_revision_ids[-cohort_size:]
