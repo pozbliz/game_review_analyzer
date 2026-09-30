@@ -152,7 +152,7 @@ The frontend shell lives under `frontend/src/app/`. Shared styles use `frontend/
 - Main and Test Reports require a completed Full Import.
 - The Main Report starts with 500 oldest and 500 newest reviews, then grows through explicit 1,000-review extensions.
 - A separate Test Report uses 25 oldest and 25 newest reviews without refreshing Steam.
-- Full imports and Codex CLI analysis can be slow or quota-intensive for popular games.
+- Full imports and Codex CLI analysis can be slow or quota-intensive for popular games. Each Codex attempt stops after 120 seconds, and transient failures receive one retry.
 - The application data path can be changed only through an environment variable; there is no in-app relocation workflow. Report exports are not complete database backups.
 - Reports expose aggregate Theme memberships and deterministic metrics without per-review evidence.
 - Existing code still implements the prior Version 2 behavior until the approved redesign is planned and built.

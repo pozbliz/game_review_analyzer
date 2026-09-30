@@ -66,6 +66,7 @@ TRANSIENT_PROVIDER_ERRORS = {
     "provider_missing_output",
     "provider_nonzero_exit",
     "provider_rate_limited",
+    "provider_timeout",
 }
 
 
@@ -83,6 +84,23 @@ class CodexCliStatus:
 class CodexCliError(AnalysisProviderError):
     """Expose a stable non-secret failure code for one Codex CLI run."""
 
+
+def _terminate_process_tree(process: subprocess.Popen[str]) -> None:
+    """Stop one Codex process and its descendants."""
+
+    if os.name == "nt":
+        result: subprocess.CompletedProcess[str] = subprocess.run(
+            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+            capture_output=True,
+            text=True,
+            shell=False,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        if result.returncode == 0:
+            return
+    process.terminate()
+
+
 class CodexCliProvider:
     """Execute one isolated analysis using the user's existing Codex CLI login."""
 
@@ -93,13 +111,17 @@ class CodexCliProvider:
         model: str = "gpt-5.6-luna",
         reasoning_effort: str = "low",
         max_attempts: int = 2,
+        timeout_seconds: float = 120.0,
     ) -> None:
         if max_attempts < 1:
             raise ValueError("max_attempts must be positive")
+        if timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")
         self.executable: str = executable
         self.model: str = model
         self.reasoning_effort: str = reasoning_effort
         self.max_attempts: int = max_attempts
+        self.timeout_seconds: float = timeout_seconds
 
     def analyze(
         self,
@@ -438,6 +460,7 @@ class CodexCliProvider:
         attempt: int,
     ) -> tuple[str, str]:
         process_started_at: float = monotonic()
+        deadline: float = process_started_at + self.timeout_seconds
         with TemporaryDirectory(prefix="game-review-analyzer-codex-") as directory:
             working_directory: Path = Path(directory)
             schema_path: Path = working_directory / "schema.json"
@@ -446,8 +469,24 @@ class CodexCliProvider:
                 json.dumps(result_schema),
                 encoding="utf-8",
             )
-            command: list[str] = [
-                self.executable,
+            executable_path: Path = Path(self.executable)
+            npm_script_path: Path = (
+                executable_path.parent
+                / "node_modules"
+                / "@openai"
+                / "codex"
+                / "bin"
+                / "codex.js"
+            )
+            node_executable: str | None = shutil.which("node")
+            command_prefix: list[str] = [self.executable]
+            if (
+                executable_path.suffix.lower() in {".cmd", ".bat"}
+                and npm_script_path.is_file()
+                and node_executable is not None
+            ):
+                command_prefix = [node_executable, str(npm_script_path)]
+            command: list[str] = command_prefix + [
                 "exec",
                 "--ephemeral",
                 "--ignore-user-config",
@@ -508,16 +547,24 @@ class CodexCliProvider:
                     break
                 except subprocess.TimeoutExpired:
                     prompt = None
-                    if cancel_event is not None and cancel_event.is_set():
-                        process.terminate()
+                    cancelled: bool = (
+                        cancel_event is not None and cancel_event.is_set()
+                    )
+                    timed_out: bool = monotonic() >= deadline
+                    if cancelled or timed_out:
+                        _terminate_process_tree(process)
                         try:
                             process.communicate(timeout=5)
                         except subprocess.TimeoutExpired:
                             process.kill()
                             process.communicate()
                         raise CodexCliError(
-                            "cancelled",
-                            "Codex CLI analysis was cancelled",
+                            "cancelled" if cancelled else "provider_timeout",
+                            (
+                                "Codex CLI analysis was cancelled"
+                                if cancelled
+                                else "Codex CLI batch exceeded its time limit"
+                            ),
                         )
             if process.returncode != 0 or not output_path.is_file():
                 error_code: str = _process_error_code(stderr, output_path.is_file())

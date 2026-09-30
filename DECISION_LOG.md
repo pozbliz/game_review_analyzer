@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-09-30 - Codex batches receive a process deadline
+
+**What changed:**
+
+- Limited each Codex process attempt to 120 seconds with one transient retry.
+- Launched Windows npm installations through their Node script instead of the short-lived command shim.
+- Stopped the complete Windows process tree on cancellation or timeout.
+
+**Why:**
+
+- A live Main Report stopped at 207 reviews when batch 4 held two HTTPS connections open without CPU activity or a response.
+- The command shim exited before its Node and Codex children, so cancellation could not reach the orphaned processes.
+
+**New issues:**
+
+- Telemetry cannot identify the upstream reason that the Codex response stream stopped.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Theme output schema bound to each batch
 
 **What changed:**

@@ -1,6 +1,7 @@
 """Behavior tests for isolated Codex CLI analysis execution."""
 
 import json
+import os
 from pathlib import Path
 import subprocess
 from threading import Event
@@ -28,6 +29,7 @@ class CompletedProcess:
     """Emulate one successful external Codex process for adapter tests."""
 
     returncode: int = 0
+    pid: int = 999_999
 
     def __init__(self, command: list[str], **options: Any) -> None:
         self.command: list[str] = command
@@ -189,6 +191,37 @@ def test_codex_cli_returns_theme_candidates_without_evidence(monkeypatch) -> Non
     assert run.usage.input_tokens == 120
     assert "Return no excerpts" in processes[0].prompt
     assert "Include every supplied review_revision_id exactly once" in processes[0].prompt
+
+
+def test_codex_cli_launches_the_npm_script_without_an_orphanable_cmd_wrapper(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    shim_path: Path = tmp_path / "codex.cmd"
+    shim_path.write_text("npm shim", encoding="utf-8")
+    script_path: Path = (
+        tmp_path / "node_modules" / "@openai" / "codex" / "bin" / "codex.js"
+    )
+    script_path.parent.mkdir(parents=True)
+    script_path.write_text("", encoding="utf-8")
+    node_path: Path = tmp_path / "node.exe"
+    node_path.write_text("", encoding="utf-8")
+    processes: list[CompletedProcess] = []
+
+    def start_process(command: list[str], **options: Any) -> CompletedProcess:
+        process = CompletedProcess(command, **options)
+        processes.append(process)
+        return process
+
+    monkeypatch.setattr("subprocess.Popen", start_process)
+    monkeypatch.setattr(
+        "game_review_analyzer.infrastructure.codex_cli.shutil.which",
+        lambda executable: str(node_path) if executable == "node" else None,
+    )
+
+    CodexCliProvider(executable=str(shim_path)).analyze_themes(theme_request())
+
+    assert processes[0].command[:2] == [str(node_path), str(script_path)]
 
 
 def test_codex_cli_constrains_theme_memberships_to_the_requested_reviews(
@@ -516,7 +549,15 @@ def test_codex_cli_cancels_running_process_without_retry(monkeypatch) -> None:
         processes.append(process)
         return process
 
+    def stop_process_tree(
+        command: list[str], **options: Any
+    ) -> subprocess.CompletedProcess[str]:
+        del options
+        processes[0].terminate()
+        return subprocess.CompletedProcess(command, 0)
+
     monkeypatch.setattr("subprocess.Popen", start_process)
+    monkeypatch.setattr("subprocess.run", stop_process_tree)
 
     with pytest.raises(CodexCliError) as raised:
         CodexCliProvider(executable="codex.cmd", max_attempts=2).analyze(
@@ -527,6 +568,76 @@ def test_codex_cli_cancels_running_process_without_retry(monkeypatch) -> None:
     assert raised.value.code == "cancelled"
     assert processes[0].terminated is True
     assert len(processes) == 1
+
+
+def test_codex_cli_stops_a_batch_that_exceeds_its_deadline(monkeypatch) -> None:
+    class StalledProcess(CompletedProcess):
+        def __init__(self, command: list[str], **options: Any) -> None:
+            super().__init__(command, **options)
+            self.timeouts: int = 0
+            self.terminated: bool = False
+
+        def communicate(
+            self,
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            if self.terminated:
+                return "", ""
+            if self.timeouts < 3:
+                self.timeouts += 1
+                raise subprocess.TimeoutExpired(self.command, timeout)
+            return super().communicate(input, timeout)
+
+        def terminate(self) -> None:
+            self.terminated = True
+
+    process: StalledProcess | None = None
+
+    def start_process(command: list[str], **options: Any) -> StalledProcess:
+        nonlocal process
+        process = StalledProcess(command, **options)
+        return process
+
+    taskkill_commands: list[list[str]] = []
+
+    def stop_process_tree(
+        command: list[str], **options: Any
+    ) -> subprocess.CompletedProcess[str]:
+        del options
+        taskkill_commands.append(command)
+        assert process is not None
+        process.terminate()
+        return subprocess.CompletedProcess(command, 0)
+
+    clock_reads: int = 0
+
+    def monotonic_clock() -> float:
+        nonlocal clock_reads
+        clock_reads += 1
+        return 0.0 if clock_reads == 1 else 121.0
+
+    monkeypatch.setattr("subprocess.Popen", start_process)
+    monkeypatch.setattr("subprocess.run", stop_process_tree)
+    monkeypatch.setattr(
+        "game_review_analyzer.infrastructure.codex_cli.monotonic",
+        monotonic_clock,
+    )
+
+    with pytest.raises(CodexCliError) as raised:
+        CodexCliProvider(
+            executable="codex.cmd",
+            max_attempts=1,
+            timeout_seconds=120.0,
+        ).analyze_themes(theme_request())
+
+    assert raised.value.code == "provider_timeout"
+    assert process is not None and process.terminated is True
+    assert taskkill_commands == (
+        [["taskkill", "/PID", "999999", "/T", "/F"]]
+        if os.name == "nt"
+        else []
+    )
 
 
 def test_codex_cli_classifies_failure_without_exposing_provider_stderr(
