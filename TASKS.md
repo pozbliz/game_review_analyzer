@@ -38,6 +38,7 @@
 - [x] Build the Main Report API, progress flow, and interface.
 - [x] Verify visible 5% thresholds and valid empty reports.
 - [x] Bind Codex Theme memberships to the exact review IDs in each batch.
+- [x] Bind Codex merge mappings to the exact candidate keys.
 - [x] Stop stalled Codex batches after 120 seconds and preserve completed checkpoints.
 
 ### Extend and Replace Main Report

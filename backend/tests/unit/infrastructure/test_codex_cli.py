@@ -313,6 +313,20 @@ def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
     assert run.result.themes[0].theme_id == "responsive-combat"
     assert run.usage.input_tokens == 120
     assert "Map or discard every supplied candidate" in processes[0].prompt
+    completed_schema: dict[str, Any] = processes[0].schema["properties"][
+        "completed_candidate_keys"
+    ]
+    mapped_schema: dict[str, Any] = processes[0].schema["$defs"][
+        "ThemeMergeTheme"
+    ]["properties"]["source_candidate_keys"]
+    discarded_schema: dict[str, Any] = processes[0].schema["properties"][
+        "discarded_candidate_keys"
+    ]
+    assert completed_schema["items"]["enum"] == ["1:combat"]
+    assert completed_schema["minItems"] == 1
+    assert completed_schema["maxItems"] == 1
+    assert mapped_schema["items"]["enum"] == ["1:combat"]
+    assert discarded_schema["items"]["enum"] == ["1:combat"]
 
 
 def test_codex_cli_retries_one_transient_theme_failure(monkeypatch) -> None:

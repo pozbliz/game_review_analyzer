@@ -23,16 +23,18 @@
 
 ---
 
-## 2026-09-30 - Theme output schema bound to each batch
+## 2026-09-30 - Provider output schemas bound to each request
 
 **What changed:**
 
 - Restricted completed-review and Theme-membership identifiers to the current batch in the Codex output schema.
+- Restricted completed, mapped, and discarded merge keys to the current candidate set.
 - Kept the existing post-response scope validation.
 
 **Why:**
 
 - A live 1,000-review run failed when Codex returned one membership identifier outside its first 63-review batch.
+- The resumed live run completed all map batches, then returned an invalid merge contract from 174 candidates.
 - The prompt requested exact identifiers, but the generated schema previously accepted any non-empty string.
 
 **New issues:**

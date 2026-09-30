@@ -224,6 +224,33 @@ class CodexCliProvider:
     ) -> ThemeMergeProviderRun:
         """Merge every validated map candidate into a Theme or discard it."""
 
+        result_schema: dict[str, Any] = ThemeMergeResult.model_json_schema()
+        candidate_keys: list[str] = [
+            candidate.candidate_key for candidate in request.candidates
+        ]
+        completed_schema: dict[str, Any] = result_schema["properties"][
+            "completed_candidate_keys"
+        ]
+        completed_schema["items"] = {
+            "enum": candidate_keys,
+            "type": "string",
+        }
+        completed_schema["minItems"] = len(candidate_keys)
+        completed_schema["maxItems"] = len(candidate_keys)
+        mapped_schema: dict[str, Any] = result_schema["$defs"]["ThemeMergeTheme"][
+            "properties"
+        ]["source_candidate_keys"]
+        mapped_schema["items"] = {
+            "enum": candidate_keys,
+            "type": "string",
+        }
+        discarded_schema: dict[str, Any] = result_schema["properties"][
+            "discarded_candidate_keys"
+        ]
+        discarded_schema["items"] = {
+            "enum": candidate_keys,
+            "type": "string",
+        }
         for attempt in range(1, self.max_attempts + 1):
             if cancel_event is not None and cancel_event.is_set():
                 raise CodexCliError("cancelled", "Codex CLI analysis was cancelled")
@@ -231,7 +258,7 @@ class CodexCliProvider:
                 result_json, stdout = self._run_once(
                     request,
                     cancel_event,
-                    result_schema=ThemeMergeResult.model_json_schema(),
+                    result_schema=result_schema,
                     instructions=THEME_MERGE_INSTRUCTIONS,
                     operation="theme_merge",
                     attempt=attempt,
