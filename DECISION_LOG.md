@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-09-30 - Report deletion runs without confirmation
+
+**What changed:**
+
+- Delete a Test or Main Report as soon as `Delete Report` is clicked.
+- Keep the button disabled while deletion is in progress.
+
+**Why:**
+
+- The user explicitly removed the browser-confirmation requirement.
+
+**New issues:**
+
+- An accidental click now deletes the report immediately.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Report deletion clears its analysis-run reference
 
 **What changed:**

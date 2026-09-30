@@ -32,7 +32,7 @@ The Test Report analyzes 25 oldest and 25 newest reviews in one Codex call.
 
 The shared `Create Report` action supports the 50-review Test Report and 1,000-review Main Report scopes.
 
-Available reports appear as dated cards above `Create Report`. A Main Report can add 500 oldest and 500 newest unseen reviews through `Extend Report` beside its review count. Each report has a confirmed delete control at the bottom.
+Available reports appear as dated cards above `Create Report`. A Main Report can add 500 oldest and 500 newest unseen reviews through `Extend Report` beside its review count. Each report has a delete control at the bottom.
 
 Each Test Report Theme can reveal its matching local reviews. Evidence is sorted by helpful votes and loaded only when opened.
 

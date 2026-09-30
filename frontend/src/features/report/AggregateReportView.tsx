@@ -63,7 +63,6 @@ export default function AggregateReportView(
   }
 
   function removeReport(): void {
-    if (!window.confirm("Delete this report permanently? This cannot be undone.")) return;
     setDeleteState("deleting");
     deleteReport(reportId, reportId)
       .then(() => setDeleteState("deleted"))
