@@ -470,13 +470,17 @@ class AnalysisRunner:
             )
             return
         try:
-            metadata = load_game_dataset(self._database_path, run.app_id)
+            metadata: SteamMetadata | None = load_game_dataset(
+                self._database_path, run.app_id
+            )
             if metadata is None:
                 raise ValueError("Matching Game Dataset metadata is unavailable")
             revisions: dict[int, SteamReview] = load_review_revisions_by_ids(
                 self._database_path, run.review_revision_ids
             )
-            cancellation = _DurableCancellation(self._database_path, run.id)
+            cancellation: _DurableCancellation = _DurableCancellation(
+                self._database_path, run.id
+            )
             map_runs: list[ThemeProviderRun] = []
             merge_candidates: list[ThemeMergeCandidate] = []
             for batch_number, batch_revision_ids in enumerate(
