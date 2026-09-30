@@ -34,6 +34,7 @@ class AnalysisRun(BaseModel):
     output_tokens: int | None
     extracted_review_count: int
     report_kind: Literal["main", "test"] | None
+    oversized_review_count: int
 
     @computed_field
     @property
@@ -109,6 +110,7 @@ def create_analysis_run(
             or len(str(json.loads(content_json)["text"]))
             <= MAIN_REPORT_BATCH_CHARACTER_LIMIT
         )
+        oversized_review_count: int = len(ordered_revisions) - len(ordered_revision_ids)
         if not ordered_revision_ids:
             raise ValueError("Analysis requires an existing review dataset")
         if len(ordered_revision_ids) <= cohort_size * 2:
@@ -124,8 +126,8 @@ def create_analysis_run(
             "INSERT INTO analysis_runs("
             "id, app_id, provider, model, state, review_revision_ids_json, "
             "early_review_revision_ids_json, recent_review_revision_ids_json, "
-            "metric_policy_json, report_kind) "
-            "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?)",
+            "metric_policy_json, report_kind, oversized_review_count) "
+            "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?)",
             (
                 run_id,
                 app_id,
@@ -136,6 +138,7 @@ def create_analysis_run(
                 json.dumps(recent_revision_ids),
                 metric_policy.model_dump_json(),
                 report_kind,
+                oversized_review_count,
             ),
         )
     return get_analysis_run(database_path, run_id)
@@ -150,7 +153,8 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
             "metric_policy_json, cancel_requested, error_code, report_version_id, "
             "input_tokens, cached_input_tokens, output_tokens, "
             "early_review_revision_ids_json, recent_review_revision_ids_json, "
-            "report_kind, CASE WHEN report_kind = 'main' THEN COALESCE(("
+            "report_kind, oversized_review_count, "
+            "CASE WHEN report_kind = 'main' THEN COALESCE(("
             "SELECT SUM(json_array_length(json_extract(batch.result_json, "
             "'$.completed_review_revision_ids'))) FROM analysis_theme_batches batch "
             "WHERE batch.run_id = analysis_runs.id), 0) ELSE ("
@@ -174,7 +178,8 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
         early_review_revision_ids=tuple(json.loads(row[13])),
         recent_review_revision_ids=tuple(json.loads(row[14])),
         report_kind=row[15],
-        extracted_review_count=int(row[16]),
+        oversized_review_count=int(row[16]),
+        extracted_review_count=int(row[17]),
     )
 
 

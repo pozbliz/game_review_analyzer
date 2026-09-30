@@ -71,6 +71,7 @@ def test_main_report_selects_500_oldest_and_500_newest_complete_reviews(
     ]
     assert len(run.early_review_revision_ids) == 500
     assert len(run.recent_review_revision_ids) == 500
+    assert run.oversized_review_count == 1
     assert set(run.early_review_revision_ids).isdisjoint(run.recent_review_revision_ids)
     assert oldest_times == list(range(2, 502))
     assert newest_times == list(range(503, 1_003))
@@ -227,6 +228,7 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
         "review_count": 100,
         "oldest_review_count": 50,
         "newest_review_count": 50,
+        "oversized_review_count": 0,
     }
     assert report.json()["positive_themes"] == []
     assert report.json()["negative_themes"] == []

@@ -809,6 +809,7 @@ def test_api_creates_and_reads_the_standalone_test_report(tmp_path: Path) -> Non
         "review_count": 50,
         "oldest_review_count": 25,
         "newest_review_count": 25,
+        "oversized_review_count": 0,
     }
     assert report.json()["positive_themes"] == []
     assert report.json()["negative_themes"] == []

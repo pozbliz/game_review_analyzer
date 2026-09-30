@@ -46,6 +46,7 @@ class AggregateReportScopeResponse(BaseModel):
     review_count: int
     oldest_review_count: int
     newest_review_count: int
+    oversized_review_count: int
 
 
 class AggregateThemeResponse(BaseModel):
@@ -128,6 +129,7 @@ def build_aggregate_report_response(report: AggregateReport) -> AggregateReportR
             review_count=len(report.review_revision_ids),
             oldest_review_count=len(report.oldest_review_revision_ids),
             newest_review_count=len(report.newest_review_revision_ids),
+            oversized_review_count=report.oversized_review_count,
         ),
         provider=report.provider,
         model=report.model,

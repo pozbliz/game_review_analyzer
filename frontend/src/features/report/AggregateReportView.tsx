@@ -61,6 +61,9 @@ export default function AggregateReportView(
         <div><span>Reviews</span><strong>{report.scope.review_count}</strong></div>
         <div><span>Oldest cohort</span><strong>{report.scope.oldest_review_count}</strong></div>
         <div><span>Newest cohort</span><strong>{report.scope.newest_review_count}</strong></div>
+        {report.scope.oversized_review_count > 0 && (
+          <div><span>Oversized reviews skipped</span><strong>{report.scope.oversized_review_count}</strong></div>
+        )}
         <div><span>Provider</span><strong>{report.provider} · {report.model}</strong></div>
       </section>
       {report.positive_themes.length === 0 && report.negative_themes.length === 0 ? (

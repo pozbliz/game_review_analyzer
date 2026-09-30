@@ -67,6 +67,7 @@ class AggregateReport(ReportContractModel):
     review_revision_ids: tuple[int, ...] = Field(min_length=1)
     oldest_review_revision_ids: tuple[int, ...]
     newest_review_revision_ids: tuple[int, ...]
+    oversized_review_count: int = Field(default=0, ge=0)
     provider: NonEmptyString
     model: NonEmptyString
     contract_version: NonEmptyString

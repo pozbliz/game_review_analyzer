@@ -22,6 +22,7 @@ export interface AggregateReport {
     review_count: number;
     oldest_review_count: number;
     newest_review_count: number;
+    oversized_review_count: number;
   };
   provider: string;
   model: string;
@@ -246,7 +247,10 @@ function parseAggregateReport(payload: unknown): AggregateReport {
       typeof payload.report_id !== "string" || !isRecord(payload.game) ||
       typeof payload.game.app_id !== "number" || typeof payload.game.title !== "string" ||
       !isRecord(payload.metadata) || !isRecord(payload.scope) ||
-      !numbers(payload.scope, ["review_count", "oldest_review_count", "newest_review_count"]) ||
+      !numbers(payload.scope, [
+        "review_count", "oldest_review_count", "newest_review_count",
+        "oversized_review_count",
+      ]) ||
       !strings(payload, ["provider", "model"]) ||
       !Array.isArray(payload.positive_themes) || !Array.isArray(payload.negative_themes)) {
     throw new Error("Invalid aggregate report response");

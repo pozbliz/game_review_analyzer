@@ -977,6 +977,7 @@ function analysisRun(state: string): object {
     cached_input_tokens: state === "completed" ? 20 : null,
     output_tokens: state === "completed" ? 30 : null,
     extracted_review_count: state === "completed" ? 1 : 0,
+    oversized_review_count: 0,
     report_kind: null,
     phase: state === "running" ? "extracting" : state,
   };

@@ -136,6 +136,7 @@ export interface AnalysisRun {
   cached_input_tokens: number | null;
   output_tokens: number | null;
   extracted_review_count: number;
+  oversized_review_count: number;
   report_kind: "main" | "test" | null;
   phase: "queued" | "analyzing" | "extracting" | "consolidating" | "completed" | "failed" | "cancelled";
 }
@@ -194,6 +195,7 @@ function parseAnalysisRun(payload: unknown): AnalysisRun {
       !["queued", "running", "completed", "failed", "cancelled"].includes(String(payload.state)) ||
       typeof payload.review_count !== "number" || typeof payload.cancel_requested !== "boolean" ||
       typeof payload.extracted_review_count !== "number" ||
+      typeof payload.oversized_review_count !== "number" ||
       !(payload.report_kind === null || payload.report_kind === "main" || payload.report_kind === "test") ||
       !["queued", "analyzing", "extracting", "consolidating", "completed", "failed", "cancelled"].includes(String(payload.phase)) ||
       !(payload.error_code === null || typeof payload.error_code === "string") ||

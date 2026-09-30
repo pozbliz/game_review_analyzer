@@ -19,6 +19,7 @@ describe("aggregate Test Report", () => {
         review_count: 50,
         oldest_review_count: 25,
         newest_review_count: 25,
+        oversized_review_count: 0,
       },
       provider: "codex-cli",
       model: "gpt-5.6-luna",
