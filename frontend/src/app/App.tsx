@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   AnalysisJob,
   AnalysisRun,
+  AggregateReportSettings,
   AvailableReport,
   cancelJob,
   cancelAnalysisRun,
@@ -77,6 +78,8 @@ function CatalogApp(): JSX.Element {
     () => window.localStorage.getItem("analysis-provider") ?? "codex-cli",
   );
   const [codexCohortSize, setCodexCohortSize] = useState<number>(25);
+  const [minimumSupportPercentage, setMinimumSupportPercentage] = useState<number>(5);
+  const [maximumThemesPerPolarity, setMaximumThemesPerPolarity] = useState<number>(10);
   const [analysisRun, setAnalysisRun] = useState<AnalysisRun | null>(null);
   const [availableReports, setAvailableReports] = useState<AvailableReport[]>([]);
   const [analysisError, setAnalysisError] = useState<string>("");
@@ -292,11 +295,15 @@ function CatalogApp(): JSX.Element {
     const selectedModel = providerSelection.startsWith("ollama::")
       ? providerSelection.slice("ollama::".length)
       : null;
+    const reportSettings: AggregateReportSettings = {
+      minimum_support_percentage: minimumSupportPercentage,
+      maximum_headlines_per_polarity: maximumThemesPerPolarity,
+    };
     const start = selectedModel
       ? startOllamaAnalysis(selectedAppId, selectedModel)
       : codexCohortSize === 500
-      ? startMainReport(selectedAppId)
-      : startTestReport(selectedAppId);
+      ? startMainReport(selectedAppId, reportSettings)
+      : startTestReport(selectedAppId, reportSettings);
     start
       .then((run) => {
         window.localStorage.setItem("active-analysis-run", run.id);
@@ -343,6 +350,12 @@ function CatalogApp(): JSX.Element {
   }
 
   const unknown = "Unknown / unavailable";
+  const reportSettingsValid: boolean = (
+    minimumSupportPercentage >= 0
+    && minimumSupportPercentage <= 100
+    && Number.isInteger(maximumThemesPerPolarity)
+    && maximumThemesPerPolarity >= 1
+  );
 
   return (
     <main className="shell">
@@ -476,7 +489,9 @@ function CatalogApp(): JSX.Element {
                         onClick={beginAnalysis}
                         disabled={
                           providerSelection === "codex-cli"
-                            ? !codexStatus?.installed || !codexStatus.authenticated
+                            ? !codexStatus?.installed
+                              || !codexStatus.authenticated
+                              || !reportSettingsValid
                             : !ollamaStatus?.models.some(
                                 (model) => providerSelection === `ollama::${model.name}`,
                               )
@@ -625,6 +640,34 @@ function CatalogApp(): JSX.Element {
                       <option value={25}>Test · 50 reviews</option>
                       <option value={500}>Main · 1,000 reviews</option>
                     </select>
+                    <fieldset className="report-settings">
+                      <legend>Theme visibility</legend>
+                      <div>
+                        <label htmlFor="minimum-support-percentage">Minimum support percentage</label>
+                        <input
+                          id="minimum-support-percentage"
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.1}
+                          value={minimumSupportPercentage}
+                          onChange={(event) => setMinimumSupportPercentage(Number(event.target.value))}
+                        />
+                        <small>A Theme appears when it reaches this percentage in either cohort.</small>
+                      </div>
+                      <div>
+                        <label htmlFor="maximum-themes-per-polarity">Maximum Themes per list</label>
+                        <input
+                          id="maximum-themes-per-polarity"
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={maximumThemesPerPolarity}
+                          onChange={(event) => setMaximumThemesPerPolarity(Number(event.target.value))}
+                        />
+                        <small>Positive and negative lists use this cap independently.</small>
+                      </div>
+                    </fieldset>
                   </>
                 )}
                 {providerSelection === "codex-cli" && codexStatus && (
@@ -681,6 +724,7 @@ function CatalogApp(): JSX.Element {
                       && providerSelection === "codex-cli"
                       && (!codexStatus?.installed || !codexStatus.authenticated)
                     )
+                    || (providerSelection === "codex-cli" && !reportSettingsValid)
                   }
                   onClick={reportHistory.length > 0 || fullHistoryReady ? beginAnalysis : beginImport}
                 >

@@ -643,6 +643,7 @@ class AnalysisRunner:
                 newest_revision_ids,
                 themes,
                 memberships,
+                run.metric_policy,
             )
             retained_ids: set[str] = {
                 metric.theme_id
@@ -668,6 +669,7 @@ class AnalysisRunner:
                     newest_revision_ids,
                     retained_themes,
                     retained_memberships,
+                    run.metric_policy,
                 )
             )
             report: AggregateReport = AggregateReport(
@@ -686,6 +688,7 @@ class AnalysisRunner:
                 provider=run.provider,
                 model=run.model,
                 contract_version=ANALYSIS_CONTRACT_VERSION,
+                metric_policy=run.metric_policy,
                 themes=retained_themes,
                 memberships=retained_memberships,
                 theme_metrics=retained_metrics,
@@ -815,6 +818,7 @@ class AnalysisRunner:
                 run.recent_review_revision_ids,
                 themes,
                 memberships,
+                run.metric_policy,
             )
             visible_ids: set[str] = {
                 metric.theme_id
@@ -852,6 +856,7 @@ class AnalysisRunner:
                 provider=run.provider,
                 model=run.model,
                 contract_version=ANALYSIS_CONTRACT_VERSION,
+                metric_policy=run.metric_policy,
                 themes=visible_themes,
                 memberships=visible_memberships,
                 theme_metrics=visible_metrics,

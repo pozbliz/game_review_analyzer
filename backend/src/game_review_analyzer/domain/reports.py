@@ -56,6 +56,16 @@ class AggregateThemeMetrics(ReportContractModel):
     negative_headlines: tuple[AggregateThemeMetric, ...]
 
 
+class ThemeMetricPolicy(ReportContractModel):
+    """Supply explicit thresholds and headline caps for one calculation."""
+
+    minimum_support_count: int = Field(ge=1)
+    minimum_support_percentage: float = Field(ge=0, le=100)
+    technical_minimum_support_count: int = Field(ge=1)
+    technical_minimum_support_percentage: float = Field(ge=0, le=100)
+    maximum_headlines_per_polarity: int = Field(default=10, ge=1)
+
+
 class AggregateReport(ReportContractModel):
     """Store one current Version 3 Main Report or Test Report."""
 
@@ -71,6 +81,15 @@ class AggregateReport(ReportContractModel):
     provider: NonEmptyString
     model: NonEmptyString
     contract_version: NonEmptyString
+    metric_policy: ThemeMetricPolicy = Field(
+        default_factory=lambda: ThemeMetricPolicy(
+            minimum_support_count=1,
+            minimum_support_percentage=5,
+            technical_minimum_support_count=1,
+            technical_minimum_support_percentage=5,
+            maximum_headlines_per_polarity=10,
+        )
+    )
     themes: tuple[ThemeDefinition, ...]
     memberships: tuple[ThemeMembership, ...]
     theme_metrics: AggregateThemeMetrics
@@ -142,16 +161,6 @@ class EvidenceFilterQuery(ReportContractModel):
         ):
             raise ValueError("review start date cannot exceed end date")
         return self
-
-
-class ThemeMetricPolicy(ReportContractModel):
-    """Supply explicit thresholds and headline caps for one calculation."""
-
-    minimum_support_count: int = Field(ge=1)
-    minimum_support_percentage: float = Field(ge=0, le=100)
-    technical_minimum_support_count: int = Field(ge=1)
-    technical_minimum_support_percentage: float = Field(ge=0, le=100)
-    maximum_headlines_per_polarity: int = Field(default=10, ge=1)
 
 
 class ThemeMetric(ReportContractModel):

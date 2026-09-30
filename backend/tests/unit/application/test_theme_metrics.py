@@ -179,6 +179,13 @@ def test_aggregate_metrics_use_distinct_memberships_and_cohort_denominators() ->
         newest_review_revision_ids=range(21, 41),
         themes=themes,
         memberships=memberships,
+        policy=ThemeMetricPolicy(
+            minimum_support_count=1,
+            minimum_support_percentage=5,
+            technical_minimum_support_count=1,
+            technical_minimum_support_percentage=5,
+            maximum_headlines_per_polarity=10,
+        ),
     )
 
     oldest = next(
@@ -204,7 +211,7 @@ def test_aggregate_metrics_use_distinct_memberships_and_cohort_denominators() ->
 
 
 def test_aggregate_metrics_cap_each_polarity_and_allow_no_visible_themes() -> None:
-    themes: tuple[ThemeDefinition, ...] = tuple(
+    positive_themes: tuple[ThemeDefinition, ...] = tuple(
         ThemeDefinition(
             theme_id=f"positive-{index}",
             title=f"Positive {index}",
@@ -213,9 +220,23 @@ def test_aggregate_metrics_cap_each_polarity_and_allow_no_visible_themes() -> No
         )
         for index in range(11)
     )
+    negative_theme = ThemeDefinition(
+        theme_id="negative-0",
+        title="Negative 0",
+        summary="Negative summary 0.",
+        polarity=ThemePolarity.NEGATIVE,
+    )
+    themes: tuple[ThemeDefinition, ...] = positive_themes + (negative_theme,)
     memberships: tuple[ThemeMembership, ...] = tuple(
         ThemeMembership(theme_id=theme.theme_id, review_revision_id=index + 1)
-        for index, theme in enumerate(themes)
+        for index, theme in enumerate(positive_themes)
+    ) + (ThemeMembership(theme_id="negative-0", review_revision_id=20),)
+    policy = ThemeMetricPolicy(
+        minimum_support_count=1,
+        minimum_support_percentage=5,
+        technical_minimum_support_count=1,
+        technical_minimum_support_percentage=5,
+        maximum_headlines_per_polarity=2,
     )
 
     metrics: AggregateThemeMetrics = calculate_aggregate_theme_metrics(
@@ -224,6 +245,7 @@ def test_aggregate_metrics_cap_each_polarity_and_allow_no_visible_themes() -> No
         newest_review_revision_ids=range(11, 21),
         themes=themes,
         memberships=memberships,
+        policy=policy,
     )
     empty: AggregateThemeMetrics = calculate_aggregate_theme_metrics(
         scope_review_revision_ids=range(1, 41),
@@ -231,12 +253,25 @@ def test_aggregate_metrics_cap_each_polarity_and_allow_no_visible_themes() -> No
         newest_review_revision_ids=range(21, 41),
         themes=themes,
         memberships=(),
+        policy=policy,
+    )
+    strict: AggregateThemeMetrics = calculate_aggregate_theme_metrics(
+        scope_review_revision_ids=range(1, 21),
+        oldest_review_revision_ids=range(1, 11),
+        newest_review_revision_ids=range(11, 21),
+        themes=themes,
+        memberships=memberships,
+        policy=policy.model_copy(update={"minimum_support_percentage": 11}),
     )
 
-    assert len(metrics.positive_headlines) == 10
-    assert metrics.negative_headlines == ()
+    assert len(metrics.positive_headlines) == 2
+    assert tuple(metric.theme_id for metric in metrics.negative_headlines) == (
+        "negative-0",
+    )
     assert empty.positive_headlines == ()
     assert empty.negative_headlines == ()
+    assert strict.positive_headlines == ()
+    assert strict.negative_headlines == ()
 
 
 def review(

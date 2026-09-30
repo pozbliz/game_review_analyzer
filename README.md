@@ -30,7 +30,7 @@ The Version 3 Test Report, Main Report replacement, and 1,000-review Main Report
 
 The Test Report analyzes 25 oldest and 25 newest reviews in one Codex call.
 
-The shared `Create Report` action supports the 50-review Test Report and 1,000-review Main Report scopes.
+The shared `Create Report` action supports the 50-review Test Report and 1,000-review Main Report scopes. Before creation, users can set the minimum cohort support percentage and maximum Themes in each polarity list. Defaults remain 5% and 10 Themes.
 
 Available reports appear as dated cards above `Create Report`. A Main Report can add 500 oldest and 500 newest unseen reviews through `Extend Report` beside its review count. Each report has a delete control at the bottom and returns to its game page after deletion.
 
@@ -38,7 +38,7 @@ Each Test Report Theme can reveal its matching local reviews. Evidence is sorted
 
 The current Test and Main Reports are saved separately from Version 2 reports. Remaining extension edge cases are still open.
 Invalid Theme batch or merge output is retried once with a safe correction before the run fails; completed batch checkpoints remain reusable.
-Reports independently show up to 10 positive and 10 negative Themes that meet the 5% cohort threshold. The two lists can have different counts. Evidence opens on a distinct sage review surface.
+Reports independently apply the selected Theme limit to positive and negative Themes that meet the selected cohort threshold. The two lists can have different counts. Evidence opens on a distinct sage review surface.
 
 Current application data was reset before this redesign. The gitignored evaluation corpus remains available.
 
@@ -48,7 +48,7 @@ Current application data was reset before this redesign. The gitignored evaluati
 - Complete a Full Import of eligible English reviews before analysis.
 - Refresh stored datasets before extending or replacing the Main Report.
 - Grow one Main Report in 1,000-review increments split between oldest and newest unseen reviews.
-- Show up to 10 positive and 10 negative Themes that reach 5% support in either cohort, with independent counts per polarity.
+- Let users configure the support threshold and per-list Theme cap before creating a report.
 - Keep one separate 50-review Test Report for provider testing.
 - Include tags, regional price, descriptions, features, platforms, DLC/storefront information, screenshots, and opt-in Steam-hosted trailers when available.
 - Export aggregated Theme metrics without review text or reviewer identity.

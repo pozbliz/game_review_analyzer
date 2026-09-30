@@ -28,6 +28,7 @@ def calculate_aggregate_theme_metrics(
     newest_review_revision_ids: Iterable[int],
     themes: Iterable[ThemeDefinition],
     memberships: Iterable[ThemeMembership],
+    policy: ThemeMetricPolicy,
 ) -> AggregateThemeMetrics:
     """Calculate Version 3 support and visible Theme rankings locally."""
 
@@ -96,16 +97,17 @@ def calculate_aggregate_theme_metrics(
             metric.oldest_support_percentage,
             metric.newest_support_percentage,
         )
-        >= 5
+        >= policy.minimum_support_percentage
+        and metric.support_count >= policy.minimum_support_count
     ]
     return AggregateThemeMetrics(
         all_themes=tuple(metrics),
         positive_headlines=tuple(
             metric for metric in visible if metric.polarity == ThemePolarity.POSITIVE
-        )[:10],
+        )[: policy.maximum_headlines_per_polarity],
         negative_headlines=tuple(
             metric for metric in visible if metric.polarity == ThemePolarity.NEGATIVE
-        )[:10],
+        )[: policy.maximum_headlines_per_polarity],
     )
 
 

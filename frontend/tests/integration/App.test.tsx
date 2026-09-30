@@ -338,7 +338,14 @@ describe("application shell", () => {
     expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/games/1145350/reports/test",
-      { method: "POST" },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          minimum_support_percentage: 5,
+          maximum_headlines_per_polarity: 10,
+        }),
+      },
     );
     expect(fetchMock).not.toHaveBeenCalledWith(
       "/api/games/1145350/imports/full",
@@ -580,7 +587,14 @@ describe("application shell", () => {
     expect(screen.getByText(/120 input and 30 output tokens/i)).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/games/1145350/reports/test",
-      { method: "POST" },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          minimum_support_percentage: 5,
+          maximum_headlines_per_polarity: 10,
+        }),
+      },
     );
   });
 
@@ -615,7 +629,14 @@ describe("application shell", () => {
     );
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/games/1145350/reports/test",
-      { method: "POST" },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          minimum_support_percentage: 5,
+          maximum_headlines_per_polarity: 10,
+        }),
+      },
     );
   });
 
@@ -643,6 +664,12 @@ describe("application shell", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Analysis scope" }), {
       target: { value: "500" },
     });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Minimum support percentage" }), {
+      target: { value: "7.5" },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Maximum Themes per list" }), {
+      target: { value: "4" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
 
     expect(await screen.findByRole("link", { name: "View Main Report" })).toHaveAttribute(
@@ -651,7 +678,14 @@ describe("application shell", () => {
     );
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/games/1145350/reports/main",
-      { method: "POST" },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          minimum_support_percentage: 7.5,
+          maximum_headlines_per_polarity: 4,
+        }),
+      },
     );
   });
 

@@ -233,7 +233,13 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
             analysis_provider=EmptyThemeProvider(),
         )
     ) as client:
-        started = client.post("/api/games/1145350/reports/main")
+        started = client.post(
+            "/api/games/1145350/reports/main",
+            json={
+                "minimum_support_percentage": 7.5,
+                "maximum_headlines_per_polarity": 4,
+            },
+        )
         run_id: str = started.json()["id"]
         completed = client.get(f"/api/analysis-runs/{run_id}")
         for _ in range(100):
@@ -250,6 +256,8 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
     assert started.status_code == 202
     assert started.json()["report_kind"] == "main"
     assert started.json()["review_count"] == 100
+    assert started.json()["metric_policy"]["minimum_support_percentage"] == 7.5
+    assert started.json()["metric_policy"]["maximum_headlines_per_polarity"] == 4
     assert completed.json()["state"] == "completed"
     assert completed.json()["extracted_review_count"] == 100
     assert report.status_code == 200
@@ -300,7 +308,13 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
         codex_status_source=status,
         analysis_provider=EmptyThemeProvider(),
     )) as client:
-        initial = client.post("/api/games/1145350/reports/main")
+        initial = client.post(
+            "/api/games/1145350/reports/main",
+            json={
+                "minimum_support_percentage": 7.5,
+                "maximum_headlines_per_polarity": 4,
+            },
+        )
         wait_for_completion(client, initial.json()["id"])
         first_report = client.get("/api/games/1145350/reports/main").json()
 
@@ -311,6 +325,8 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
 
     assert extension.status_code == 202
     assert extension.json()["review_count"] == 1_000
+    assert extension.json()["metric_policy"]["minimum_support_percentage"] == 7.5
+    assert extension.json()["metric_policy"]["maximum_headlines_per_polarity"] == 4
     assert pending_report["report_id"] == first_report["report_id"]
     assert completed["state"] == "completed"
     assert extended_report["scope"]["review_count"] == 2_000

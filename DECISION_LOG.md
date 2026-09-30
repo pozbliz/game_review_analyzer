@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-09-30 - Theme visibility settings are configurable per report
+
+**What changed:**
+
+- Added creation controls for minimum cohort support and maximum Themes per polarity list.
+- Store the selected policy with each Version 3 report and reuse it during Main Report extension.
+- Aggregate metrics now use the stored policy instead of fixed 5% and 10-Theme values.
+
+**Why:**
+
+- Users need to control how selective or broad each report is without changing backend code.
+- Stored settings keep report creation and later extension consistent.
+
+**New issues:**
+
+- Existing Version 3 reports without stored settings load the prior 5% and 10-Theme defaults.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Evidence reviews collapse independently
 
 **What changed:**

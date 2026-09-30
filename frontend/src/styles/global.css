@@ -94,6 +94,9 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .analysis-setup label { display: block; margin-bottom: .4rem; color: var(--forest-dark); font-weight: 750; }
 .analysis-setup select { min-height: 24px; }
 .analysis-setup input { width: 100%; padding: .8rem; border: 1px solid #aaa99f; border-radius: 10px; }
+.report-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; margin: 1rem 0 0; padding: .9rem; border: 1px solid var(--line); border-radius: 10px; }
+.report-settings legend { padding: 0 .35rem; color: var(--forest-dark); font-weight: 750; }
+.report-settings small { display: block; margin-top: .35rem; font-size: .75rem; line-height: 1.35; }
 .import-progress { margin-top: 1.5rem; padding: 1.2rem; border: 1px solid var(--line); border-radius: 12px; background: rgb(255 255 255 / 58%); }
 .import-progress h3 { margin: 0; }
 .import-progress progress { width: 100%; accent-color: var(--forest); }
@@ -106,6 +109,7 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 @media (max-width: 760px) {
   .appid-row { align-items: stretch; flex-direction: column; }
   .identity-grid { grid-template-columns: 1fr; }
+  .report-settings { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }

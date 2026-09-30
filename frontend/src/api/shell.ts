@@ -155,6 +155,11 @@ export interface AvailableReport {
   created_at: string;
 }
 
+export interface AggregateReportSettings {
+  minimum_support_percentage: number;
+  maximum_headlines_per_polarity: number;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -228,15 +233,25 @@ export async function startCodexAnalysis(
   }));
 }
 
-export async function startTestReport(appId: number): Promise<AnalysisRun> {
+export async function startTestReport(
+  appId: number,
+  settings: AggregateReportSettings,
+): Promise<AnalysisRun> {
   return parseAnalysisRun(await requestJson(`/api/games/${appId}/reports/test`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
   }));
 }
 
-export async function startMainReport(appId: number): Promise<AnalysisRun> {
+export async function startMainReport(
+  appId: number,
+  settings: AggregateReportSettings,
+): Promise<AnalysisRun> {
   return parseAnalysisRun(await requestJson(`/api/games/${appId}/reports/main`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
   }));
 }
 

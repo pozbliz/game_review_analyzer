@@ -49,6 +49,14 @@
 - [x] Enlarge and box the evidence disclosure chevron and distinguish review evidence with a sage surface.
 - [x] Let each evidence review collapse independently while keeping reviews expanded by default.
 
+### Configurable Theme Visibility
+
+- [x] Add report-creation controls for minimum support percentage and maximum Themes per list.
+- [x] Send and validate the selected settings when creating Test and Main Reports.
+- [x] Apply the stored policy during aggregate ranking instead of fixed 5% and 10-Theme values.
+- [x] Preserve the Main Report policy when extending it.
+- [x] Verify custom thresholds, independent caps, API requests, and production builds.
+
 ### Extend and Replace Main Report
 
 - [x] Show dated Test and Main Report cards above the `Create Report` action.

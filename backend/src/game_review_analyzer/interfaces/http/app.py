@@ -201,6 +201,13 @@ class CodexAnalysisRequest(ThemeMetricPolicy):
     cohort_size: int = Field(default=25, ge=1, le=2_500)
 
 
+class AggregateReportSettings(BaseModel):
+    """Configure visible aggregate Themes for one new report."""
+
+    minimum_support_percentage: float = Field(default=5, ge=0, le=100)
+    maximum_headlines_per_polarity: int = Field(default=10, ge=1)
+
+
 class AvailableReportResponse(BaseModel):
     """Summarize one available Version 3 report in the game workspace."""
 
@@ -237,6 +244,18 @@ class ClientDiagnosticRequest(BaseModel):
     event: Literal["frontend.error", "frontend.unhandled_rejection"]
     path: str = Field(min_length=1, max_length=500)
     error_type: str = Field(min_length=1, max_length=100)
+
+
+def _aggregate_metric_policy(settings: AggregateReportSettings) -> ThemeMetricPolicy:
+    """Build the stored policy for one aggregate report request."""
+
+    return ThemeMetricPolicy(
+        minimum_support_count=1,
+        minimum_support_percentage=settings.minimum_support_percentage,
+        technical_minimum_support_count=1,
+        technical_minimum_support_percentage=settings.minimum_support_percentage,
+        maximum_headlines_per_polarity=settings.maximum_headlines_per_polarity,
+    )
 
 
 def create_app(
@@ -422,7 +441,10 @@ def create_app(
         response_model=AnalysisRun,
         status_code=202,
     )
-    def start_test_report(app_id: int) -> AnalysisRun:
+    def start_test_report(
+        app_id: int,
+        report_settings: AggregateReportSettings = AggregateReportSettings(),
+    ) -> AnalysisRun:
         status: CodexCliStatus = resolved_codex_status_source()
         if not status.installed or not status.authenticated:
             raise HTTPException(
@@ -436,13 +458,7 @@ def create_app(
                 app_id=app_id,
                 provider="codex-cli",
                 model=status.model,
-                metric_policy=ThemeMetricPolicy(
-                    minimum_support_count=1,
-                    minimum_support_percentage=5,
-                    technical_minimum_support_count=1,
-                    technical_minimum_support_percentage=5,
-                    maximum_headlines_per_polarity=10,
-                ),
+                metric_policy=_aggregate_metric_policy(report_settings),
                 cohort_size=25,
                 report_kind="test",
             )
@@ -462,7 +478,10 @@ def create_app(
         response_model=AnalysisRun,
         status_code=202,
     )
-    def start_main_report(app_id: int) -> AnalysisRun:
+    def start_main_report(
+        app_id: int,
+        report_settings: AggregateReportSettings = AggregateReportSettings(),
+    ) -> AnalysisRun:
         status: CodexCliStatus = resolved_codex_status_source()
         if not status.installed or not status.authenticated:
             raise HTTPException(
@@ -487,13 +506,7 @@ def create_app(
                 app_id=app_id,
                 provider="codex-cli",
                 model=status.model,
-                metric_policy=ThemeMetricPolicy(
-                    minimum_support_count=1,
-                    minimum_support_percentage=5,
-                    technical_minimum_support_count=1,
-                    technical_minimum_support_percentage=5,
-                    maximum_headlines_per_polarity=10,
-                ),
+                metric_policy=_aggregate_metric_policy(report_settings),
                 cohort_size=500,
                 report_kind="main",
             )
@@ -543,13 +556,7 @@ def create_app(
                 app_id=app_id,
                 provider="codex-cli",
                 model=status.model,
-                metric_policy=ThemeMetricPolicy(
-                    minimum_support_count=1,
-                    minimum_support_percentage=5,
-                    technical_minimum_support_count=1,
-                    technical_minimum_support_percentage=5,
-                    maximum_headlines_per_polarity=10,
-                ),
+                metric_policy=current_report.metric_policy,
                 cohort_size=500,
                 report_kind="main",
                 excluded_revision_ids=current_report.review_revision_ids,
