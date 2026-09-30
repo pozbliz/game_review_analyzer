@@ -264,6 +264,62 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
     assert workspace.json()["main_report_available"] is True
 
 
+def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> None:
+    class EmptyThemeProvider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version="3.0",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=tuple(
+                        review.review_revision_id for review in request.reviews
+                    ),
+                    themes=(),
+                ),
+                usage=ProviderUsage(100, 0, 10),
+            )
+
+    database_path: Path = seeded_database(tmp_path, review_count=2_000)
+    status = lambda: CodexCliStatus(
+        True, True, "codex-cli test", "gpt-5.6-luna", "low"
+    )
+    with TestClient(create_app(
+        Settings(database_path=database_path),
+        codex_status_source=status,
+        analysis_provider=EmptyThemeProvider(),
+    )) as client:
+        initial = client.post("/api/games/1145350/reports/main")
+        wait_for_completion(client, initial.json()["id"])
+        first_report = client.get("/api/games/1145350/reports/main").json()
+
+        extension = client.post("/api/games/1145350/reports/main/extend")
+        pending_report = client.get("/api/games/1145350/reports/main").json()
+        completed = wait_for_completion(client, extension.json()["id"])
+        extended_report = client.get("/api/games/1145350/reports/main").json()
+
+    assert extension.status_code == 202
+    assert extension.json()["review_count"] == 1_000
+    assert pending_report["report_id"] == first_report["report_id"]
+    assert completed["state"] == "completed"
+    assert extended_report["scope"]["review_count"] == 2_000
+    assert extended_report["created_at"]
+
+
+def wait_for_completion(client: TestClient, run_id: str) -> dict:
+    response = client.get(f"/api/analysis-runs/{run_id}")
+    for _ in range(100):
+        if response.json()["state"] == "completed":
+            break
+        response = client.get(f"/api/analysis-runs/{run_id}")
+    return response.json()
+
+
 def candidate(candidate_id: str, review_ids: tuple[str, ...]) -> ThemeCandidate:
     return ThemeCandidate(
         candidate_id=candidate_id,

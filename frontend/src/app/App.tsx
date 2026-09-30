@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   AnalysisJob,
   AnalysisRun,
+  AvailableReport,
   cancelJob,
   cancelAnalysisRun,
   CodexCliProviderStatus,
@@ -77,8 +78,8 @@ function CatalogApp(): JSX.Element {
   );
   const [codexCohortSize, setCodexCohortSize] = useState<number>(25);
   const [analysisRun, setAnalysisRun] = useState<AnalysisRun | null>(null);
-  const [testReportAvailable, setTestReportAvailable] = useState<boolean>(false);
   const [mainReportAvailable, setMainReportAvailable] = useState<boolean>(false);
+  const [availableReports, setAvailableReports] = useState<AvailableReport[]>([]);
   const [analysisError, setAnalysisError] = useState<string>("");
 
   useEffect(() => {
@@ -205,8 +206,8 @@ function CatalogApp(): JSX.Element {
     setReportHistoryLoading(true);
     setReportHistoryError("");
     setFullHistoryReady(false);
-    setTestReportAvailable(false);
     setMainReportAvailable(false);
+    setAvailableReports([]);
     setJob(null);
     setAnalysisRun(null);
     window.localStorage.removeItem("active-import-job");
@@ -231,8 +232,8 @@ function CatalogApp(): JSX.Element {
           .then((workspace) => {
             if (requestId !== previewRequestId.current) return;
             setFullHistoryReady(workspace.full_history_ready);
-            setTestReportAvailable(workspace.test_report_available);
             setMainReportAvailable(workspace.main_report_available);
+            setAvailableReports(workspace.available_reports);
             if (workspace.main_report_available) setCodexCohortSize(25);
             if (workspace.latest_analysis_run?.state !== "completed") {
               const latestRun: AnalysisRun | null = workspace.latest_analysis_run;
@@ -485,7 +486,7 @@ function CatalogApp(): JSX.Element {
                               )
                         }
                       >
-                        {providerSelection.startsWith("ollama::") ? "Run Ollama pilot" : "Create report"}
+                        {providerSelection.startsWith("ollama::") ? "Run Ollama pilot" : "Create Report"}
                       </button>
                     </>
                   )}
@@ -659,11 +660,19 @@ function CatalogApp(): JSX.Element {
                     <p>Restart the app after the model download completes.</p>
                   </div>
                 )}
-                {testReportAvailable && (
-                  <a href={`/test-reports/${preview.app_id}`}>View Test Report</a>
-                )}
-                {mainReportAvailable && (
-                  <a href={`/main-reports/${preview.app_id}`}>View Main Report</a>
+                {availableReports.length > 0 && (
+                  <section className="available-reports" aria-labelledby="available-reports-title">
+                    <h3 id="available-reports-title">Available Reports</h3>
+                    {availableReports.map((report) => (
+                      <a
+                        key={report.kind}
+                        href={`/${report.kind}-reports/${preview.app_id}`}
+                      >
+                        <strong>{report.kind === "main" ? "Main Report" : "Test Report"}</strong>
+                        <span>{report.review_count.toLocaleString()} reviews Â· {formatReportDate(report.created_at)}</span>
+                      </a>
+                    ))}
+                  </section>
                 )}
                 <button
                   className={`create-report${reportHistory.length > 0 ? " create-report-secondary" : ""}`}
@@ -679,7 +688,7 @@ function CatalogApp(): JSX.Element {
                   }
                   onClick={reportHistory.length > 0 || fullHistoryReady ? beginAnalysis : beginImport}
                 >
-                  {reportHistory.length > 0 ? "Create new report" : "Create report"}
+                  Create Report
                 </button>
               </div>
             </>
@@ -703,4 +712,9 @@ function formatReportHistoryEntry(entry: ReportHistoryEntry): string {
     ollama: "Ollama",
   } as Record<string, string>)[entry.provider] ?? entry.provider;
   return `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date)} · ${provider} · ${entry.model}`;
+}
+
+function formatReportDate(createdAt: string): string {
+  const date: Date = new Date(`${createdAt.replace(" ", "T")}Z`);
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
 }

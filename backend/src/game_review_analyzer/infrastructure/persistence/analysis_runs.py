@@ -72,6 +72,7 @@ def create_analysis_run(
     metric_policy: ThemeMetricPolicy,
     cohort_size: int = 2_500,
     report_kind: Literal["main", "test"] | None = None,
+    excluded_revision_ids: tuple[int, ...] = (),
 ) -> AnalysisRun:
     """Queue a provider run over non-overlapping oldest and newest review cohorts."""
 
@@ -88,10 +89,21 @@ def create_analysis_run(
             raise FullHistoryRequired(
                 "Analysis requires a completed full-history import"
             )
+        excluded_review_ids: set[str] = set()
+        if excluded_revision_ids:
+            placeholders: str = ",".join("?" for _ in excluded_revision_ids)
+            excluded_review_ids = {
+                str(row[0])
+                for row in connection.execute(
+                    "SELECT review_id FROM review_revisions "
+                    f"WHERE id IN ({placeholders})",
+                    excluded_revision_ids,
+                )
+            }
         ordered_revisions: tuple[tuple[int, str], ...] = tuple(
             (int(row[0]), str(row[1]))
             for row in connection.execute(
-                "SELECT review_revisions.id, review_revisions.content_json "
+                "SELECT review_revisions.id, review_revisions.content_json, reviews.id "
                 "FROM review_revisions "
                 "JOIN reviews ON reviews.id = review_revisions.review_id "
                 "WHERE reviews.app_id = ? AND NOT EXISTS ("
@@ -102,6 +114,7 @@ def create_analysis_run(
                 "reviews.id, review_revisions.id",
                 (app_id,),
             )
+            if str(row[2]) not in excluded_review_ids
         )
         eligible_by_id: dict[int, bool] = {
             revision_id: (

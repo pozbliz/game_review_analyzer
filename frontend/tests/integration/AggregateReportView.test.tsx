@@ -12,6 +12,7 @@ describe("aggregate Test Report", () => {
     const report = {
       schema_version: "3.0",
       report_id: "test-report",
+      created_at: "2026-09-30 04:06:47",
       kind: "test",
       game: { app_id: 1145350, title: "Hades II" },
       metadata: metadata(),
@@ -73,6 +74,39 @@ describe("aggregate Test Report", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Hide review evidence for Responsive combat" }));
     expect(screen.queryByRole("region", { name: "Review evidence for Responsive combat" })).not.toBeInTheDocument();
+  });
+
+  it("starts a 1,000-review Main Report extension beside the review count", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
+      const url: string = request.toString();
+      if (options?.method === "POST") {
+        return new Response(JSON.stringify({
+          id: "extension-1", app_id: 1145350, provider: "codex-cli",
+          model: "gpt-5.6-luna", state: "queued", review_count: 1_000,
+          cancel_requested: false, error_code: null, report_version_id: null,
+          input_tokens: null, cached_input_tokens: null, output_tokens: null,
+          extracted_review_count: 0, oversized_review_count: 0,
+          report_kind: "main", phase: "queued",
+        }), { status: 202 });
+      }
+      return new Response(JSON.stringify({
+        schema_version: "3.0", report_id: "main-report",
+        created_at: "2026-09-30 04:06:47", kind: "main",
+        game: { app_id: 1145350, title: "Hades II" }, metadata: metadata(),
+        scope: { review_count: 1_000, oldest_review_count: 500, newest_review_count: 500, oversized_review_count: 0 },
+        provider: "codex-cli", model: "gpt-5.6-luna",
+        positive_themes: [], negative_themes: [],
+      }), { status: 200 });
+    });
+
+    render(<AggregateReportView appId={1145350} kind="main" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Extend Report" }));
+
+    expect(await screen.findByText(/Report extension started/)).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/games/1145350/reports/main/extend",
+      { method: "POST" },
+    );
   });
 });
 

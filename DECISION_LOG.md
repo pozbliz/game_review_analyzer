@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-09-30 - Main Reports support explicit 1,000-review extension
+
+**What changed:**
+
+- Added dated Test and Main Report cards above the `Create Report` action.
+- Added `Extend Report` beside the Main Report review count.
+- Extension selects up to 500 oldest and 500 newest unseen reviews.
+- The current Main Report remains available until the extension succeeds.
+- Established Theme definitions remain fixed during extension.
+
+**Why:**
+
+- The prior interface disabled Main Report creation after the first report without exposing the designed extension path.
+- Plain report links did not show report scope or creation date.
+
+**New issues:**
+
+- Main Report replacement and extension concurrency tests remain open.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Merge assignments use a bounded flat list
 
 **What changed:**

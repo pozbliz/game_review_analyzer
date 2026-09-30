@@ -15,6 +15,7 @@ export interface AggregateTheme {
 export interface AggregateReport {
   schema_version: "3.0";
   report_id: string;
+  created_at: string;
   kind: "main" | "test";
   game: { app_id: number; title: string };
   metadata: SteamMetadata;
@@ -244,7 +245,8 @@ function parseReport(payload: unknown): ReportSummary {
 function parseAggregateReport(payload: unknown): AggregateReport {
   if (!isRecord(payload) || payload.schema_version !== "3.0" ||
       !["main", "test"].includes(String(payload.kind)) ||
-      typeof payload.report_id !== "string" || !isRecord(payload.game) ||
+      typeof payload.report_id !== "string" || typeof payload.created_at !== "string" ||
+      !isRecord(payload.game) ||
       typeof payload.game.app_id !== "number" || typeof payload.game.title !== "string" ||
       !isRecord(payload.metadata) || !isRecord(payload.scope) ||
       !numbers(payload.scope, [
@@ -258,6 +260,7 @@ function parseAggregateReport(payload: unknown): AggregateReport {
   return {
     schema_version: "3.0",
     report_id: payload.report_id,
+    created_at: payload.created_at,
     kind: payload.kind as AggregateReport["kind"],
     game: { app_id: payload.game.app_id, title: payload.game.title },
     metadata: parseSteamMetadata(payload.metadata),

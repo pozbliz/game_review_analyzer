@@ -95,6 +95,7 @@ from game_review_analyzer.infrastructure.persistence.report_versions import (
     list_report_versions,
     load_report_version,
     load_aggregate_report_slot,
+    load_aggregate_report_created_at,
 )
 from game_review_analyzer.infrastructure.steam_metadata import (
     SteamGameNotFound,
@@ -200,6 +201,14 @@ class CodexAnalysisRequest(ThemeMetricPolicy):
     cohort_size: int = Field(default=25, ge=1, le=2_500)
 
 
+class AvailableReportResponse(BaseModel):
+    """Summarize one available Version 3 report in the game workspace."""
+
+    kind: Literal["main", "test"]
+    review_count: int
+    created_at: str
+
+
 class GameWorkspaceResponse(BaseModel):
     """Expose retained acquisition and analysis state for one selected game."""
 
@@ -207,6 +216,7 @@ class GameWorkspaceResponse(BaseModel):
     latest_analysis_run: AnalysisRun | None
     test_report_available: bool
     main_report_available: bool
+    available_reports: tuple[AvailableReportResponse, ...]
 
 
 class QuickImportRequest(BaseModel):
@@ -493,6 +503,59 @@ def create_app(
         app.state.analysis_executor.submit(run_analysis, run.id)
         return run
 
+    @app.post(
+        f"{API_PREFIX}/games/{{app_id}}/reports/main/extend",
+        response_model=AnalysisRun,
+        status_code=202,
+    )
+    def extend_main_report(app_id: int) -> AnalysisRun:
+        status: CodexCliStatus = resolved_codex_status_source()
+        if not status.installed or not status.authenticated:
+            raise HTTPException(
+                status_code=409, detail={"code": "codex_cli_not_ready"}
+            )
+        current_report = load_aggregate_report_slot(
+            resolved_settings.database_path, app_id, "main"
+        )
+        if current_report is None:
+            raise HTTPException(
+                status_code=409, detail={"code": "main_report_required"}
+            )
+        latest_run: AnalysisRun | None = load_latest_analysis_run(
+            resolved_settings.database_path, app_id
+        )
+        if (
+            latest_run is not None
+            and latest_run.report_kind == "main"
+            and latest_run.state in ("queued", "running")
+        ):
+            raise HTTPException(
+                status_code=409, detail={"code": "main_report_analysis_active"}
+            )
+        try:
+            run: AnalysisRun = create_analysis_run(
+                resolved_settings.database_path,
+                app_id=app_id,
+                provider="codex-cli",
+                model=status.model,
+                metric_policy=ThemeMetricPolicy(
+                    minimum_support_count=1,
+                    minimum_support_percentage=5,
+                    technical_minimum_support_count=1,
+                    technical_minimum_support_percentage=5,
+                    maximum_headlines_per_polarity=5,
+                ),
+                cohort_size=500,
+                report_kind="main",
+                excluded_revision_ids=current_report.review_revision_ids,
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "no_unseen_reviews"}
+            ) from error
+        app.state.analysis_executor.submit(run_analysis, run.id)
+        return run
+
     @app.get(
         f"{API_PREFIX}/games/{{app_id}}/reports/main",
         response_model=AggregateReportResponse,
@@ -503,7 +566,12 @@ def create_app(
         )
         if report is None:
             raise HTTPException(status_code=404, detail={"code": "report_not_found"})
-        return build_aggregate_report_response(report)
+        created_at = load_aggregate_report_created_at(
+            resolved_settings.database_path, app_id, "main"
+        )
+        if created_at is None:
+            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
+        return build_aggregate_report_response(report, created_at)
 
     @app.get(
         f"{API_PREFIX}/games/{{app_id}}/reports/test",
@@ -515,7 +583,12 @@ def create_app(
         )
         if report is None:
             raise HTTPException(status_code=404, detail={"code": "report_not_found"})
-        return build_aggregate_report_response(report)
+        created_at = load_aggregate_report_created_at(
+            resolved_settings.database_path, app_id, "test"
+        )
+        if created_at is None:
+            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
+        return build_aggregate_report_response(report, created_at)
 
     @app.get(
         f"{API_PREFIX}/games/{{app_id}}/reports/test/themes/{{theme_id}}/evidence",
@@ -808,6 +881,25 @@ def create_app(
     def game_workspace(app_id: int) -> GameWorkspaceResponse:
         if load_game_dataset(resolved_settings.database_path, app_id) is None:
             raise HTTPException(status_code=404, detail={"code": "game_not_found"})
+        test_report = load_aggregate_report_slot(
+            resolved_settings.database_path, app_id, "test"
+        )
+        main_report = load_aggregate_report_slot(
+            resolved_settings.database_path, app_id, "main"
+        )
+        available_reports: list[AvailableReportResponse] = []
+        for kind, report in (("test", test_report), ("main", main_report)):
+            if report is None:
+                continue
+            created_at = load_aggregate_report_created_at(
+                resolved_settings.database_path, app_id, kind
+            )
+            if created_at is not None:
+                available_reports.append(AvailableReportResponse(
+                    kind=kind,
+                    review_count=len(report.review_revision_ids),
+                    created_at=created_at,
+                ))
         return GameWorkspaceResponse(
             full_history_ready=has_completed_full_import(
                 resolved_settings.database_path, app_id
@@ -815,14 +907,9 @@ def create_app(
             latest_analysis_run=load_latest_analysis_run(
                 resolved_settings.database_path, app_id
             ),
-            test_report_available=load_aggregate_report_slot(
-                resolved_settings.database_path, app_id, "test"
-            )
-            is not None,
-            main_report_available=load_aggregate_report_slot(
-                resolved_settings.database_path, app_id, "main"
-            )
-            is not None,
+            test_report_available=test_report is not None,
+            main_report_available=main_report is not None,
+            available_reports=tuple(available_reports),
         )
 
     @app.get(

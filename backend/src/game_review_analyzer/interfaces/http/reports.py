@@ -68,6 +68,7 @@ class AggregateReportResponse(BaseModel):
 
     schema_version: Literal["3.0"]
     report_id: str
+    created_at: str
     kind: Literal["main", "test"]
     game: ReportGameResponse
     metadata: SteamMetadata
@@ -95,7 +96,10 @@ class AggregateThemeEvidenceResponse(BaseModel):
     reviews: tuple[AggregateEvidenceReviewResponse, ...]
 
 
-def build_aggregate_report_response(report: AggregateReport) -> AggregateReportResponse:
+def build_aggregate_report_response(
+    report: AggregateReport,
+    created_at: str,
+) -> AggregateReportResponse:
     """Build a public aggregate response without internal memberships."""
 
     themes_by_id: dict[str, ThemeDefinition] = {
@@ -119,6 +123,7 @@ def build_aggregate_report_response(report: AggregateReport) -> AggregateReportR
     return AggregateReportResponse(
         schema_version="3.0",
         report_id=report.report_id,
+        created_at=created_at,
         kind=report.kind,
         game=ReportGameResponse(
             app_id=report.app_id,

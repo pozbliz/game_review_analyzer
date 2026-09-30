@@ -35,6 +35,7 @@ from game_review_analyzer.domain.analysis import (
     ThemeAnalysisRequest,
     ThemeMergeCandidate,
     ThemeMergeRequest,
+    ThemeMergeTheme,
 )
 from game_review_analyzer.domain.reports import (
     AggregateReport,
@@ -543,14 +544,27 @@ class AnalysisRunner:
                 )
 
             merge_usage: ProviderUsage = ProviderUsage(None, None, None)
-            themes: tuple[ThemeDefinition, ...] = ()
-            memberships: tuple[ThemeMembership, ...] = ()
+            themes: tuple[ThemeDefinition, ...] = (
+                current_report.themes if current_report is not None else ()
+            )
+            memberships: tuple[ThemeMembership, ...] = (
+                current_report.memberships if current_report is not None else ()
+            )
             if merge_candidates:
                 merge_request: ThemeMergeRequest = build_theme_merge_request(
                     request_id=f"{run.id}-merge",
                     app_id=run.app_id,
                     game_title=metadata.title,
                     candidates=merge_candidates,
+                    established_themes=(
+                        ThemeMergeTheme(
+                            theme_id=theme.theme_id,
+                            title=theme.title,
+                            summary=theme.summary,
+                            polarity=theme.polarity,
+                        )
+                        for theme in themes
+                    ),
                 )
                 merge_run: ThemeMergeProviderRun = (
                     self._theme_merge_provider().merge_themes(
@@ -593,18 +607,32 @@ class AnalysisRunner:
                         assignment.candidate_key
                     ].supporting_review_revision_ids
                 }
-                memberships = tuple(
+                new_memberships: tuple[ThemeMembership, ...] = tuple(
                     ThemeMembership(
                         theme_id=theme_id,
                         review_revision_id=revision_id,
                     )
                     for theme_id, revision_id in sorted(membership_pairs)
                 )
+                memberships += new_memberships
+
+            review_revision_ids: tuple[int, ...] = (
+                (current_report.review_revision_ids if current_report else ())
+                + run.review_revision_ids
+            )
+            oldest_revision_ids: tuple[int, ...] = (
+                (current_report.oldest_review_revision_ids if current_report else ())
+                + run.early_review_revision_ids
+            )
+            newest_revision_ids: tuple[int, ...] = (
+                (current_report.newest_review_revision_ids if current_report else ())
+                + run.recent_review_revision_ids
+            )
 
             all_metrics: AggregateThemeMetrics = calculate_aggregate_theme_metrics(
-                run.review_revision_ids,
-                run.early_review_revision_ids,
-                run.recent_review_revision_ids,
+                review_revision_ids,
+                oldest_revision_ids,
+                newest_revision_ids,
                 themes,
                 memberships,
             )
@@ -627,9 +655,9 @@ class AnalysisRunner:
             )
             retained_metrics: AggregateThemeMetrics = (
                 calculate_aggregate_theme_metrics(
-                    run.review_revision_ids,
-                    run.early_review_revision_ids,
-                    run.recent_review_revision_ids,
+                    review_revision_ids,
+                    oldest_revision_ids,
+                    newest_revision_ids,
                     retained_themes,
                     retained_memberships,
                 )
@@ -640,10 +668,13 @@ class AnalysisRunner:
                 kind="main",
                 app_id=run.app_id,
                 metadata_snapshot=metadata,
-                review_revision_ids=run.review_revision_ids,
-                oldest_review_revision_ids=run.early_review_revision_ids,
-                newest_review_revision_ids=run.recent_review_revision_ids,
-                oversized_review_count=run.oversized_review_count,
+                review_revision_ids=review_revision_ids,
+                oldest_review_revision_ids=oldest_revision_ids,
+                newest_review_revision_ids=newest_revision_ids,
+                oversized_review_count=(
+                    (current_report.oversized_review_count if current_report else 0)
+                    + run.oversized_review_count
+                ),
                 provider=run.provider,
                 model=run.model,
                 contract_version=ANALYSIS_CONTRACT_VERSION,

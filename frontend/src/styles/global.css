@@ -68,6 +68,12 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .create-report { width: 100%; margin-top: 1rem; }
 .create-report-secondary { border: 1px solid var(--forest); color: var(--forest); background: transparent; }
 .create-report-secondary:hover { color: white; }
+.available-reports { display: grid; gap: .6rem; margin-top: 1.25rem; }
+.available-reports h3 { margin: 0; font-size: 1rem; }
+.available-reports a { display: grid; gap: .2rem; padding: .85rem 1rem; border: 1px solid var(--line); border-radius: 10px; color: inherit; background: rgb(255 255 255 / 58%); text-decoration: none; }
+.available-reports a:hover { border-color: var(--forest); }
+.available-reports span { color: var(--muted); font-size: .82rem; }
+.report-review-count button { margin-top: .55rem; padding: .45rem .65rem; border: 0; border-radius: 7px; color: white; background: var(--forest); font-weight: 750; }
 .saved-reports { margin-top: 1.25rem; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
 .saved-reports h3 { margin-bottom: .75rem; }
 .saved-reports p, .saved-reports ul { margin: .6rem 0 0; color: var(--muted); font-size: .85rem; }

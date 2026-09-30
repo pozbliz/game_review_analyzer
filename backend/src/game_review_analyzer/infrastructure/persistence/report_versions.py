@@ -120,6 +120,22 @@ def load_aggregate_report_slot(
     return AggregateReport.model_validate_json(row[0]) if row else None
 
 
+def load_aggregate_report_created_at(
+    database_path: Path,
+    app_id: int,
+    kind: str,
+) -> str | None:
+    """Load the creation timestamp for one Version 3 report slot."""
+
+    with sqlite3.connect(database_path) as connection:
+        row: tuple[str] | None = connection.execute(
+            "SELECT created_at FROM report_versions "
+            "WHERE app_id = ? AND report_kind = ?",
+            (app_id, kind),
+        ).fetchone()
+    return str(row[0]) if row else None
+
+
 def load_report_version(
     database_path: Path, report_version_id: str
 ) -> ReportVersion | None:

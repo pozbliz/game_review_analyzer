@@ -145,6 +145,15 @@ class ThemeMergeCandidate(ContractModel):
     supporting_review_revision_ids: tuple[NonEmptyString, ...] = Field(min_length=1)
 
 
+class ThemeMergeTheme(ContractModel):
+    """Define one merged or established Theme."""
+
+    theme_id: NonEmptyString
+    title: NonEmptyString
+    summary: NonEmptyString
+    polarity: ThemePolarity
+
+
 class ThemeMergeRequest(ContractModel):
     """Bind one merge call to the complete set of mapped candidates."""
 
@@ -153,16 +162,8 @@ class ThemeMergeRequest(ContractModel):
     scope_sha256: Sha256Digest
     app_id: int = Field(gt=0)
     game_title: NonEmptyString
+    established_themes: tuple[ThemeMergeTheme, ...] = ()
     candidates: tuple[ThemeMergeCandidate, ...] = Field(min_length=1)
-
-
-class ThemeMergeTheme(ContractModel):
-    """Define one merged Theme referenced by candidate assignments."""
-
-    theme_id: NonEmptyString
-    title: NonEmptyString
-    summary: NonEmptyString
-    polarity: ThemePolarity
 
 
 class ThemeMergeAssignment(ContractModel):

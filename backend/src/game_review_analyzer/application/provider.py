@@ -16,6 +16,7 @@ from game_review_analyzer.domain.analysis import (
     ThemeMergeCandidate,
     ThemeMergeRequest,
     ThemeMergeResult,
+    ThemeMergeTheme,
 )
 
 
@@ -95,13 +96,18 @@ def build_theme_merge_request(
     app_id: int,
     game_title: str,
     candidates: Iterable[ThemeMergeCandidate],
+    established_themes: Iterable[ThemeMergeTheme] = (),
 ) -> ThemeMergeRequest:
     """Create a Version 3 merge request bound to every mapped candidate."""
 
     source_candidates: tuple[ThemeMergeCandidate, ...] = tuple(candidates)
+    source_themes: tuple[ThemeMergeTheme, ...] = tuple(established_themes)
     scope_data: dict[str, Any] = {
         "app_id": app_id,
         "game_title": game_title,
+        "established_themes": [
+            theme.model_dump(mode="json") for theme in source_themes
+        ],
         "candidates": [
             candidate.model_dump(mode="json") for candidate in source_candidates
         ],
@@ -118,6 +124,7 @@ def build_theme_merge_request(
         scope_sha256=sha256(canonical_scope.encode("utf-8")).hexdigest(),
         app_id=app_id,
         game_title=game_title,
+        established_themes=source_themes,
         candidates=source_candidates,
     )
 
@@ -169,6 +176,11 @@ def validate_theme_merge_result(
     theme_by_id: dict[str, ThemeMergeTheme] = {
         theme.theme_id: theme for theme in result.themes
     }
+    established_by_id: dict[str, ThemeMergeTheme] = {
+        theme.theme_id: theme for theme in request.established_themes
+    }
+    if any(theme_by_id.get(theme_id) != theme for theme_id, theme in established_by_id.items()):
+        raise ValueError("Established Themes must remain unchanged")
     if any(
         theme_id is not None
         and candidate_by_key[candidate_key].polarity

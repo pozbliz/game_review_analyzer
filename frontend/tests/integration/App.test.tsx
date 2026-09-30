@@ -148,7 +148,7 @@ describe("application shell", () => {
     expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
     expect(screen.getByText("Supergiant Games")).toBeVisible();
     expect(screen.getAllByText("Unknown / unavailable")).toHaveLength(3);
-    expect(screen.getByRole("button", { name: "Create report" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Create Report" })).toBeEnabled();
   });
 
   it("searches by game name and previews the selected Steam result", async () => {
@@ -217,7 +217,7 @@ describe("application shell", () => {
       "/reports/report-latest",
     );
     expect(screen.getByText(/Aug 12, 2026.*Codex CLI.*gpt-5.6-luna/i)).toBeVisible();
-    expect(screen.getByRole("button", { name: "Create new report" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Create Report" })).toBeEnabled();
     expect(fetchMock).toHaveBeenCalledWith("/api/games/1145350/reports");
   });
 
@@ -240,7 +240,7 @@ describe("application shell", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Unable to load saved reports",
     );
-    expect(screen.getByRole("button", { name: "Create report" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create Report" })).toBeDisabled();
     expect(fetchMock).not.toHaveBeenCalledWith(
       "/api/games/1145350/imports/full",
       expect.anything(),
@@ -263,10 +263,10 @@ describe("application shell", () => {
     render(<App />);
     await previewGame();
 
-    expect(screen.getByRole("button", { name: "Create report" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create Report" })).toBeDisabled();
     resolveHistory(json([]));
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Create report" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Create Report" })).toBeEnabled();
     });
   });
 
@@ -333,7 +333,7 @@ describe("application shell", () => {
 
     render(<App />);
     await previewGame();
-    fireEvent.click(await screen.findByRole("button", { name: "Create new report" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Create Report" }));
 
     expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(
@@ -363,7 +363,7 @@ describe("application shell", () => {
 
     render(<App />);
     await previewGame();
-    fireEvent.click(await screen.findByRole("button", { name: "Create report" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Create Report" }));
 
     expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
     expect(fetchMock).not.toHaveBeenCalledWith(
@@ -501,7 +501,7 @@ describe("application shell", () => {
 
     render(<App />);
     await previewGame();
-    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
 
     expect(await screen.findByText("200 reviews scanned")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Cancel import" }));
@@ -571,9 +571,9 @@ describe("application shell", () => {
 
     render(<App />);
     await previewGame();
-    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
     await screen.findByRole("heading", { name: "Import complete" });
-    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
 
     const link = await screen.findByRole("link", { name: "View Test Report" });
     expect(link).toHaveAttribute("href", "/test-reports/1145350");
@@ -606,7 +606,7 @@ describe("application shell", () => {
     render(<App />);
     await previewGame();
     expect(screen.queryByRole("button", { name: "Run 50-review test" })).not.toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: "Create report" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Create Report" }));
 
     expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
     expect(screen.getByRole("link", { name: "View Test Report" })).toHaveAttribute(
@@ -643,7 +643,7 @@ describe("application shell", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Analysis scope" }), {
       target: { value: "500" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
 
     expect(await screen.findByRole("link", { name: "View Main Report" })).toHaveAttribute(
       "href",
@@ -655,7 +655,7 @@ describe("application shell", () => {
     );
   });
 
-  it("does not offer Main Report recreation before Slice 18", async () => {
+  it("lists the dated Main Report above Create Report", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url: string = request.toString();
       if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
@@ -664,7 +664,15 @@ describe("application shell", () => {
       if (url === "/api/providers/ollama") return json(ollamaProvider());
       if (url === "/api/games/1145350/reports") return json([]);
       if (url === "/api/games/1145350/workspace") {
-        return json({ ...workspace(true), main_report_available: true });
+        return json({
+          ...workspace(true),
+          main_report_available: true,
+          available_reports: [{
+            kind: "main",
+            review_count: 1_000,
+            created_at: "2026-09-30 04:06:47",
+          }],
+        });
       }
       return json(metadata());
     });
@@ -673,10 +681,11 @@ describe("application shell", () => {
     await previewGame();
 
     expect(screen.getByRole("option", { name: "Main · 1,000 reviews" })).toBeDisabled();
-    expect(screen.getByRole("link", { name: "View Main Report" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Main Report.*1,000 reviews.*Sep 30, 2026/i })).toHaveAttribute(
       "href",
       "/main-reports/1145350",
     );
+    expect(screen.getByRole("button", { name: "Create Report" })).toBeVisible();
   });
 
   it("describes Main Report map progress truthfully", async () => {
@@ -705,7 +714,7 @@ describe("application shell", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Analysis scope" }), {
       target: { value: "500" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
 
     expect(await screen.findByText("250 of 1,000 reviews analyzed and checkpointed")).toBeVisible();
   });
@@ -734,11 +743,11 @@ describe("application shell", () => {
     render(<App />);
     await previewGame();
 
-    expect(await screen.findByRole("link", { name: "View Test Report" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: /Test Report.*50 reviews/i })).toHaveAttribute(
       "href",
       "/test-reports/1145350",
     );
-    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
     expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
   });
 
@@ -770,7 +779,7 @@ describe("application shell", () => {
     });
     expect(screen.getByText(/local processing: review text stays on this device/i)).toBeVisible();
     expect(screen.getByText(/analyzes 25 oldest and 25 newest reviews/i)).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
     fireEvent.click(await screen.findByRole("button", { name: "Run Ollama pilot" }));
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -803,7 +812,7 @@ describe("application shell", () => {
     fireEvent.change(screen.getByLabelText("Analysis provider"), {
       target: { value: "ollama::qwen3.5:4b" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
     fireEvent.click(await screen.findByRole("button", { name: "Run Ollama pilot" }));
     fireEvent.click(await screen.findByRole("button", { name: "Cancel analysis" }));
 
@@ -855,7 +864,7 @@ describe("application shell", () => {
 
     render(<App />);
     await previewGame();
-    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
     fireEvent.click(await screen.findByRole("button", { name: "Retry import" }));
 
     expect(await screen.findByText("Import complete")).toBeVisible();
@@ -1048,5 +1057,10 @@ function workspace(
     latest_analysis_run: latestAnalysisRun,
     test_report_available: testReportAvailable,
     main_report_available: false,
+    available_reports: testReportAvailable ? [{
+      kind: "test",
+      review_count: 50,
+      created_at: "2026-09-30 04:06:47",
+    }] : [],
   };
 }

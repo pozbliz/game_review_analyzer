@@ -58,6 +58,7 @@ THEME_ANALYSIS_INSTRUCTIONS = (
 )
 THEME_MERGE_INSTRUCTIONS = (
     "Merge semantically equivalent candidate opinions into shared Themes. "
+    "Return every established Theme unchanged. "
     "Return one assignment item for every supplied candidate key. "
     "Each candidate_key must appear exactly once. Set theme_id to one returned "
     "Theme ID, or null to discard the candidate. "

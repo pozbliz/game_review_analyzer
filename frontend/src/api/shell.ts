@@ -146,6 +146,13 @@ export interface GameWorkspace {
   latest_analysis_run: AnalysisRun | null;
   test_report_available: boolean;
   main_report_available: boolean;
+  available_reports: AvailableReport[];
+}
+
+export interface AvailableReport {
+  kind: "main" | "test";
+  review_count: number;
+  created_at: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -233,18 +240,32 @@ export async function startMainReport(appId: number): Promise<AnalysisRun> {
   }));
 }
 
+export async function extendMainReport(appId: number): Promise<AnalysisRun> {
+  return parseAnalysisRun(await requestJson(`/api/games/${appId}/reports/main/extend`, {
+    method: "POST",
+  }));
+}
+
 export async function getGameWorkspace(appId: number): Promise<GameWorkspace> {
   const payload: unknown = await requestJson(`/api/games/${appId}/workspace`);
   if (!isRecord(payload) || typeof payload.full_history_ready !== "boolean" ||
       typeof payload.test_report_available !== "boolean" ||
       typeof payload.main_report_available !== "boolean" ||
-      !(payload.latest_analysis_run === null || isRecord(payload.latest_analysis_run))) {
+      !(payload.latest_analysis_run === null || isRecord(payload.latest_analysis_run)) ||
+      !(payload.available_reports === undefined || Array.isArray(payload.available_reports))) {
     throw new Error("Invalid game workspace response");
   }
   return {
     full_history_ready: payload.full_history_ready,
     test_report_available: payload.test_report_available,
     main_report_available: payload.main_report_available,
+    available_reports: (payload.available_reports ?? []).map((report) => {
+      if (!isRecord(report) || !["main", "test"].includes(String(report.kind)) ||
+          typeof report.review_count !== "number" || typeof report.created_at !== "string") {
+        throw new Error("Invalid available report response");
+      }
+      return report as unknown as AvailableReport;
+    }),
     latest_analysis_run: payload.latest_analysis_run === null
       ? null
       : parseAnalysisRun(payload.latest_analysis_run),

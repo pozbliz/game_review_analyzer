@@ -8,6 +8,7 @@ import {
   getTestReport,
 } from "../../api/reports";
 import StorefrontOverview from "../game/StorefrontOverview";
+import { extendMainReport } from "../../api/shell";
 
 interface AggregateReportViewProps {
   appId: number;
@@ -22,6 +23,7 @@ export default function AggregateReportView(
   const [openThemeId, setOpenThemeId] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<Record<string, AggregateThemeEvidence>>({});
   const [evidenceError, setEvidenceError] = useState<string>("");
+  const [extensionState, setExtensionState] = useState<"idle" | "starting" | "started" | "failed">("idle");
 
   useEffect(() => {
     let active: boolean = true;
@@ -47,6 +49,16 @@ export default function AggregateReportView(
       .catch(() => setEvidenceError("Unable to load review evidence."));
   }
 
+  function extendReport(): void {
+    setExtensionState("starting");
+    extendMainReport(appId)
+      .then((run) => {
+        window.localStorage.setItem("active-analysis-run", run.id);
+        setExtensionState("started");
+      })
+      .catch(() => setExtensionState("failed"));
+  }
+
   return (
     <main className="report-shell">
       <header className="report-header">
@@ -58,7 +70,16 @@ export default function AggregateReportView(
         </div>
       </header>
       <section className="report-facts" aria-label="Report scope and provenance">
-        <div><span>Reviews</span><strong>{report.scope.review_count}</strong></div>
+        <div className="report-review-count">
+          <span>Reviews</span>
+          <strong>{report.scope.review_count}</strong>
+          {kind === "main" && (
+            <button type="button" onClick={extendReport} disabled={extensionState !== "idle"}>
+              {extensionState === "starting" ? "Startingâ€¦" : "Extend Report"}
+            </button>
+          )}
+        </div>
+        <div><span>Created</span><strong>{formatDate(report.created_at)}</strong></div>
         <div><span>Oldest cohort</span><strong>{report.scope.oldest_review_count}</strong></div>
         <div><span>Newest cohort</span><strong>{report.scope.newest_review_count}</strong></div>
         {report.scope.oversized_review_count > 0 && (
@@ -66,6 +87,8 @@ export default function AggregateReportView(
         )}
         <div><span>Provider</span><strong>{report.provider} · {report.model}</strong></div>
       </section>
+      {extensionState === "started" && <p role="status">Report extension started. You can return to the game catalog to follow progress.</p>}
+      {extensionState === "failed" && <p className="error" role="alert">Unable to extend this report.</p>}
       {report.positive_themes.length === 0 && report.negative_themes.length === 0 ? (
         <section className="empty-report" role="status">
           <h2>No main Theme met the 5% threshold</h2>
@@ -178,4 +201,10 @@ function ThemeItem(
 
 function formatPercentage(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function formatDate(createdAt: string): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+    new Date(`${createdAt.replace(" ", "T")}Z`),
+  );
 }
