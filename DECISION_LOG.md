@@ -7,6 +7,7 @@
 - Replaced the dynamic assignment object with one flat assignment item per candidate.
 - Bounded the list to the exact candidate count and restricted candidate keys to the request scope.
 - Reject missing, unknown, or duplicate candidate assignments after parsing.
+- Verified the 174-candidate live merge completed in 73 seconds and produced the 1,000-review Main Report.
 
 **Why:**
 

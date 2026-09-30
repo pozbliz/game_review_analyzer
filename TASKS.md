@@ -83,8 +83,8 @@
 
 - [ ] Run the complete automated test and build suite.
 - [ ] Verify restart recovery with reserved scopes and completed batches.
-- [ ] Run live 50-review, 1,000-review, and 2,000-review Codex workflows.
-- [ ] Record elapsed time and measured token use.
+- [ ] Run live 50-review, 1,000-review, and 2,000-review Codex workflows. The 1,000-review workflow is complete.
+- [ ] Record elapsed time and measured token use. The 1,000-review run used 439,101 input and 28,581 output tokens; its recovered merge took 73 seconds.
 - [ ] Verify Test Report isolation, extension, and replacement in the browser.
 - [ ] Verify keyboard, narrow-screen, reduced-motion, and non-color behavior.
 - [ ] Update operating documentation for the new workflow.
