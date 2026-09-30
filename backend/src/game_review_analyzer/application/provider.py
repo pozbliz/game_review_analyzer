@@ -160,7 +160,11 @@ def validate_theme_merge_result(
         candidate.candidate_key: candidate for candidate in request.candidates
     }
     expected_keys: set[str] = set(candidate_by_key)
-    if set(result.assignments) != expected_keys:
+    assignments_by_key: dict[str, str | None] = {
+        assignment.candidate_key: assignment.theme_id
+        for assignment in result.assignments
+    }
+    if set(assignments_by_key) != expected_keys:
         raise ValueError("Theme merge must assign every candidate")
     theme_by_id: dict[str, ThemeMergeTheme] = {
         theme.theme_id: theme for theme in result.themes
@@ -169,7 +173,7 @@ def validate_theme_merge_result(
         theme_id is not None
         and candidate_by_key[candidate_key].polarity
         != theme_by_id[theme_id].polarity
-        for candidate_key, theme_id in result.assignments.items()
+        for candidate_key, theme_id in assignments_by_key.items()
     ):
         raise ValueError("Merged Theme polarity must match its source candidates")
     if result.provider != expected_provider or result.model != expected_model:

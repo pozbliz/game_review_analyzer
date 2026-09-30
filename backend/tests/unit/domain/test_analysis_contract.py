@@ -9,6 +9,7 @@ from game_review_analyzer.domain.analysis import (
     AnalysisResult,
     ThemeAnalysisRequest,
     ThemeAnalysisResult,
+    ThemeMergeResult,
 )
 
 
@@ -146,3 +147,26 @@ def test_theme_analysis_result_rejects_duplicate_or_unknown_memberships() -> Non
     ]
     with pytest.raises(ValidationError):
         ThemeAnalysisResult.model_validate(result_data)
+
+
+def test_theme_merge_result_rejects_duplicate_candidate_assignments() -> None:
+    result_data: dict[str, object] = {
+        "schema_version": "3.0",
+        "request_id": "merge-1",
+        "scope_sha256": "c" * 64,
+        "provider": "codex-cli",
+        "model": "gpt-5.6-luna",
+        "themes": [{
+            "theme_id": "combat",
+            "title": "Combat",
+            "summary": "Players praise combat.",
+            "polarity": "positive",
+        }],
+        "assignments": [
+            {"candidate_key": "1:combat", "theme_id": "combat"},
+            {"candidate_key": "1:combat", "theme_id": "combat"},
+        ],
+    }
+
+    with pytest.raises(ValidationError, match="candidate keys must be unique"):
+        ThemeMergeResult.model_validate(result_data)

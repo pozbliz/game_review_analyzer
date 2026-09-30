@@ -165,6 +165,13 @@ class ThemeMergeTheme(ContractModel):
     polarity: ThemePolarity
 
 
+class ThemeMergeAssignment(ContractModel):
+    """Assign one source candidate to a merged Theme or discard it."""
+
+    candidate_key: NonEmptyString
+    theme_id: NonEmptyString | None
+
+
 class ThemeMergeResult(ContractModel):
     """Return Themes and one Theme-or-discard assignment per source candidate."""
 
@@ -174,7 +181,7 @@ class ThemeMergeResult(ContractModel):
     provider: NonEmptyString
     model: NonEmptyString
     themes: tuple[ThemeMergeTheme, ...]
-    assignments: dict[NonEmptyString, NonEmptyString | None]
+    assignments: tuple[ThemeMergeAssignment, ...]
 
     @model_validator(mode="after")
     def require_unique_identifiers(self) -> "ThemeMergeResult":
@@ -183,8 +190,15 @@ class ThemeMergeResult(ContractModel):
         theme_ids: tuple[str, ...] = tuple(theme.theme_id for theme in self.themes)
         if len(theme_ids) != len(set(theme_ids)):
             raise ValueError("Merged Theme identifiers must be unique")
+        candidate_keys: tuple[str, ...] = tuple(
+            assignment.candidate_key for assignment in self.assignments
+        )
+        if len(candidate_keys) != len(set(candidate_keys)):
+            raise ValueError("Merge assignment candidate keys must be unique")
         assigned_theme_ids: set[str] = {
-            theme_id for theme_id in self.assignments.values() if theme_id is not None
+            assignment.theme_id
+            for assignment in self.assignments
+            if assignment.theme_id is not None
         }
         if not assigned_theme_ids <= set(theme_ids):
             raise ValueError("Assignments must reference returned Themes")

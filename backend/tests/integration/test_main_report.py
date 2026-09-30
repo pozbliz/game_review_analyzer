@@ -11,6 +11,7 @@ from game_review_analyzer.application.provider import (
 from game_review_analyzer.domain.analysis import (
     ThemeAnalysisResult,
     ThemeCandidate,
+    ThemeMergeAssignment,
     ThemeMergeResult,
     ThemeMergeTheme,
 )
@@ -142,10 +143,16 @@ def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
                         )
                         for title in ("visible", "retained", "small")
                     ),
-                    assignments={
-                        by_title[title]: title
+                    assignments=tuple(
+                        ThemeMergeAssignment(
+                            candidate_key=by_title[title],
+                            theme_id=title,
+                        )
                         for title in ("visible", "retained", "small")
-                    } | {by_title["discarded"]: None},
+                    ) + (ThemeMergeAssignment(
+                        candidate_key=by_title["discarded"],
+                        theme_id=None,
+                    ),),
                 ),
                 usage=ProviderUsage(50, 0, 5),
             )

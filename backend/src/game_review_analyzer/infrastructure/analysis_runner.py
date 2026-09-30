@@ -584,13 +584,13 @@ class AnalysisRunner:
                 )
                 membership_pairs: set[tuple[str, int]] = {
                     (
-                        theme_id,
+                        assignment.theme_id,
                         revision_id_by_review_id[review_id],
                     )
-                    for candidate_key, theme_id in merge_run.result.assignments.items()
-                    if theme_id is not None
+                    for assignment in merge_run.result.assignments
+                    if assignment.theme_id is not None
                     for review_id in candidate_by_key[
-                        candidate_key
+                        assignment.candidate_key
                     ].supporting_review_revision_ids
                 }
                 memberships = tuple(

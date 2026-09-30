@@ -218,7 +218,7 @@ The merge receives established Theme definitions, retained near-threshold candid
 
 It maps each new candidate to an established Theme, a new Theme, or discard. The provider returns mappings rather than calculated support.
 
-The merge result contains Theme definitions and one required assignment object property per candidate key. Each value is a returned Theme ID or `null` for discard, so a candidate cannot appear more than once.
+The merge result contains Theme definitions and one assignment item per candidate key. Each item contains a returned Theme ID or `null` for discard. Local validation rejects missing, unknown, or duplicate candidate keys.
 
 Supporting review memberships remain local. The backend unions distinct memberships and calculates all metrics.
 

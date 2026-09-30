@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-09-30 - Merge assignments use a bounded flat list
+
+**What changed:**
+
+- Replaced the dynamic assignment object with one flat assignment item per candidate.
+- Bounded the list to the exact candidate count and restricted candidate keys to the request scope.
+- Reject missing, unknown, or duplicate candidate assignments after parsing.
+
+**Why:**
+
+- Codex rejected the live 174-property output schema before inference and returned no output.
+- A fixed assignment schema keeps the provider contract small while local validation preserves exact coverage.
+
+**New issues:**
+
+- JSON Schema cannot enforce unique candidate keys within the assignment list.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Merge results use one assignment per candidate
 
 **What changed:**

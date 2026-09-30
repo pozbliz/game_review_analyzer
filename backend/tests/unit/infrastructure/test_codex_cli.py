@@ -279,7 +279,10 @@ def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
                         "summary": "Players praise responsive combat.",
                         "polarity": "positive",
                     }],
-                    "assignments": {"1:combat": "responsive-combat"},
+                    "assignments": [{
+                        "candidate_key": "1:combat",
+                        "theme_id": "responsive-combat",
+                    }],
                 }),
                 encoding="utf-8",
             )
@@ -310,13 +313,19 @@ def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
 
     assert run.result.themes[0].theme_id == "responsive-combat"
     assert run.usage.input_tokens == 120
-    assert "one assignments object property" in processes[0].prompt
+    assert "one assignment item" in processes[0].prompt
     assignment_schema: dict[str, Any] = processes[0].schema["properties"][
         "assignments"
     ]
-    assert assignment_schema["required"] == ["1:combat"]
-    assert assignment_schema["additionalProperties"] is False
-    assert set(assignment_schema["properties"]) == {"1:combat"}
+    assert assignment_schema["minItems"] == 1
+    assert assignment_schema["maxItems"] == 1
+    assignment_definition: dict[str, Any] = processes[0].schema["$defs"][
+        "ThemeMergeAssignment"
+    ]
+    assert assignment_definition["properties"]["candidate_key"] == {
+        "enum": ["1:combat"],
+        "type": "string",
+    }
 
 
 def test_codex_cli_reports_incomplete_merge_scope(monkeypatch) -> None:
@@ -342,7 +351,7 @@ def test_codex_cli_reports_incomplete_merge_scope(monkeypatch) -> None:
                     "provider": "codex-cli",
                     "model": "gpt-5.6-luna",
                     "themes": [],
-                    "assignments": {},
+                    "assignments": [],
                 }),
                 encoding="utf-8",
             )
