@@ -470,11 +470,16 @@ def create_app(
             )
         if load_game_dataset(resolved_settings.database_path, app_id) is None:
             raise HTTPException(status_code=404, detail={"code": "game_not_found"})
-        if load_aggregate_report_slot(
-            resolved_settings.database_path, app_id, "main"
-        ) is not None:
+        latest_run: AnalysisRun | None = load_latest_analysis_run(
+            resolved_settings.database_path, app_id
+        )
+        if (
+            latest_run is not None
+            and latest_run.report_kind == "main"
+            and latest_run.state in ("queued", "running")
+        ):
             raise HTTPException(
-                status_code=409, detail={"code": "main_report_exists"}
+                status_code=409, detail={"code": "main_report_analysis_active"}
             )
         try:
             run: AnalysisRun = create_analysis_run(

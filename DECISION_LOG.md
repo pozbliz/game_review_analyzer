@@ -6,8 +6,9 @@
 
 - Added dated Test and Main Report cards above the `Create Report` action.
 - Added `Extend Report` beside the Main Report review count.
+- Enabled the 1,000-review `Create Report` option as a fresh Main Report replacement.
 - Extension selects up to 500 oldest and 500 newest unseen reviews.
-- The current Main Report remains available until the extension succeeds.
+- The current Main Report remains available until an extension or replacement succeeds.
 - Established Theme definitions remain fixed during extension.
 
 **Why:**

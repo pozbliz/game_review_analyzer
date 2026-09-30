@@ -78,7 +78,6 @@ function CatalogApp(): JSX.Element {
   );
   const [codexCohortSize, setCodexCohortSize] = useState<number>(25);
   const [analysisRun, setAnalysisRun] = useState<AnalysisRun | null>(null);
-  const [mainReportAvailable, setMainReportAvailable] = useState<boolean>(false);
   const [availableReports, setAvailableReports] = useState<AvailableReport[]>([]);
   const [analysisError, setAnalysisError] = useState<string>("");
 
@@ -206,7 +205,6 @@ function CatalogApp(): JSX.Element {
     setReportHistoryLoading(true);
     setReportHistoryError("");
     setFullHistoryReady(false);
-    setMainReportAvailable(false);
     setAvailableReports([]);
     setJob(null);
     setAnalysisRun(null);
@@ -232,9 +230,7 @@ function CatalogApp(): JSX.Element {
           .then((workspace) => {
             if (requestId !== previewRequestId.current) return;
             setFullHistoryReady(workspace.full_history_ready);
-            setMainReportAvailable(workspace.main_report_available);
             setAvailableReports(workspace.available_reports);
-            if (workspace.main_report_available) setCodexCohortSize(25);
             if (workspace.latest_analysis_run?.state !== "completed") {
               const latestRun: AnalysisRun | null = workspace.latest_analysis_run;
               if (latestRun) {
@@ -627,7 +623,7 @@ function CatalogApp(): JSX.Element {
                       onChange={(event) => setCodexCohortSize(Number(event.target.value))}
                     >
                       <option value={25}>Test · 50 reviews</option>
-                      <option value={500} disabled={mainReportAvailable}>Main · 1,000 reviews</option>
+                      <option value={500}>Main · 1,000 reviews</option>
                     </select>
                   </>
                 )}
@@ -669,7 +665,7 @@ function CatalogApp(): JSX.Element {
                         href={`/${report.kind}-reports/${preview.app_id}`}
                       >
                         <strong>{report.kind === "main" ? "Main Report" : "Test Report"}</strong>
-                        <span>{report.review_count.toLocaleString()} reviews Â· {formatReportDate(report.created_at)}</span>
+                        <span>{report.review_count.toLocaleString()} reviews{" \u00b7 "}{formatReportDate(report.created_at)}</span>
                       </a>
                     ))}
                   </section>

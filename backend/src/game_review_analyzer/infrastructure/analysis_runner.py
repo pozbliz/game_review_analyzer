@@ -470,6 +470,14 @@ class AnalysisRunner:
                 self._database_path, run.id, "completed", report_version_id=report_id
             )
             return
+        extension_report: AggregateReport | None = (
+            current_report
+            if current_report is not None
+            and set(run.review_revision_ids).isdisjoint(
+                current_report.review_revision_ids
+            )
+            else None
+        )
         try:
             metadata: SteamMetadata | None = load_game_dataset(
                 self._database_path, run.app_id
@@ -545,10 +553,10 @@ class AnalysisRunner:
 
             merge_usage: ProviderUsage = ProviderUsage(None, None, None)
             themes: tuple[ThemeDefinition, ...] = (
-                current_report.themes if current_report is not None else ()
+                extension_report.themes if extension_report is not None else ()
             )
             memberships: tuple[ThemeMembership, ...] = (
-                current_report.memberships if current_report is not None else ()
+                extension_report.memberships if extension_report is not None else ()
             )
             if merge_candidates:
                 merge_request: ThemeMergeRequest = build_theme_merge_request(
@@ -617,15 +625,15 @@ class AnalysisRunner:
                 memberships += new_memberships
 
             review_revision_ids: tuple[int, ...] = (
-                (current_report.review_revision_ids if current_report else ())
+                (extension_report.review_revision_ids if extension_report else ())
                 + run.review_revision_ids
             )
             oldest_revision_ids: tuple[int, ...] = (
-                (current_report.oldest_review_revision_ids if current_report else ())
+                (extension_report.oldest_review_revision_ids if extension_report else ())
                 + run.early_review_revision_ids
             )
             newest_revision_ids: tuple[int, ...] = (
-                (current_report.newest_review_revision_ids if current_report else ())
+                (extension_report.newest_review_revision_ids if extension_report else ())
                 + run.recent_review_revision_ids
             )
 
@@ -672,7 +680,7 @@ class AnalysisRunner:
                 oldest_review_revision_ids=oldest_revision_ids,
                 newest_review_revision_ids=newest_revision_ids,
                 oversized_review_count=(
-                    (current_report.oversized_review_count if current_report else 0)
+                    (extension_report.oversized_review_count if extension_report else 0)
                     + run.oversized_review_count
                 ),
                 provider=run.provider,

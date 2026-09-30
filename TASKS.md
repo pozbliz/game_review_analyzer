@@ -49,6 +49,7 @@
 - [x] Show dated Test and Main Report cards above the `Create Report` action.
 - [x] Add `Extend Report` beside the Main Report review count.
 - [x] Analyze up to 1,000 unseen reviews and replace the Main Report only after success.
+- [x] Let `Create Report` run a fresh 1,000-review replacement while preserving the current report until success.
 - [ ] Add refresh and unseen-review selection tests.
 - [ ] Cover new reviews, ignored edits, partial final extensions, and exact reservations.
 - [ ] Add concurrency tests preventing duplicate scope reservations.

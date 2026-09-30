@@ -680,7 +680,7 @@ describe("application shell", () => {
     render(<App />);
     await previewGame();
 
-    expect(screen.getByRole("option", { name: "Main · 1,000 reviews" })).toBeDisabled();
+    expect(screen.getByRole("option", { name: "Main · 1,000 reviews" })).toBeEnabled();
     expect(screen.getByRole("link", { name: /Main Report.*1,000 reviews.*Sep 30, 2026/i })).toHaveAttribute(
       "href",
       "/main-reports/1145350",

@@ -241,7 +241,10 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
                 break
             completed = client.get(f"/api/analysis-runs/{run_id}")
         report = client.get("/api/games/1145350/reports/main")
-        duplicate = client.post("/api/games/1145350/reports/main")
+        replacement = client.post("/api/games/1145350/reports/main")
+        pending_report = client.get("/api/games/1145350/reports/main").json()
+        replaced = wait_for_completion(client, replacement.json()["id"])
+        replacement_report = client.get("/api/games/1145350/reports/main").json()
         workspace = client.get("/api/games/1145350/workspace")
 
     assert started.status_code == 202
@@ -259,8 +262,11 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
     }
     assert report.json()["positive_themes"] == []
     assert report.json()["negative_themes"] == []
-    assert duplicate.status_code == 409
-    assert duplicate.json()["detail"]["code"] == "main_report_exists"
+    assert replacement.status_code == 202
+    assert pending_report["report_id"] == report.json()["report_id"]
+    assert replaced["state"] == "completed"
+    assert replacement_report["report_id"] != report.json()["report_id"]
+    assert replacement_report["scope"]["review_count"] == 100
     assert workspace.json()["main_report_available"] is True
 
 
