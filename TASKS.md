@@ -54,6 +54,7 @@
 - [x] Add `Extend Report` beside the Main Report review count.
 - [x] Keep `Extend Report` inline to the right of the review count.
 - [x] Add immediate deletion at the bottom of each aggregate report.
+- [x] Return to the selected game page automatically after report deletion.
 - [x] Analyze up to 1,000 unseen reviews and replace the Main Report only after success.
 - [x] Let `Create Report` run a fresh 1,000-review replacement while preserving the current report until success.
 - [ ] Add refresh and unseen-review selection tests.

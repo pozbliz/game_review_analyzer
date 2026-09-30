@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AggregateReportView from "../../src/features/report/AggregateReportView";
 
@@ -125,13 +125,17 @@ describe("aggregate Test Report", () => {
       }), { status: 200 });
     });
     const confirmMock = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const navigationMock = vi.spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function navigate(this: HTMLAnchorElement): void {
+        expect(this.getAttribute("href")).toBe("/?appid=1145350");
+      });
 
     render(<AggregateReportView appId={1145350} kind="main" />);
     const deleteButton: HTMLElement = await screen.findByRole("button", { name: "Delete Report" });
     expect(deleteButton.closest(".report-delete")).toBe(document.querySelector("main")?.lastElementChild);
     fireEvent.click(deleteButton);
 
-    expect(await screen.findByText("Report deleted.")).toBeVisible();
+    await waitFor(() => expect(navigationMock).toHaveBeenCalledOnce());
     expect(confirmMock).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/reports/main-report/delete",

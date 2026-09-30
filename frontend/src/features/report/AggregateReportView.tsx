@@ -25,7 +25,7 @@ export default function AggregateReportView(
   const [evidence, setEvidence] = useState<Record<string, AggregateThemeEvidence>>({});
   const [evidenceError, setEvidenceError] = useState<string>("");
   const [extensionState, setExtensionState] = useState<"idle" | "starting" | "started" | "failed">("idle");
-  const [deleteState, setDeleteState] = useState<"idle" | "deleting" | "deleted" | "failed">("idle");
+  const [deleteState, setDeleteState] = useState<"idle" | "deleting" | "failed">("idle");
 
   useEffect(() => {
     let active: boolean = true;
@@ -65,19 +65,12 @@ export default function AggregateReportView(
   function removeReport(): void {
     setDeleteState("deleting");
     deleteReport(reportId, reportId)
-      .then(() => setDeleteState("deleted"))
+      .then(() => {
+        const returnLink: HTMLAnchorElement = document.createElement("a");
+        returnLink.href = `/?appid=${appId}`;
+        returnLink.click();
+      })
       .catch(() => setDeleteState("failed"));
-  }
-
-  if (deleteState === "deleted") {
-    return (
-      <main className="report-state">
-        <div>
-          <p role="status">Report deleted.</p>
-          <a href={`/?appid=${appId}`}>Return to game</a>
-        </div>
-      </main>
-    );
   }
 
   return (

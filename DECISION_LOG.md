@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-09-30 - Report deletion returns to the game page
+
+**What changed:**
+
+- Navigate to the selected game page immediately after report deletion succeeds.
+- Removed the intermediate deleted-report screen and manual return link.
+
+**Why:**
+
+- A deleted report has no remaining report-page action, so the extra click added friction.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Reports show up to 10 qualifying Themes per polarity
 
 **What changed:**
