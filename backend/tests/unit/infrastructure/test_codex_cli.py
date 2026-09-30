@@ -338,6 +338,73 @@ def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
     ]
 
 
+def test_codex_cli_retries_invalid_merge_with_safe_correction(monkeypatch) -> None:
+    processes: list[CompletedProcess] = []
+
+    class MergeProcess(CompletedProcess):
+        def communicate(
+            self,
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            del timeout
+            assert input is not None
+            self.prompt = input
+            output_path: Path = Path(
+                self.command[self.command.index("--output-last-message") + 1]
+            )
+            request_data: dict[str, Any] = json.loads(
+                input.split("REQUEST_JSON\n", 1)[1]
+            )
+            valid: bool = len(processes) == 2
+            output_path.write_text(
+                json.dumps({
+                    "schema_version": "3.0",
+                    "request_id": request_data["request_id"],
+                    "scope_sha256": request_data["scope_sha256"],
+                    "provider": "codex-cli",
+                    "model": "gpt-5.6-luna",
+                    "themes": ([{
+                        "theme_id": "responsive-combat",
+                        "title": "Responsive combat",
+                        "summary": "Players praise responsive combat.",
+                        "polarity": "positive",
+                    }] if valid else []),
+                    "assignments": [{
+                        "candidate_key": "1:combat",
+                        "theme_id": "responsive-combat",
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            return super().communicate(None)
+
+    def start_process(command: list[str], **options: Any) -> MergeProcess:
+        process = MergeProcess(command, **options)
+        processes.append(process)
+        return process
+
+    monkeypatch.setattr("subprocess.Popen", start_process)
+    request = build_theme_merge_request(
+        "merge-1",
+        1145350,
+        "Hades II",
+        (ThemeMergeCandidate(
+            candidate_key="1:combat",
+            title="Combat",
+            summary="Combat feels responsive.",
+            polarity="positive",
+            supporting_review_revision_ids=("revision-1",),
+        ),),
+    )
+
+    run = CodexCliProvider(executable="codex.cmd", max_attempts=2).merge_themes(request)
+
+    assert run.result.themes[0].theme_id == "responsive-combat"
+    assert len(processes) == 2
+    assert "theme_merge_assignment_unknown" in processes[1].prompt
+
+
 def test_codex_cli_reports_incomplete_merge_scope(monkeypatch) -> None:
     class IncompleteMergeProcess(CompletedProcess):
         def communicate(
@@ -421,7 +488,7 @@ def test_codex_cli_retries_one_transient_theme_failure(monkeypatch) -> None:
     assert len(processes) == 2
 
 
-def test_codex_cli_does_not_retry_invalid_theme_output(monkeypatch) -> None:
+def test_codex_cli_reports_invalid_theme_output_after_retry(monkeypatch) -> None:
     processes: list[CompletedProcess] = []
 
     def start_process(command: list[str], **options: Any) -> CompletedProcess:
@@ -447,7 +514,8 @@ def test_codex_cli_does_not_retry_invalid_theme_output(monkeypatch) -> None:
         CodexCliProvider(executable="codex.cmd").analyze_themes(theme_request())
 
     assert raised.value.code == "invalid_theme_result"
-    assert len(processes) == 1
+    assert len(processes) == 2
+    assert "invalid_theme_result" in processes[1].prompt
 
 
 def test_codex_cli_reports_incomplete_theme_scope(monkeypatch) -> None:

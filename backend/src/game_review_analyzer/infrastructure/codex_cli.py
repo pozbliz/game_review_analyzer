@@ -171,6 +171,7 @@ class CodexCliProvider:
             "enum": review_revision_ids,
             "type": "string",
         }
+        instructions: str = THEME_ANALYSIS_INSTRUCTIONS
         for attempt in range(1, self.max_attempts + 1):
             if cancel_event is not None and cancel_event.is_set():
                 raise CodexCliError("cancelled", "Codex CLI analysis was cancelled")
@@ -179,7 +180,7 @@ class CodexCliProvider:
                     request,
                     cancel_event,
                     result_schema=result_schema,
-                    instructions=THEME_ANALYSIS_INSTRUCTIONS,
+                    instructions=instructions,
                     operation="theme_analysis",
                     attempt=attempt,
                 )
@@ -202,6 +203,7 @@ class CodexCliProvider:
                 )
             except (ValidationError, ValueError) as error:
                 error_code: str = _theme_validation_error_code(error)
+                retrying: bool = attempt < self.max_attempts
                 log_event(
                     "provider.attempt_failed",
                     level="error",
@@ -212,8 +214,14 @@ class CodexCliProvider:
                     attempt=attempt,
                     stage="validation",
                     error_code=error_code,
-                    retrying=False,
+                    retrying=retrying,
                 )
+                if retrying:
+                    instructions = _validation_retry_instructions(
+                        THEME_ANALYSIS_INSTRUCTIONS,
+                        error_code,
+                    )
+                    continue
                 raise CodexCliError(
                     error_code,
                     "Codex CLI returned invalid Theme output",
@@ -246,6 +254,7 @@ class CodexCliProvider:
             "enum": candidate_keys,
             "type": "string",
         }
+        instructions: str = THEME_MERGE_INSTRUCTIONS
         for attempt in range(1, self.max_attempts + 1):
             if cancel_event is not None and cancel_event.is_set():
                 raise CodexCliError("cancelled", "Codex CLI analysis was cancelled")
@@ -254,7 +263,7 @@ class CodexCliProvider:
                     request,
                     cancel_event,
                     result_schema=result_schema,
-                    instructions=THEME_MERGE_INSTRUCTIONS,
+                    instructions=instructions,
                     operation="theme_merge",
                     attempt=attempt,
                 )
@@ -277,6 +286,7 @@ class CodexCliProvider:
                 )
             except (ValidationError, ValueError) as error:
                 error_code: str = _theme_merge_validation_error_code(error)
+                retrying: bool = attempt < self.max_attempts
                 log_event(
                     "provider.attempt_failed",
                     level="error",
@@ -287,8 +297,14 @@ class CodexCliProvider:
                     attempt=attempt,
                     stage="validation",
                     error_code=error_code,
-                    retrying=False,
+                    retrying=retrying,
                 )
+                if retrying:
+                    instructions = _validation_retry_instructions(
+                        THEME_MERGE_INSTRUCTIONS,
+                        error_code,
+                    )
+                    continue
                 raise CodexCliError(
                     error_code,
                     "Codex CLI returned invalid Theme merge output",
@@ -696,6 +712,24 @@ def _bind_result_identity(
         "enum": [scope_sha256],
         "type": "string",
     }
+
+
+def _validation_retry_instructions(instructions: str, error_code: str) -> str:
+    """Request one complete corrected result without exposing provider output."""
+
+    correction: str = {
+        "theme_merge_assignment_unknown": (
+            "Every non-null assignment theme_id must exactly match a theme_id "
+            "in the returned themes array."
+        ),
+    }.get(
+        error_code,
+        "Correct the validation failure before returning the full result.",
+    )
+    return (
+        f"{instructions} Previous output failed validation with {error_code}. "
+        f"{correction} Regenerate the complete result."
+    )
 
 
 def _theme_validation_error_code(error: ValidationError | ValueError) -> str:

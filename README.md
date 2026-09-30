@@ -37,6 +37,7 @@ Available reports appear as dated cards above `Create Report`. A Main Report can
 Each Test Report Theme can reveal its matching local reviews. Evidence is sorted by helpful votes and loaded only when opened.
 
 The current Test and Main Reports are saved separately from Version 2 reports. Remaining extension edge cases are still open.
+Invalid Theme batch or merge output is retried once with a safe correction before the run fails; completed batch checkpoints remain reusable.
 
 Current application data was reset before this redesign. The gitignored evaluation corpus remains available.
 

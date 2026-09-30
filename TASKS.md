@@ -44,6 +44,7 @@
 - [x] Require a cross-Theme duplicate-key check in the merge prompt.
 - [x] Replace grouped merge keys with one validated assignment item per candidate.
 - [x] Stop stalled Codex batches after 120 seconds and preserve completed checkpoints.
+- [x] Retry invalid Theme batches and merges once with safe corrective instructions.
 
 ### Extend and Replace Main Report
 

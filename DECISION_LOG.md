@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-09-30 - Theme validation failures receive one corrective retry
+
+**What changed:**
+
+- Retry invalid Theme batch and merge output once within the existing two-attempt limit.
+- Add the safe validation code and a correction instruction to the second prompt.
+- Keep invalid provider output out of logs and storage.
+
+**Why:**
+
+- A live merge assigned a candidate to a Theme ID absent from its returned Theme list.
+- The schema cannot enforce references between two dynamic output arrays.
+- The prior path failed the complete run after one correctable provider response.
+
+**New issues:**
+
+- A second invalid response still fails safely and preserves completed checkpoints.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Report deletion runs without confirmation
 
 **What changed:**
