@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-09-30 - Merge results use one assignment per candidate
+
+**What changed:**
+
+- Replaced grouped candidate-key arrays with an assignment object keyed by every candidate.
+- Each assignment targets one returned Theme ID or uses `null` for discard.
+- Kept assignment scope, Theme existence, polarity, provenance, and request validation local.
+
+**Why:**
+
+- Two live 174-candidate merges mapped at least one candidate into multiple Themes despite schema enums and explicit prompt checks.
+- JSON object keys guarantee one response slot per candidate without the unsupported `uniqueItems` keyword.
+
+**New issues:**
+
+- Large merges require one JSON property per candidate, increasing the generated schema size.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Codex batches receive a process deadline
 
 **What changed:**

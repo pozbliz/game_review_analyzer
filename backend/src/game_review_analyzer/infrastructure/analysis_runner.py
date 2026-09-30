@@ -584,11 +584,11 @@ class AnalysisRunner:
                 )
                 membership_pairs: set[tuple[str, int]] = {
                     (
-                        theme.theme_id,
+                        theme_id,
                         revision_id_by_review_id[review_id],
                     )
-                    for theme in merge_run.result.themes
-                    for candidate_key in theme.source_candidate_keys
+                    for candidate_key, theme_id in merge_run.result.assignments.items()
+                    if theme_id is not None
                     for review_id in candidate_by_key[
                         candidate_key
                     ].supporting_review_revision_ids

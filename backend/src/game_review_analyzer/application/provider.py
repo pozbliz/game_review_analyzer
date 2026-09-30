@@ -160,17 +160,16 @@ def validate_theme_merge_result(
         candidate.candidate_key: candidate for candidate in request.candidates
     }
     expected_keys: set[str] = set(candidate_by_key)
-    mapped_keys: set[str] = {
-        key for theme in result.themes for key in theme.source_candidate_keys
+    if set(result.assignments) != expected_keys:
+        raise ValueError("Theme merge must assign every candidate")
+    theme_by_id: dict[str, ThemeMergeTheme] = {
+        theme.theme_id: theme for theme in result.themes
     }
-    if set(result.completed_candidate_keys) != expected_keys:
-        raise ValueError("Theme merge does not complete the exact candidate scope")
-    if mapped_keys | set(result.discarded_candidate_keys) != expected_keys:
-        raise ValueError("Theme merge must map or discard every candidate")
     if any(
-        candidate_by_key[key].polarity != theme.polarity
-        for theme in result.themes
-        for key in theme.source_candidate_keys
+        theme_id is not None
+        and candidate_by_key[candidate_key].polarity
+        != theme_by_id[theme_id].polarity
+        for candidate_key, theme_id in result.assignments.items()
     ):
         raise ValueError("Merged Theme polarity must match its source candidates")
     if result.provider != expected_provider or result.model != expected_model:

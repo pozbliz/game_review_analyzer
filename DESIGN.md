@@ -218,6 +218,8 @@ The merge receives established Theme definitions, retained near-threshold candid
 
 It maps each new candidate to an established Theme, a new Theme, or discard. The provider returns mappings rather than calculated support.
 
+The merge result contains Theme definitions and one required assignment object property per candidate key. Each value is a returned Theme ID or `null` for discard, so a candidate cannot appear more than once.
+
 Supporting review memberships remain local. The backend unions distinct memberships and calculates all metrics.
 
 Established Theme identities, titles, summaries, and polarities remain fixed during extension. Extensions do not split or merge established Themes.

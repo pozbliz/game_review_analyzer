@@ -133,18 +133,19 @@ def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
                     scope_sha256=request.scope_sha256,
                     provider=self.provider,
                     model=self.model,
-                    completed_candidate_keys=tuple(by_title.values()),
                     themes=tuple(
                         ThemeMergeTheme(
                             theme_id=title,
                             title=title.title(),
                             summary=f"{title.title()} summary.",
                             polarity="positive",
-                            source_candidate_keys=(by_title[title],),
                         )
                         for title in ("visible", "retained", "small")
                     ),
-                    discarded_candidate_keys=(by_title["discarded"],),
+                    assignments={
+                        by_title[title]: title
+                        for title in ("visible", "retained", "small")
+                    } | {by_title["discarded"]: None},
                 ),
                 usage=ProviderUsage(50, 0, 5),
             )

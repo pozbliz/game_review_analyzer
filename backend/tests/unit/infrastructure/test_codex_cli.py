@@ -273,15 +273,13 @@ def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
                     "scope_sha256": request_data["scope_sha256"],
                     "provider": "codex-cli",
                     "model": "gpt-5.6-luna",
-                    "completed_candidate_keys": ["1:combat"],
                     "themes": [{
                         "theme_id": "responsive-combat",
                         "title": "Responsive combat",
                         "summary": "Players praise responsive combat.",
                         "polarity": "positive",
-                        "source_candidate_keys": ["1:combat"],
                     }],
-                    "discarded_candidate_keys": [],
+                    "assignments": {"1:combat": "responsive-combat"},
                 }),
                 encoding="utf-8",
             )
@@ -312,22 +310,13 @@ def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
 
     assert run.result.themes[0].theme_id == "responsive-combat"
     assert run.usage.input_tokens == 120
-    assert "Map or discard every supplied candidate" in processes[0].prompt
-    assert "A candidate key must appear exactly once across" in processes[0].prompt
-    completed_schema: dict[str, Any] = processes[0].schema["properties"][
-        "completed_candidate_keys"
+    assert "one assignments object property" in processes[0].prompt
+    assignment_schema: dict[str, Any] = processes[0].schema["properties"][
+        "assignments"
     ]
-    mapped_schema: dict[str, Any] = processes[0].schema["$defs"][
-        "ThemeMergeTheme"
-    ]["properties"]["source_candidate_keys"]
-    discarded_schema: dict[str, Any] = processes[0].schema["properties"][
-        "discarded_candidate_keys"
-    ]
-    assert completed_schema["items"]["enum"] == ["1:combat"]
-    assert completed_schema["minItems"] == 1
-    assert completed_schema["maxItems"] == 1
-    assert mapped_schema["items"]["enum"] == ["1:combat"]
-    assert discarded_schema["items"]["enum"] == ["1:combat"]
+    assert assignment_schema["required"] == ["1:combat"]
+    assert assignment_schema["additionalProperties"] is False
+    assert set(assignment_schema["properties"]) == {"1:combat"}
 
 
 def test_codex_cli_reports_incomplete_merge_scope(monkeypatch) -> None:
@@ -352,9 +341,8 @@ def test_codex_cli_reports_incomplete_merge_scope(monkeypatch) -> None:
                     "scope_sha256": request_data["scope_sha256"],
                     "provider": "codex-cli",
                     "model": "gpt-5.6-luna",
-                    "completed_candidate_keys": ["1:combat"],
                     "themes": [],
-                    "discarded_candidate_keys": [],
+                    "assignments": {},
                 }),
                 encoding="utf-8",
             )
