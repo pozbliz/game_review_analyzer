@@ -20,6 +20,7 @@ import {
   searchGames,
   startFullImport,
   startOllamaAnalysis,
+  startMainReport,
   startTestReport,
   SteamMetadata,
 } from "../api/shell";
@@ -35,8 +36,13 @@ export default function App(): JSX.Element {
   const testReportMatch: RegExpMatchArray | null = window.location.pathname.match(
     /^\/test-reports\/(\d+)$/,
   );
+  const mainReportMatch: RegExpMatchArray | null = window.location.pathname.match(
+    /^\/main-reports\/(\d+)$/,
+  );
   const reportMatch: RegExpMatchArray | null = window.location.pathname.match(/^\/reports\/([^/]+)$/);
-  return testReportMatch
+  return mainReportMatch
+    ? <AggregateReportView appId={Number(mainReportMatch[1])} kind="main" />
+    : testReportMatch
     ? <AggregateReportView appId={Number(testReportMatch[1])} />
     : reportMatch
     ? <ReportView reportId={decodeURIComponent(reportMatch[1])} />
@@ -72,6 +78,7 @@ function CatalogApp(): JSX.Element {
   const [codexCohortSize, setCodexCohortSize] = useState<number>(25);
   const [analysisRun, setAnalysisRun] = useState<AnalysisRun | null>(null);
   const [testReportAvailable, setTestReportAvailable] = useState<boolean>(false);
+  const [mainReportAvailable, setMainReportAvailable] = useState<boolean>(false);
   const [analysisError, setAnalysisError] = useState<string>("");
 
   useEffect(() => {
@@ -199,6 +206,7 @@ function CatalogApp(): JSX.Element {
     setReportHistoryError("");
     setFullHistoryReady(false);
     setTestReportAvailable(false);
+    setMainReportAvailable(false);
     setJob(null);
     setAnalysisRun(null);
     window.localStorage.removeItem("active-import-job");
@@ -224,6 +232,7 @@ function CatalogApp(): JSX.Element {
             if (requestId !== previewRequestId.current) return;
             setFullHistoryReady(workspace.full_history_ready);
             setTestReportAvailable(workspace.test_report_available);
+            setMainReportAvailable(workspace.main_report_available);
             if (workspace.latest_analysis_run?.state !== "completed") {
               const latestRun: AnalysisRun | null = workspace.latest_analysis_run;
               if (latestRun) {
@@ -287,6 +296,8 @@ function CatalogApp(): JSX.Element {
       : null;
     const start = selectedModel
       ? startOllamaAnalysis(selectedAppId, selectedModel)
+      : codexCohortSize === 500
+      ? startMainReport(selectedAppId)
       : startTestReport(selectedAppId);
     start
       .then((run) => {
@@ -513,9 +524,15 @@ function CatalogApp(): JSX.Element {
                       <a href={
                         analysisRun.report_kind === "test"
                           ? `/test-reports/${analysisRun.app_id}`
+                          : analysisRun.report_kind === "main"
+                          ? `/main-reports/${analysisRun.app_id}`
                           : `/reports/${encodeURIComponent(analysisRun.report_version_id)}`
                       }>
-                        {analysisRun.report_kind === "test" ? "View Test Report" : "View report"}
+                        {analysisRun.report_kind === "test"
+                          ? "View Test Report"
+                          : analysisRun.report_kind === "main"
+                          ? "View Main Report"
+                          : "View report"}
                       </a>
                     </>
                   )}
@@ -608,7 +625,7 @@ function CatalogApp(): JSX.Element {
                       onChange={(event) => setCodexCohortSize(Number(event.target.value))}
                     >
                       <option value={25}>Test · 50 reviews</option>
-                      <option value={500} disabled>Main · 1,000 reviews · coming soon</option>
+                      <option value={500}>Main · 1,000 reviews</option>
                     </select>
                   </>
                 )}
@@ -643,6 +660,9 @@ function CatalogApp(): JSX.Element {
                 )}
                 {testReportAvailable && (
                   <a href={`/test-reports/${preview.app_id}`}>View Test Report</a>
+                )}
+                {mainReportAvailable && (
+                  <a href={`/main-reports/${preview.app_id}`}>View Main Report</a>
                 )}
                 <button
                   className={`create-report${reportHistory.length > 0 ? " create-report-secondary" : ""}`}

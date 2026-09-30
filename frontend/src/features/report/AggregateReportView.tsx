@@ -4,16 +4,18 @@ import {
   AggregateTheme,
   AggregateThemeEvidence,
   getAggregateThemeEvidence,
+  getMainReport,
   getTestReport,
 } from "../../api/reports";
 import StorefrontOverview from "../game/StorefrontOverview";
 
 interface AggregateReportViewProps {
   appId: number;
+  kind?: "main" | "test";
 }
 
 export default function AggregateReportView(
-  { appId }: AggregateReportViewProps,
+  { appId, kind = "test" }: AggregateReportViewProps,
 ): JSX.Element {
   const [report, setReport] = useState<AggregateReport | null>(null);
   const [error, setError] = useState<string>("");
@@ -23,11 +25,11 @@ export default function AggregateReportView(
 
   useEffect(() => {
     let active: boolean = true;
-    getTestReport(appId)
+    (kind === "main" ? getMainReport(appId) : getTestReport(appId))
       .then((value) => { if (active) setReport(value); })
-      .catch(() => { if (active) setError("Unable to load this Test Report."); });
+      .catch(() => { if (active) setError(`Unable to load this ${kind === "main" ? "Main" : "Test"} Report.`); });
     return () => { active = false; };
-  }, [appId]);
+  }, [appId, kind]);
 
   if (error) return <main className="report-state"><p role="alert">{error}</p></main>;
   if (!report) return <main className="report-state"><p role="status">Loading report…</p></main>;
@@ -40,7 +42,7 @@ export default function AggregateReportView(
     setOpenThemeId(theme.theme_id);
     setEvidenceError("");
     if (evidence[theme.theme_id]) return;
-    getAggregateThemeEvidence(appId, theme.theme_id)
+    getAggregateThemeEvidence(appId, theme.theme_id, kind)
       .then((value) => setEvidence((current) => ({ ...current, [theme.theme_id]: value })))
       .catch(() => setEvidenceError("Unable to load review evidence."));
   }
@@ -50,7 +52,7 @@ export default function AggregateReportView(
       <header className="report-header">
         <a className="back-link" href={`/?appid=${appId}`}>← Game catalog</a>
         <div>
-          <p className="eyebrow">Test Report</p>
+          <p className="eyebrow">{kind === "main" ? "Main Report" : "Test Report"}</p>
           <h1>{report.game.title}</h1>
           <p className="report-subtitle">Steam AppID {report.game.app_id}</p>
         </div>

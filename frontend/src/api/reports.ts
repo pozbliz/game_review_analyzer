@@ -159,12 +159,17 @@ export async function getTestReport(appId: number): Promise<AggregateReport> {
   return parseAggregateReport(await requestJson(`/api/games/${appId}/reports/test`));
 }
 
+export async function getMainReport(appId: number): Promise<AggregateReport> {
+  return parseAggregateReport(await requestJson(`/api/games/${appId}/reports/main`));
+}
+
 export async function getAggregateThemeEvidence(
   appId: number,
   themeId: string,
+  kind: "main" | "test" = "test",
 ): Promise<AggregateThemeEvidence> {
   return parseAggregateThemeEvidence(await requestJson(
-    `/api/games/${appId}/reports/test/themes/${encodeURIComponent(themeId)}/evidence`,
+    `/api/games/${appId}/reports/${kind}/themes/${encodeURIComponent(themeId)}/evidence`,
   ));
 }
 

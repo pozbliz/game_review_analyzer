@@ -34,9 +34,13 @@ from game_review_analyzer.infrastructure.persistence.review_revisions import (
     save_review_revisions,
 )
 from game_review_analyzer.infrastructure.analysis_runner import AnalysisRunner
+from game_review_analyzer.infrastructure.codex_cli import CodexCliStatus
 from game_review_analyzer.infrastructure.persistence.report_versions import (
     load_aggregate_report_slot,
 )
+from game_review_analyzer.interfaces.http.app import create_app
+from game_review_analyzer.shared.config import Settings
+from fastapi.testclient import TestClient
 
 
 def test_main_report_selects_500_oldest_and_500_newest_complete_reviews(
@@ -168,6 +172,65 @@ def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
     assert tuple(
         metric.theme_id for metric in report.theme_metrics.positive_headlines
     ) == ("visible",)
+
+
+def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
+    class EmptyThemeProvider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version="3.0",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=tuple(
+                        review.review_revision_id for review in request.reviews
+                    ),
+                    themes=(),
+                ),
+                usage=ProviderUsage(100, 0, 10),
+            )
+
+    database_path: Path = seeded_database(tmp_path, review_count=100)
+    status = lambda: CodexCliStatus(
+        True, True, "codex-cli test", "gpt-5.6-luna", "low"
+    )
+    with TestClient(
+        create_app(
+            Settings(database_path=database_path),
+            codex_status_source=status,
+            analysis_provider=EmptyThemeProvider(),
+        )
+    ) as client:
+        started = client.post("/api/games/1145350/reports/main")
+        run_id: str = started.json()["id"]
+        completed = client.get(f"/api/analysis-runs/{run_id}")
+        for _ in range(100):
+            if completed.json()["state"] == "completed":
+                break
+            completed = client.get(f"/api/analysis-runs/{run_id}")
+        report = client.get("/api/games/1145350/reports/main")
+        workspace = client.get("/api/games/1145350/workspace")
+
+    assert started.status_code == 202
+    assert started.json()["report_kind"] == "main"
+    assert started.json()["review_count"] == 100
+    assert completed.json()["state"] == "completed"
+    assert completed.json()["extracted_review_count"] == 100
+    assert report.status_code == 200
+    assert report.json()["kind"] == "main"
+    assert report.json()["scope"] == {
+        "review_count": 100,
+        "oldest_review_count": 50,
+        "newest_review_count": 50,
+    }
+    assert report.json()["positive_themes"] == []
+    assert report.json()["negative_themes"] == []
+    assert workspace.json()["main_report_available"] is True
 
 
 def candidate(candidate_id: str, review_ids: tuple[str, ...]) -> ThemeCandidate:

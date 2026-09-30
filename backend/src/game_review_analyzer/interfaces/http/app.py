@@ -206,6 +206,7 @@ class GameWorkspaceResponse(BaseModel):
     full_history_ready: bool
     latest_analysis_run: AnalysisRun | None
     test_report_available: bool
+    main_report_available: bool
 
 
 class QuickImportRequest(BaseModel):
@@ -267,7 +268,7 @@ def create_app(
         AnalysisRunner(
             resolved_settings.database_path,
             provider,
-            batch_review_limit=10,
+            batch_review_limit=250 if run.report_kind == "main" else 10,
         ).run(run_id)
 
     @asynccontextmanager
@@ -446,6 +447,58 @@ def create_app(
         app.state.analysis_executor.submit(run_analysis, run.id)
         return run
 
+    @app.post(
+        f"{API_PREFIX}/games/{{app_id}}/reports/main",
+        response_model=AnalysisRun,
+        status_code=202,
+    )
+    def start_main_report(app_id: int) -> AnalysisRun:
+        status: CodexCliStatus = resolved_codex_status_source()
+        if not status.installed or not status.authenticated:
+            raise HTTPException(
+                status_code=409, detail={"code": "codex_cli_not_ready"}
+            )
+        if load_game_dataset(resolved_settings.database_path, app_id) is None:
+            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
+        try:
+            run: AnalysisRun = create_analysis_run(
+                resolved_settings.database_path,
+                app_id=app_id,
+                provider="codex-cli",
+                model=status.model,
+                metric_policy=ThemeMetricPolicy(
+                    minimum_support_count=1,
+                    minimum_support_percentage=5,
+                    technical_minimum_support_count=1,
+                    technical_minimum_support_percentage=5,
+                    maximum_headlines_per_polarity=5,
+                ),
+                cohort_size=500,
+                report_kind="main",
+            )
+        except FullHistoryRequired as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "analysis_requires_full_history"}
+            ) from error
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "analysis_requires_reviews"}
+            ) from error
+        app.state.analysis_executor.submit(run_analysis, run.id)
+        return run
+
+    @app.get(
+        f"{API_PREFIX}/games/{{app_id}}/reports/main",
+        response_model=AggregateReportResponse,
+    )
+    def main_report(app_id: int) -> AggregateReportResponse:
+        report = load_aggregate_report_slot(
+            resolved_settings.database_path, app_id, "main"
+        )
+        if report is None:
+            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
+        return build_aggregate_report_response(report)
+
     @app.get(
         f"{API_PREFIX}/games/{{app_id}}/reports/test",
         response_model=AggregateReportResponse,
@@ -468,6 +521,28 @@ def create_app(
     ) -> AggregateThemeEvidenceResponse:
         report = load_aggregate_report_slot(
             resolved_settings.database_path, app_id, "test"
+        )
+        if report is None:
+            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
+        evidence = build_aggregate_theme_evidence_response(
+            resolved_settings.database_path,
+            report,
+            theme_id,
+        )
+        if evidence is None:
+            raise HTTPException(status_code=404, detail={"code": "theme_not_found"})
+        return evidence
+
+    @app.get(
+        f"{API_PREFIX}/games/{{app_id}}/reports/main/themes/{{theme_id}}/evidence",
+        response_model=AggregateThemeEvidenceResponse,
+    )
+    def main_report_theme_evidence(
+        app_id: int,
+        theme_id: str,
+    ) -> AggregateThemeEvidenceResponse:
+        report = load_aggregate_report_slot(
+            resolved_settings.database_path, app_id, "main"
         )
         if report is None:
             raise HTTPException(status_code=404, detail={"code": "report_not_found"})
@@ -736,6 +811,10 @@ def create_app(
             ),
             test_report_available=load_aggregate_report_slot(
                 resolved_settings.database_path, app_id, "test"
+            )
+            is not None,
+            main_report_available=load_aggregate_report_slot(
+                resolved_settings.database_path, app_id, "main"
             )
             is not None,
         )

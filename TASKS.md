@@ -35,8 +35,8 @@
 - [x] Implement map batching and validated checkpoints.
 - [x] Add merge tests for Themes, discarded candidates, and retained 2% candidates.
 - [x] Add repository tests for the single Main Report slot.
-- [ ] Build the Main Report API, progress flow, and interface.
-- [ ] Verify visible 5% thresholds and valid empty reports.
+- [x] Build the Main Report API, progress flow, and interface.
+- [x] Verify visible 5% thresholds and valid empty reports.
 
 ### Extend and Replace Main Report
 

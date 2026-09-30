@@ -606,7 +606,6 @@ describe("application shell", () => {
     render(<App />);
     await previewGame();
     expect(screen.queryByRole("button", { name: "Run 50-review test" })).not.toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Main · 1,000 reviews · coming soon" })).toBeDisabled();
     fireEvent.click(await screen.findByRole("button", { name: "Create report" }));
 
     expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
@@ -616,6 +615,42 @@ describe("application shell", () => {
     );
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/games/1145350/reports/test",
+      { method: "POST" },
+    );
+  });
+
+  it("creates the first Main Report from a completed Full Import", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") return json([]);
+      if (url === "/api/games/1145350/workspace") return json(workspace(true));
+      if (url === "/api/games/1145350/reports/main") {
+        return json({
+          ...analysisRun("completed"),
+          report_kind: "main",
+          review_count: 1_000,
+        });
+      }
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+    fireEvent.change(screen.getByRole("combobox", { name: "Analysis scope" }), {
+      target: { value: "500" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create report" }));
+
+    expect(await screen.findByRole("link", { name: "View Main Report" })).toHaveAttribute(
+      "href",
+      "/main-reports/1145350",
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/games/1145350/reports/main",
       { method: "POST" },
     );
   });
@@ -956,5 +991,6 @@ function workspace(
     full_history_ready: fullHistoryReady,
     latest_analysis_run: latestAnalysisRun,
     test_report_available: testReportAvailable,
+    main_report_available: false,
   };
 }

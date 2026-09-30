@@ -45,7 +45,7 @@ class AnalysisRun(BaseModel):
     def phase(self) -> Literal["queued", "analyzing", "extracting", "consolidating", "completed", "failed", "cancelled"]:
         if self.state != "running":
             return self.state
-        if self.report_kind is not None:
+        if self.report_kind == "test":
             return "analyzing"
         return (
             "consolidating"
@@ -150,13 +150,16 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
             "metric_policy_json, cancel_requested, error_code, report_version_id, "
             "input_tokens, cached_input_tokens, output_tokens, "
             "early_review_revision_ids_json, recent_review_revision_ids_json, "
-            "report_kind, "
-            "(SELECT COUNT(*) FROM review_opinion_extractions extraction "
+            "report_kind, CASE WHEN report_kind = 'main' THEN COALESCE(("
+            "SELECT SUM(json_array_length(json_extract(batch.result_json, "
+            "'$.completed_review_revision_ids'))) FROM analysis_theme_batches batch "
+            "WHERE batch.run_id = analysis_runs.id), 0) ELSE ("
+            "SELECT COUNT(*) FROM review_opinion_extractions extraction "
             "WHERE extraction.provider = analysis_runs.provider "
             "AND extraction.model = analysis_runs.model "
             "AND extraction.contract_version = '1.0' "
             "AND extraction.review_revision_id IN ("
-            "SELECT value FROM json_each(analysis_runs.review_revision_ids_json))) "
+            "SELECT value FROM json_each(analysis_runs.review_revision_ids_json))) END "
             "FROM analysis_runs WHERE id = ?",
             (run_id,),
         ).fetchone()
