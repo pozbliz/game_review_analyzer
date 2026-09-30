@@ -1,5 +1,31 @@
 # Decision Log
 
+## 2026-09-30 - First progressive Main Report implemented
+
+**What changed:**
+
+- Added deterministic selection of up to 500 oldest and 500 newest reviews.
+- Added full-text map batches capped by character capacity and 250 reviews.
+- Added durable validated map checkpoints and one candidate merge call.
+- Retained candidates at 2% cohort support and exposed Themes at 5% support.
+- Added one current Main Report slot, API routes, progress, evidence, and interface access.
+- Replaced oversized reviews when possible and disclosed the skipped count.
+
+**Why:**
+
+- Slice 17 requires the first resumable 1,000-review report before extension work can start.
+- Local memberships and metrics keep provider output limited to semantic grouping.
+
+**New issues:**
+
+- Main Report extension and replacement remain unavailable until Slice 18.
+
+**Needs human judgment:**
+
+- None. Live Theme-quality review remains the Slice 21 gate.
+
+---
+
 ## 2026-09-29 - Aggregate Themes expose retained review evidence
 
 **What changed:**

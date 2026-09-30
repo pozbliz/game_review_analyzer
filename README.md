@@ -26,13 +26,15 @@ Slices 1–8 and 10–12 implement the earlier evidence-heavy report system.
 
 The current code includes authenticated Codex CLI analysis, Ollama, Evidence Filters, immutable history, and exports.
 
-The Version 3 Test Report is implemented. It analyzes 25 oldest and 25 newest reviews in one Codex call.
+The Version 3 Test Report and first Main Report are implemented.
 
-The 50-review scope uses the shared `Create report` action. The 1,000-review Main Report option remains unavailable until Slice 17 is complete.
+The Test Report analyzes 25 oldest and 25 newest reviews in one Codex call.
+
+The shared `Create report` action supports the 50-review Test Report and 1,000-review Main Report scopes.
 
 Each Test Report Theme can reveal its matching local reviews. Evidence is sorted by helpful votes and loaded only when opened.
 
-The current Test Report is saved separately from Version 2 reports. Slice 17 is the next implementation step.
+The current Test and Main Reports are saved separately from Version 2 reports. Slice 18 is the next implementation step.
 
 Current application data was reset before this redesign. The gitignored evaluation corpus remains available.
 
