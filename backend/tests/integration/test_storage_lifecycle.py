@@ -52,6 +52,29 @@ def test_storage_diagnostics_and_individually_confirmed_deletions(tmp_path: Path
     assert verify_database_integrity(database_path).orphan_count == 0
 
 
+def test_report_deletion_clears_completed_analysis_run_reference(tmp_path: Path) -> None:
+    database_path: Path = tmp_path / "app.sqlite3"
+    seed_report(database_path)
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute(
+            "INSERT INTO analysis_runs("
+            "id, app_id, provider, model, state, review_revision_ids_json, "
+            "metric_policy_json, report_version_id) "
+            "VALUES ('run-1', 1145350, 'codex-cli', 'gpt-5.6-luna', "
+            "'completed', '[]', '{}', 'report-1')"
+        )
+
+    delete_report_version(database_path, "report-1", "report-1")
+
+    with sqlite3.connect(database_path) as connection:
+        reference: tuple[str | None] = connection.execute(
+            "SELECT report_version_id FROM analysis_runs WHERE id = 'run-1'"
+        ).fetchone()
+    assert reference == (None,)
+    assert load_report_version(database_path, "report-1") is None
+
+
 def test_confirmed_game_dataset_deletion_cascades_all_owned_state(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
     seed_report(database_path)

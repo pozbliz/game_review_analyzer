@@ -218,8 +218,6 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .danger-zone button:disabled { opacity: .45; }
 .report-delete { display: grid; justify-items: start; gap: .75rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
 .report-delete p { margin: 0; color: var(--muted); }
-.report-delete label { display: grid; gap: .4rem; font-size: .85rem; font-weight: 700; }
-.report-delete input { min-width: min(24rem, 80vw); padding: .65rem; border: 1px solid #aaa99f; border-radius: 7px; }
 .report-delete button { padding: .65rem .85rem; border: 1px solid var(--danger); border-radius: 8px; color: var(--danger); background: transparent; font-weight: 750; }
 .report-delete button:disabled { opacity: .45; }
 .storefront-overview { margin-top: 2rem; padding: 1.3rem; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }

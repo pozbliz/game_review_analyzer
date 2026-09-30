@@ -111,7 +111,7 @@ describe("aggregate Test Report", () => {
     );
   });
 
-  it("deletes a report from the bottom after exact confirmation", async () => {
+  it("deletes a report from the bottom after browser confirmation", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
       if (options?.method === "POST") return new Response(null, { status: 204 });
       return new Response(JSON.stringify({
@@ -123,20 +123,22 @@ describe("aggregate Test Report", () => {
         positive_themes: [], negative_themes: [],
       }), { status: 200 });
     });
+    const confirmMock = vi.spyOn(window, "confirm")
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
 
     render(<AggregateReportView appId={1145350} kind="main" />);
     const deleteButton: HTMLElement = await screen.findByRole("button", { name: "Delete Report" });
     expect(deleteButton.closest(".report-delete")).toBe(document.querySelector("main")?.lastElementChild);
     fireEvent.click(deleteButton);
-
-    const confirmButton: HTMLButtonElement = screen.getByRole("button", { name: "Delete Report Permanently" });
-    expect(confirmButton).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Type main-report to confirm"), {
-      target: { value: "main-report" },
-    });
-    fireEvent.click(confirmButton);
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/reports/main-report/delete",
+      expect.anything(),
+    );
+    fireEvent.click(deleteButton);
 
     expect(await screen.findByText("Report deleted.")).toBeVisible();
+    expect(confirmMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/reports/main-report/delete",
       {

@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-09-30 - Report deletion clears its analysis-run reference
+
+**What changed:**
+
+- Clear matching `analysis_runs.report_version_id` references before deleting a report.
+- Replace typed report-ID confirmation with one browser confirmation dialog.
+- Keep the exact identifier in the internal deletion request.
+
+**Why:**
+
+- SQLite rejected deletion because the completed analysis run still referenced the report.
+- Typed confirmation added unnecessary work for a local report deletion.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-09-30 - Aggregate reports can be deleted from their report page
 
 **What changed:**

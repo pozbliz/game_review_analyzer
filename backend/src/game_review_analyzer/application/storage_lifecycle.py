@@ -70,6 +70,11 @@ def delete_report_version(
 
     require_confirmation(report_version_id, confirmation)
     with connect(database_path) as connection:
+        connection.execute(
+            "UPDATE analysis_runs SET report_version_id = NULL "
+            "WHERE report_version_id = ?",
+            (report_version_id,),
+        )
         cursor = connection.execute(
             "DELETE FROM report_versions WHERE id = ?", (report_version_id,)
         )

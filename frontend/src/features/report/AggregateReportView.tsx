@@ -25,8 +25,6 @@ export default function AggregateReportView(
   const [evidence, setEvidence] = useState<Record<string, AggregateThemeEvidence>>({});
   const [evidenceError, setEvidenceError] = useState<string>("");
   const [extensionState, setExtensionState] = useState<"idle" | "starting" | "started" | "failed">("idle");
-  const [deleteOpen, setDeleteOpen] = useState<boolean>(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState<string>("");
   const [deleteState, setDeleteState] = useState<"idle" | "deleting" | "deleted" | "failed">("idle");
 
   useEffect(() => {
@@ -65,8 +63,9 @@ export default function AggregateReportView(
   }
 
   function removeReport(): void {
+    if (!window.confirm("Delete this report permanently? This cannot be undone.")) return;
     setDeleteState("deleting");
-    deleteReport(reportId, deleteConfirmation)
+    deleteReport(reportId, reportId)
       .then(() => setDeleteState("deleted"))
       .catch(() => setDeleteState("failed"));
   }
@@ -141,28 +140,10 @@ export default function AggregateReportView(
         <StorefrontOverview metadata={report.metadata} />
       )}
       <section className="report-delete" aria-label="Delete report">
-        {!deleteOpen ? (
-          <button type="button" onClick={() => setDeleteOpen(true)}>Delete Report</button>
-        ) : (
-          <>
-            <p>Deletion cannot be undone.</p>
-            <label>
-              Type {report.report_id} to confirm
-              <input
-                value={deleteConfirmation}
-                onChange={(event) => setDeleteConfirmation(event.target.value)}
-              />
-            </label>
-            <button
-              type="button"
-              disabled={deleteConfirmation !== report.report_id || deleteState === "deleting"}
-              onClick={removeReport}
-            >
-              {deleteState === "deleting" ? "Deleting..." : "Delete Report Permanently"}
-            </button>
-            {deleteState === "failed" && <p className="error" role="alert">Report deletion was rejected.</p>}
-          </>
-        )}
+        <button type="button" disabled={deleteState === "deleting"} onClick={removeReport}>
+          {deleteState === "deleting" ? "Deleting..." : "Delete Report"}
+        </button>
+        {deleteState === "failed" && <p className="error" role="alert">Report deletion was rejected.</p>}
       </section>
     </main>
   );
