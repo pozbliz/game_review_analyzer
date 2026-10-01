@@ -2,7 +2,7 @@
 
 ## Status
 
-The progressive aggregate-report design and this strategic plan are approved. Slices 0–15 record the earlier implementation. Their Version 2 report behavior is superseded where it conflicts with `DESIGN.md`. Slices 16–21 replace that behavior. Slices 16–17 are complete. Slice 18 is the execution frontier.
+The progressive aggregate-report design and this strategic plan are approved. Slices 0–15 record the earlier implementation. Their Version 2 report behavior is superseded where it conflicts with `DESIGN.md`. Slices 16–22 replace that behavior. Slices 16–17 are complete. Slice 18 is the execution frontier.
 
 ## Durable verification seams
 
@@ -206,7 +206,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Outcome:** A new GitHub user can install the local web application, securely configure one analysis path, and maintain trustworthy reports without developer assistance.
 
-**Blocked by:** Slice 21, Steam policy validation, accessibility and security gates, and copyright-holder confirmation.
+**Blocked by:** Slice 22, Steam policy validation, accessibility and security gates, and copyright-holder confirmation.
 
 **Scope:** integration and security verification, documentation, CI, MIT license, clean-install workflow, and source release.
 
@@ -214,7 +214,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Tradeoff:** Packaged releases and advertised macOS/Linux support remain outside this release gate.
 
-**Status:** Blocked by Slice 21 and copyright-holder confirmation.
+**Status:** Blocked by Slice 22 and copyright-holder confirmation.
 
 ## Slice 14 — Package and validate distribution
 
@@ -244,7 +244,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Status:** Implemented with resumable bounded extraction, deterministic canonical-subject consolidation, immutable cohort metrics, progress/retry controls, report presentation, and an explicitly incomplete 25-plus-25 Ollama pilot. Representative-game semantic calibration remains open.
 
-This slice records superseded Version 2 behavior. Slices 16–21 replace its report model and user workflow.
+This slice records superseded Version 2 behavior. Slices 16–22 replace its report model and user workflow.
 
 ## Slice 16 — Produce a standalone Test Report
 
@@ -270,15 +270,29 @@ This slice records superseded Version 2 behavior. Slices 16–21 replace its rep
 
 **Acceptance:** Tests prove exact non-overlapping selection, full-text input, a 250-review call ceiling, character-based packing, and replacement of oversized reviews with the next eligible unseen review. Restarts reuse validated batches. Candidates with at least 2% support in either cohort remain internal. Themes with at least 5% support in either cohort become visible. An empty visible report is valid.
 
-**Tradeoff:** The Main Report cannot grow or reset through the interface until Slice 18.
+**Tradeoff:** The Main Report cannot grow or reset through the interface until Slice 19.
 
 **Status:** Complete with deterministic selection, bounded map calls, durable checkpoints, candidate merging, aggregate persistence, API, progress, and interface coverage.
 
-## Slice 18 — Grow or replace the Main Report safely
+## Slice 18 — Make Codex output semantic-only
+
+**Outcome:** Create Test and Main Reports while Codex supplies only Theme extraction, summaries, polarity, supporting-review positions, grouping, and discard decisions.
+
+**Blocked by:** None. Slices 16 and 17 are complete.
+
+**Scope:** Versioned map and merge provider contracts, the Codex adapter, local identity and provenance binding, ordered merge assignments, corrective validation retry, checkpoint compatibility, and Analysis Runner integration.
+
+**Acceptance:** Provider contract tests prove that raw Codex output contains no application-owned identifiers, completion claims, scope identity, or provenance. Map results bind review positions to exact Review Revisions, normalize repeated valid positions, reject out-of-range positions, and receive deterministic local candidate identifiers. Merge results bind one assignment to each candidate by request order, preserve established Themes locally, assign deterministic identifiers to new Themes, and reject invalid counts, targets, or polarity. Correctable semantic validation failures receive one specific retry. Older incomplete checkpoints are not reused after the contract change, while completed Version 3 reports remain readable and extendable. Automated Test and Main Report flows pass without a live Codex run.
+
+**Tradeoff:** Existing incomplete analysis runs must restart under the revised contract. Ordered assignments make candidate order part of the semantic provider contract, and live-provider confirmation remains in Slice 22.
+
+**Status:** Approved; execution frontier.
+
+## Slice 19 — Grow or replace the Main Report safely
 
 **Outcome:** Extend the Main Report by up to 1,000 unseen reviews or replace it with a fresh 1,000-review analysis.
 
-**Blocked by:** Slice 17.
+**Blocked by:** Slice 18.
 
 **Scope:** Required Steam refresh, exact run reservations, cumulative Theme memberships, stable Theme definitions, candidate promotion, replacement runs, atomic report replacement, cancellation, retry, and restart recovery.
 
@@ -286,13 +300,13 @@ This slice records superseded Version 2 behavior. Slices 16–21 replace its rep
 
 **Tradeoff:** Theme definitions stay fixed during extension. A poor taxonomy requires replacement.
 
-**Status:** Approved; execution frontier.
+**Status:** Approved; blocked by Slice 18.
 
-## Slice 19 — Remove superseded report behavior
+## Slice 20 — Remove superseded report behavior
 
 **Outcome:** Expose one Main Report and one Test Report per game without Version 2 report behavior.
 
-**Blocked by:** Slice 18.
+**Blocked by:** Slice 19.
 
 **Scope:** Catalog and report routes, report history, Opinion Points, excerpts, evidence APIs, Evidence Filters, categories, mixed reception, mechanic classifications, provider controls, legacy schemas, and obsolete adapters.
 
@@ -300,13 +314,13 @@ This slice records superseded Version 2 behavior. Slices 16–21 replace its rep
 
 **Tradeoff:** Deleted Version 2 data and behavior cannot be restored through the application.
 
-**Status:** Approved; blocked by Slice 18.
+**Status:** Approved; blocked by Slice 19.
 
-## Slice 20 — Export aggregate Version 3 reports
+## Slice 21 — Export aggregate Version 3 reports
 
 **Outcome:** Export and import the current aggregate report format without review evidence.
 
-**Blocked by:** Slices 18 and 19.
+**Blocked by:** Slices 19 and 20.
 
 **Scope:** Version 3 HTML, CSV, and JSON contracts, local JSON re-import, report-slot rules, sanitization, and download controls.
 
@@ -314,13 +328,13 @@ This slice records superseded Version 2 behavior. Slices 16–21 replace its rep
 
 **Tradeoff:** JSON remains tied to a compatible local Game Dataset and is not a portable data backup.
 
-**Status:** Approved; blocked by Slices 18 and 19.
+**Status:** Approved; blocked by Slices 19 and 20.
 
-## Slice 21 — Verify the progressive workflow
+## Slice 22 — Verify the progressive workflow
 
 **Outcome:** Verify the 50-review, 1,000-review, and 2,000-review workflows before release work resumes.
 
-**Blocked by:** Slices 16–20.
+**Blocked by:** Slices 16–21.
 
 **Scope:** Live Codex CLI runs, token and timing measurements, restart recovery, connected-browser checks, exports, automated checks, and operating documentation.
 
@@ -328,7 +342,7 @@ This slice records superseded Version 2 behavior. Slices 16–21 replace its rep
 
 **Tradeoff:** Poor live speed, token use, or Theme quality can block release and require a design revision.
 
-**Status:** Approved; blocked by Slices 16–20.
+**Status:** Approved; blocked by Slices 16–21.
 
 ## Deferred
 
@@ -347,8 +361,8 @@ This slice records superseded Version 2 behavior. Slices 16–21 replace its rep
 ## Approval gates
 
 - **Design:** satisfied; the progressive aggregate-report design is approved.
-- **Plan:** satisfied; Slices 16–21 and their order are approved.
-- **Tasks:** revise `TASKS.md` through `$create-implementation-tasks` before Slice 16 implementation.
-- **Analysis quality:** review live Theme usefulness after Slice 21 verification.
+- **Plan:** satisfied; Slices 16–22 and their order are approved.
+- **Tasks:** revise `TASKS.md` through `$create-implementation-tasks` before Slice 18 implementation.
+- **Analysis quality:** review live Theme usefulness after Slice 22 verification.
 - **Steam:** existing policy validation remains required for release.
-- **Release:** complete Slice 21, confirm the MIT copyright holder, and approve the release candidate before Slice 13 publication.
+- **Release:** complete Slice 22, confirm the MIT copyright holder, and approve the release candidate before Slice 13 publication.

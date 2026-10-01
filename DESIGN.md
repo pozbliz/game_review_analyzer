@@ -2,7 +2,9 @@
 
 ## Status
 
-Approved on 2026-09-29. This document describes the target behavior.
+The progressive report design was approved on 2026-09-29.
+
+The deterministic provider-boundary revision was approved on 2026-10-01.
 
 The current application still implements evidence-heavy immutable reports, Opinion Points, categories, filters, and Version 2 contracts.
 
@@ -24,6 +26,8 @@ The application runs on the user's machine. Windows is the first packaged-releas
 - Compare support in the oldest and newest analyzed cohorts.
 - Grow one main report in user-requested increments.
 - Preserve completed provider work across interruption and retry.
+- Restrict Codex to semantic Theme extraction, summarization, polarity, membership, grouping, and discard decisions.
+- Derive identifiers, scope completion, provenance, metrics, ordering, and persistence locally.
 - Calculate every displayed metric locally from validated memberships.
 - Export aggregated reports without review text or reviewer identity.
 
@@ -197,28 +201,43 @@ The interface labels Codex processing as external cloud work and reports measure
 
 The application does not invent a monetary estimate or claim access to remaining subscription quota.
 
+### Deterministic ownership
+
+Codex is an external semantic dependency. It identifies recurring opinions, writes Theme titles and summaries, assigns polarity, links supporting reviews, and groups or discards candidates.
+
+The application owns request identity, scope digests, contract version, provider and model provenance, completed scope, persistent identifiers, established Theme state, membership deduplication, thresholds, ranking, checkpoints, and persistence.
+
+Provider responses do not repeat application-owned identity or provenance fields. A successful validated response completes the exact request that produced it; the application records that completion locally.
+
+The adapter converts provider output into the internal analysis result. Callers receive application-owned identities and provenance rather than raw provider claims.
+
 ### Map contract
 
 Reviews are packed by character capacity first and a maximum of 250 reviews second. Each selected review appears in one map batch.
 
-Every map result returns completed review identifiers and Theme candidates. Each candidate contains:
+Every review has a stable zero-based position within its map request. Each map result returns only Theme candidates. Each candidate contains:
 
-- Candidate identifier
 - Title and summary
 - Positive or negative polarity
-- Supporting review identifiers from that batch
+- Supporting review positions from that batch
 
 The provider returns no excerpts, Opinion Points, categories, percentages, final counts, or rankings.
 
-The backend rejects incomplete batches, unknown review identifiers, duplicate identifiers, empty support, and unsupported polarity values.
+The application maps supporting positions to the exact Review Revisions in the request and assigns each candidate an internal identifier. It removes repeated supporting positions because they do not change membership.
+
+The backend rejects out-of-range positions, empty support, unsupported polarity values, and malformed candidates. It derives batch completion, request identity, scope, provider, model, and contract version from the invocation.
 
 ### Merge contract
 
-The merge receives established Theme definitions, retained near-threshold candidates, and candidates from the new reviews.
+The merge receives established Theme definitions and an ordered list containing retained near-threshold candidates plus candidates from new reviews.
 
-It maps each new candidate to an established Theme, a new Theme, or discard. The provider returns mappings rather than calculated support.
+It maps each candidate to an established Theme, a new Theme, or discard. The provider returns one assignment for each candidate in the same order as the request.
 
-The merge result contains Theme definitions and one assignment item per candidate key. Each item contains a returned Theme ID or `null` for discard. Local validation rejects missing, unknown, or duplicate candidate keys.
+Each assignment contains an established Theme reference, a new-Theme result position, or discard. New Theme results contain only a title, summary, and polarity.
+
+The provider does not return candidate keys, persistent Theme identifiers, established Theme definitions, request identity, scope, or provenance. The application retains established Themes unchanged and assigns persistent identifiers to new Themes.
+
+Local validation requires the assignment count to equal the candidate count. It rejects invalid targets, missing new Themes, unused new Themes, and polarity mismatches.
 
 Supporting review memberships remain local. The backend unions distinct memberships and calculates all metrics.
 
@@ -276,15 +295,19 @@ The main progress sequence is:
 
 Selection and run creation reserve an exact review scope atomically. Concurrent runs cannot reserve the same extension scope.
 
-Each validated batch is checkpointed with its ordered input digest, provider, model, contract version, result, and measured usage.
+Each validated batch is checkpointed with its ordered input digest, provider, model, contract version, application-owned result, and measured usage.
 
 Cancellation retains validated checkpoints. Retry processes only incomplete batches and preserves the current visible report.
 
-Only transient provider failures receive one automatic retry. Validation failures do not repeat the unchanged request.
+Transient provider failures receive one automatic retry. A correctable semantic-output validation failure may receive one retry with a specific correction instruction.
+
+The application does not retry an unchanged invalid contract. A second invalid response fails safely and preserves validated checkpoints.
 
 No partial report becomes visible. Report replacement and its review bindings commit atomically.
 
-One shared contract-version value controls provider requests, checkpoint lookup, and progress counting.
+One shared provider-contract version controls requests, checkpoint lookup, and progress counting. A breaking provider-boundary revision advances this version and does not reuse older in-progress checkpoints.
+
+Existing completed Version 3 aggregate reports remain readable. They retain their stored memberships and can participate in later extension through the revised provider boundary.
 
 Redacted telemetry records stages, durations, usage, retry state, safe failure codes, HTTP failures, background-job failures, and browser runtime failures.
 
@@ -333,14 +356,16 @@ Existing module boundaries remain useful:
 
 - **Review Ingestion:** Full Import, refresh, stable identity deduplication, and immutable Review Revisions
 - **Job Runner:** durable acquisition progress, cancellation, retry, and recovery
-- **Analysis Provider:** versioned map and merge contracts over untrusted review text
+- **Analysis Provider:** narrow versioned contracts for semantic map and merge decisions over untrusted review text
 - **Analysis Runner:** review reservation, batching, checkpoints, cancellation, and atomic report replacement
 - **Theme Metrics:** pure calculation from scope and membership sets
 - **Report Repository:** one main and one test slot per game with exact bindings
 - **Export/Import:** Version 3 aggregated formats and strict local membership validation
 - **CLI Runner:** isolated Codex execution, bounded retries, cancellation, usage, and redacted diagnostics
 
-The provider interface remains the main external seam. Selection, merging, and metrics remain local application behavior.
+The provider interface remains the main external seam. Its adapter hides raw model output and returns application-bound semantic results.
+
+Selection, identity assignment, scope completion, established Theme retention, membership normalization, thresholds, ranking, metrics, checkpoints, and persistence remain local application behavior.
 
 The React client does not own provider execution, Steam access, authoritative memberships, or metric calculation.
 
@@ -351,6 +376,9 @@ The React client does not own provider execution, Steam access, authoritative me
 - Empty datasets explain that analysis cannot start.
 - Oversized reviews are skipped and replaced when another unseen review exists.
 - Invalid provider output fails the run without changing either report slot.
+- Repeated valid supporting positions are normalized to one membership.
+- An out-of-range supporting position or invalid merge target fails validation.
+- A merge result with too few or too many assignments fails validation.
 - Provider unavailability never triggers fallback.
 - Cancellation preserves validated checkpoints and the current report.
 - Backend restart resumes the reserved scope and validated checkpoints.
@@ -364,7 +392,10 @@ The React client does not own provider execution, Steam access, authoritative me
 ### Highest-value test seams
 
 - Pure selection tests cover deterministic ordering, overlap removal, new reviews, ignored edits, oversized reviews, and final partial extensions.
-- Provider contract tests reject incomplete batches, duplicate identifiers, unknown memberships, invalid polarity, and malformed mappings.
+- Provider contract tests reject malformed candidates, out-of-range positions, invalid polarity, invalid merge targets, and assignment-count mismatches.
+- Provider adapter tests prove that Codex output contains no application-owned IDs, completion claims, scope identity, or provenance.
+- Map contract tests cover position binding, repeated-position normalization, out-of-range rejection, and deterministic candidate identifiers.
+- Merge contract tests cover ordered assignment binding, established Theme retention, deterministic new Theme identifiers, invalid targets, and assignment-count mismatch.
 - Merge tests cover stable Theme definitions, candidate retention, promotion, discard, and membership deduplication.
 - Theme Metrics tests cover 5% eligibility, five-item caps, cohort denominators, unequal cohorts, ranking, and empty reports.
 - Analysis Runner tests cover atomic reservation, checkpoint reuse, cancellation, restart, refresh failure, and replacement safety.
@@ -384,6 +415,9 @@ The React client does not own provider execution, Steam access, authoritative me
 - A Theme qualifies because it reaches 5% in the newest cohort despite lower total support.
 - A candidate retained at 2% becomes visible after later extensions.
 - A completed run with no qualifying Themes produces a valid empty report.
+- A provider repeats a supporting review position; the application stores one membership and continues.
+- A provider returns the wrong number of merge assignments; the run fails without changing the current report.
+- An application update changes the provider contract; completed reports remain readable while older incomplete checkpoints are not reused.
 
 ## Deferred work
 

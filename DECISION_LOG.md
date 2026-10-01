@@ -1,5 +1,54 @@
 # Decision Log
 
+## 2026-10-01 - Semantic-only provider migration becomes the execution frontier
+
+**What changed:**
+
+- Added an approved strategic slice that moves application-owned data out of Codex responses before Main Report extension work continues.
+- Shifted the remaining progressive-report slices so provider migration is Slice 18 and workflow verification is Slice 22.
+- Kept live Codex verification in the final workflow slice; the provider migration uses automated contract and integration evidence.
+
+**Why:**
+
+- The provider boundary must change before extension work creates more checkpoints and reports under the failure-prone contract.
+- One focused backend slice can change the external seam without requiring frontend or API behavior changes.
+
+**New issues:**
+
+- The concrete implementation checklist must be revised before Slice 18 begins.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-10-01 - Codex provider boundary limited to semantic decisions
+
+**What changed:**
+
+- Restricted the target Codex response to Theme text, polarity, supporting review positions, ordered merge assignments, and grouping or discard decisions.
+- Assigned request identity, completion, provenance, candidate IDs, Theme IDs, established Theme retention, and membership normalization to local application code.
+- Selected ordered merge assignments because the prior exact-key object schema failed before inference on a 174-candidate merge.
+- Required a provider-contract version change to prevent reuse of incompatible in-progress checkpoints while preserving completed Version 3 reports.
+
+**Why:**
+
+- Codex duplicated completed review IDs in two consecutive attempts even though the 60-review input contained unique IDs.
+- Earlier live runs also produced duplicate candidate mappings, unknown Theme assignments, request mismatches, and memberships outside the request scope.
+- Application-owned facts do not require semantic inference and should not create provider failure paths.
+
+**New issues:**
+
+- Ordered assignments make request order part of the provider contract.
+- Incomplete checkpoints created under the previous provider contract cannot be reused after the revision.
+
+**Needs human judgment:**
+
+- None. The revised `DESIGN.md` was approved on 2026-10-01.
+
+---
+
 ## 2026-09-30 - Theme visibility settings are configurable per report
 
 **What changed:**
