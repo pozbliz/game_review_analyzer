@@ -57,9 +57,9 @@ from game_review_analyzer.infrastructure.job_runner import JobRunner
 from game_review_analyzer.infrastructure.persistence.jobs import get_job
 from game_review_analyzer.infrastructure.persistence.game_datasets import load_game_dataset
 from game_review_analyzer.infrastructure.persistence.report_versions import (
+    complete_aggregate_report_run,
     load_aggregate_report_slot,
     load_report_version,
-    save_aggregate_report,
 )
 from game_review_analyzer.infrastructure.persistence.opinion_extractions import (
     load_opinion_extractions,
@@ -590,6 +590,9 @@ class AnalysisRunner:
                     for candidate in provider_run.result.themes
                 )
 
+            if cancellation.is_set():
+                finish_analysis_run(self._database_path, run.id, "cancelled")
+                return
             merge_usages: list[ProviderUsage] = []
             themes: tuple[ThemeDefinition, ...] = (
                 extension_report.themes if extension_report is not None else ()
@@ -744,19 +747,22 @@ class AnalysisRunner:
                 memberships=retained_memberships,
                 theme_metrics=retained_metrics,
             )
-            save_aggregate_report(self._database_path, report)
+            if cancellation.is_set():
+                finish_analysis_run(self._database_path, run.id, "cancelled")
+                return
             usages: tuple[ProviderUsage, ...] = tuple(
                 provider_run.usage for provider_run in map_runs
             ) + tuple(merge_usages)
-            finish_analysis_run(
+            completed: bool = complete_aggregate_report_run(
                 self._database_path,
                 run.id,
-                "completed",
-                report_version_id=report_id,
+                report,
                 input_tokens=_sum_usage(usages, "input_tokens"),
                 cached_input_tokens=_sum_usage(usages, "cached_input_tokens"),
                 output_tokens=_sum_usage(usages, "output_tokens"),
             )
+            if not completed:
+                return
             log_event(
                 "analysis.completed",
                 run_id=run.id,
@@ -832,9 +838,10 @@ class AnalysisRunner:
                     for revision_id in run.review_revision_ids
                 ),
             )
+            cancellation = _DurableCancellation(self._database_path, run.id)
             provider_run: ThemeProviderRun = self._theme_provider().analyze_themes(
                 request,
-                cancel_event=_DurableCancellation(self._database_path, run.id),
+                cancel_event=cancellation,
             )
             validate_theme_provider_result(
                 request,
@@ -912,16 +919,19 @@ class AnalysisRunner:
                 memberships=visible_memberships,
                 theme_metrics=visible_metrics,
             )
-            save_aggregate_report(self._database_path, report)
-            finish_analysis_run(
+            if cancellation.is_set():
+                finish_analysis_run(self._database_path, run.id, "cancelled")
+                return
+            completed: bool = complete_aggregate_report_run(
                 self._database_path,
                 run.id,
-                "completed",
-                report_version_id=report_id,
+                report,
                 input_tokens=provider_run.usage.input_tokens,
                 cached_input_tokens=provider_run.usage.cached_input_tokens,
                 output_tokens=provider_run.usage.output_tokens,
             )
+            if not completed:
+                return
             log_event(
                 "analysis.completed",
                 run_id=run.id,

@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import App from "../../src/app/App";
+import App, { analysisFailureMessage } from "../../src/app/App";
 import { SteamMetadata } from "../../src/api/shell";
 import StorefrontOverview from "../../src/features/game/StorefrontOverview";
 
@@ -12,6 +12,17 @@ afterEach(() => {
 });
 
 describe("application shell", () => {
+  it.each([
+    ["steam_unavailable", "Steam refresh failed"],
+    ["reservation_conflict", "Another analysis owns this report slot"],
+    ["provider_nonzero_exit", "The analysis provider failed"],
+    ["checkpoint_invalid", "Saved progress was invalid"],
+    ["cancelled", "Analysis was cancelled"],
+    ["internal_analysis_error", "internal error"],
+  ])("maps %s to actionable recovery text", (code, expected) => {
+    expect(analysisFailureMessage(code)).toContain(expected);
+  });
+
   it("shows recent saved reports beside game search", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url: string = request.toString();

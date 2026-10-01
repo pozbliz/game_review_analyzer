@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from game_review_analyzer.application.provider import ProviderUsage, ThemeProviderRun
 from game_review_analyzer.domain.analysis import ThemeAnalysisResult
 from game_review_analyzer.infrastructure.persistence.jobs import connect
@@ -20,27 +22,35 @@ def load_theme_batch(
     """Load one checkpoint only when its exact input and provenance match."""
 
     with connect(database_path) as connection:
-        row: tuple[str, int | None, int | None, int | None] | None = (
+        row: tuple[str, str, str, str, str, int | None, int | None, int | None] | None = (
             connection.execute(
-                "SELECT result_json, input_tokens, cached_input_tokens, output_tokens "
-                "FROM analysis_theme_batches WHERE run_id = ? AND batch_number = ? "
-                "AND input_digest = ? AND provider = ? AND model = ? "
-                "AND contract_version = ?",
-                (
-                    run_id,
-                    batch_number,
-                    input_digest,
-                    provider,
-                    model,
-                    contract_version,
-                ),
+                "SELECT input_digest, provider, model, contract_version, result_json, "
+                "input_tokens, cached_input_tokens, output_tokens "
+                "FROM analysis_theme_batches WHERE run_id = ? AND batch_number = ?",
+                (run_id, batch_number),
             ).fetchone()
         )
-    if row is None:
-        return None
+        if row is None:
+            return None
+        if row[:4] != (input_digest, provider, model, contract_version):
+            connection.execute(
+                "DELETE FROM analysis_theme_batches "
+                "WHERE run_id = ? AND batch_number = ?",
+                (run_id, batch_number),
+            )
+            return None
+        try:
+            result = ThemeAnalysisResult.model_validate_json(row[4])
+        except (ValidationError, ValueError):
+            connection.execute(
+                "DELETE FROM analysis_theme_batches "
+                "WHERE run_id = ? AND batch_number = ?",
+                (run_id, batch_number),
+            )
+            return None
     return ThemeProviderRun(
-        result=ThemeAnalysisResult.model_validate_json(row[0]),
-        usage=ProviderUsage(row[1], row[2], row[3]),
+        result=result,
+        usage=ProviderUsage(row[5], row[6], row[7]),
     )
 
 

@@ -34,6 +34,25 @@ import StorefrontOverview from "../features/game/StorefrontOverview";
 
 type HealthState = "loading" | "ready" | "unavailable";
 
+export function analysisFailureMessage(code: string): string {
+  if (["steam_unavailable", "invalid_steam_response", "cursor_repeated", "internal_import_error"].includes(code)) {
+    return "Steam refresh failed. Retry to resume from the saved refresh checkpoint.";
+  }
+  if (["reservation_conflict", "main_report_analysis_active", "test_report_analysis_active"].includes(code)) {
+    return "Another analysis owns this report slot. Wait for it to finish or cancel it.";
+  }
+  if (code.startsWith("provider_") || code === "codex_cli_not_ready") {
+    return "The analysis provider failed. Check provider access, then retry this run.";
+  }
+  if (code.includes("checkpoint") || code === "invalid_refresh_scope") {
+    return "Saved progress was invalid. Retry to rebuild only the affected stage.";
+  }
+  if (code === "cancelled") {
+    return "Analysis was cancelled. Resume to continue from saved progress.";
+  }
+  return "Analysis stopped because of an internal error. Retry once, then inspect the error code if it repeats.";
+}
+
 export default function App(): JSX.Element {
   const testReportMatch: RegExpMatchArray | null = window.location.pathname.match(
     /^\/test-reports\/(\d+)$/,
@@ -513,7 +532,12 @@ function CatalogApp(): JSX.Element {
                   }</h3>
                   <p>{analysisRun.review_count.toLocaleString()} reviews · {analysisRun.model}</p>
                   {analysisRun.state === "failed" && analysisRun.error_code && (
-                    <p className="error">Error code: <code>{analysisRun.error_code}</code></p>
+                    <p className="error">
+                      {analysisFailureMessage(analysisRun.error_code)} Error code: <code>{analysisRun.error_code}</code>
+                    </p>
+                  )}
+                  {analysisRun.state === "running" && analysisRun.phase === "refreshing" && (
+                    <p>Refreshing Steam reviews before selecting the report scope</p>
                   )}
                   {analysisRun.state === "running" && analysisRun.phase === "extracting" && (
                     <p>{analysisRun.extracted_review_count.toLocaleString()} of {analysisRun.review_count.toLocaleString()} reviews {analysisRun.report_kind === "main" ? "analyzed and checkpointed" : "extracted and cached"}</p>

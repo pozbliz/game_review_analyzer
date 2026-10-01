@@ -138,7 +138,7 @@ export interface AnalysisRun {
   extracted_review_count: number;
   oversized_review_count: number;
   report_kind: "main" | "test" | null;
-  phase: "queued" | "analyzing" | "extracting" | "consolidating" | "completed" | "failed" | "cancelled";
+  phase: "queued" | "refreshing" | "analyzing" | "extracting" | "consolidating" | "completed" | "failed" | "cancelled";
 }
 
 export interface GameWorkspace {
@@ -209,7 +209,7 @@ function parseAnalysisRun(payload: unknown): AnalysisRun {
       typeof payload.extracted_review_count !== "number" ||
       typeof payload.oversized_review_count !== "number" ||
       !(payload.report_kind === null || payload.report_kind === "main" || payload.report_kind === "test") ||
-      !["queued", "analyzing", "extracting", "consolidating", "completed", "failed", "cancelled"].includes(String(payload.phase)) ||
+      !["queued", "refreshing", "analyzing", "extracting", "consolidating", "completed", "failed", "cancelled"].includes(String(payload.phase)) ||
       !(payload.error_code === null || typeof payload.error_code === "string") ||
       !(payload.report_version_id === null || typeof payload.report_version_id === "string")) {
     throw new Error("Invalid analysis run response");

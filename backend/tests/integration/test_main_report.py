@@ -31,6 +31,7 @@ from game_review_analyzer.infrastructure.persistence.analysis_runs import (
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.persistence.game_datasets import save_game_dataset
 from game_review_analyzer.infrastructure.persistence.jobs import (
+    connect,
     create_full_job,
     finish_job,
     start_job,
@@ -265,13 +266,19 @@ def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
 
     AnalysisRunner(database_path, provider, batch_review_limit=250).run(run.id)
     assert get_analysis_run(database_path, run.id).state == "failed"
+    with connect(database_path) as connection:
+        connection.execute(
+            "UPDATE analysis_theme_batches SET result_json = '{' "
+            "WHERE run_id = ? AND batch_number = 1",
+            (run.id,),
+        )
 
     retry_analysis_run(database_path, run.id)
     AnalysisRunner(database_path, provider, batch_review_limit=250).run(run.id)
 
     completed = get_analysis_run(database_path, run.id)
     report = load_aggregate_report_slot(database_path, 1145350, "main")
-    assert provider.map_calls == 5
+    assert provider.map_calls == 6
     assert completed.state == "completed"
     assert completed.input_tokens == 450
     assert report is not None
@@ -385,6 +392,45 @@ def test_main_report_merges_positive_and_negative_candidates_separately(
     assert get_analysis_run(database_path, run.id).input_tokens == 200
 
 
+def test_cancelled_main_report_never_replaces_the_report_slot(tmp_path: Path) -> None:
+    database_path: Path = seeded_database(tmp_path, review_count=2)
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+        report_kind="main",
+        operation="create",
+    )
+
+    class CancellingProvider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            request_analysis_cancellation(database_path, run.id)
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version="3.1",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=tuple(
+                        review.review_revision_id for review in request.reviews
+                    ),
+                    themes=(),
+                ),
+                usage=ProviderUsage(1, 0, 1),
+            )
+
+    AnalysisRunner(database_path, CancellingProvider()).run(run.id)
+
+    assert get_analysis_run(database_path, run.id).state == "cancelled"
+    assert load_aggregate_report_slot(database_path, 1145350, "main") is None
+
+
 def test_theme_batch_from_previous_contract_is_ignored(tmp_path: Path) -> None:
     database_path: Path = seeded_database(tmp_path, review_count=2)
     run = create_analysis_run(
@@ -428,12 +474,54 @@ def test_theme_batch_from_previous_contract_is_ignored(tmp_path: Path) -> None:
     )
 
     assert loaded is None
+    save_theme_batch(
+        database_path,
+        run_id=run.id,
+        batch_number=1,
+        input_digest="a" * 64,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        contract_version=ANALYSIS_CONTRACT_VERSION,
+        provider_run=provider_run,
+    )
+    with connect(database_path) as connection:
+        connection.execute(
+            "UPDATE analysis_theme_batches SET result_json = '{' "
+            "WHERE run_id = ? AND batch_number = 1",
+            (run.id,),
+        )
+
+    assert load_theme_batch(
+        database_path,
+        run_id=run.id,
+        batch_number=1,
+        input_digest="a" * 64,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        contract_version=ANALYSIS_CONTRACT_VERSION,
+    ) is None
+    save_theme_batch(
+        database_path,
+        run_id=run.id,
+        batch_number=1,
+        input_digest="a" * 64,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        contract_version=ANALYSIS_CONTRACT_VERSION,
+        provider_run=provider_run,
+    )
 
 
 def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
     class EmptyRefreshSource:
+        def __init__(self) -> None:
+            self.calls: int = 0
+
         def iter_pages(self, app_id: int, start_cursor: str = "*"):
             del app_id, start_cursor
+            self.calls += 1
+            if self.calls == 1:
+                raise SteamReviewsUnavailable
             yield ReviewPage(reviews=(), next_cursor="done")
 
     class EmptyThemeProvider:
@@ -460,12 +548,13 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
     status = lambda: CodexCliStatus(
         True, True, "codex-cli test", "gpt-5.6-luna", "low"
     )
+    refresh_source = EmptyRefreshSource()
     with TestClient(
         create_app(
             Settings(database_path=database_path),
             codex_status_source=status,
             analysis_provider=EmptyThemeProvider(),
-            review_source=EmptyRefreshSource(),
+            review_source=refresh_source,
         )
     ) as client:
         started = client.post(
@@ -484,6 +573,11 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
         report = client.get("/api/games/1145350/reports/main")
         replacement = client.post("/api/games/1145350/reports/main")
         pending_report = client.get("/api/games/1145350/reports/main").json()
+        replacement_failed = wait_for_completion(client, replacement.json()["id"])
+        failed_report = client.get("/api/games/1145350/reports/main").json()
+        retry = client.post(
+            f"/api/analysis-runs/{replacement.json()['id']}/retry"
+        )
         replaced = wait_for_completion(client, replacement.json()["id"])
         replacement_report = client.get("/api/games/1145350/reports/main").json()
         workspace = client.get("/api/games/1145350/workspace")
@@ -507,10 +601,14 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
     assert report.json()["negative_themes"] == []
     assert replacement.status_code == 202
     assert pending_report["report_id"] == report.json()["report_id"]
+    assert replacement_failed["error_code"] == "steam_unavailable"
+    assert failed_report["report_id"] == report.json()["report_id"]
+    assert retry.status_code == 202
     assert replaced["state"] == "completed"
     assert replacement_report["report_id"] != report.json()["report_id"]
     assert replacement_report["scope"]["review_count"] == 100
     assert workspace.json()["main_report_available"] is True
+    assert refresh_source.calls == 2
 
 
 def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> None:

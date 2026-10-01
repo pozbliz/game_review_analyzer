@@ -349,8 +349,10 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
             "report_kind, oversized_review_count, operation, base_report_id, "
             "refresh_job_id, "
             "CASE WHEN report_kind = 'main' THEN COALESCE(("
-            "SELECT SUM(json_array_length(json_extract(batch.result_json, "
-            "'$.completed_review_revision_ids'))) FROM analysis_theme_batches batch "
+            "SELECT SUM(CASE WHEN json_valid(batch.result_json) THEN "
+            "json_array_length(json_extract(batch.result_json, "
+            "'$.completed_review_revision_ids')) ELSE 0 END) "
+            "FROM analysis_theme_batches batch "
             "WHERE batch.run_id = analysis_runs.id), 0) ELSE ("
             "SELECT COUNT(*) FROM review_opinion_extractions extraction "
             "WHERE extraction.provider = analysis_runs.provider "
@@ -468,6 +470,13 @@ def retry_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
     """Requeue failed or cancelled analysis while retaining safe cached extraction."""
 
     with connect(database_path) as connection:
+        connection.execute(
+            "UPDATE analysis_jobs SET state = 'queued', cancel_requested = 0, "
+            "error_code = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ("
+            "SELECT refresh_job_id FROM analysis_runs WHERE id = ?) "
+            "AND state IN ('failed', 'cancelled')",
+            (run_id,),
+        )
         cursor = connection.execute(
             "UPDATE analysis_runs SET state = 'queued', cancel_requested = 0, "
             "error_code = NULL, updated_at = CURRENT_TIMESTAMP "

@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-10-01 - Report completion is one guarded transaction
+
+**What changed:**
+
+- Moved aggregate report replacement, revision bindings, usage, and run completion into one transaction.
+- Rejected completion after cancellation or a base-report change.
+- Invalidated unreadable or incompatible map checkpoints before retry.
+
+**Why:**
+
+- Separate report and run commits could expose a replacement from a cancelled run or leave mismatched state after failure.
+- A poisoned checkpoint otherwise failed every retry at the same batch.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-01 - Extend and Replace own durable refresh jobs
 
 **What changed:**
