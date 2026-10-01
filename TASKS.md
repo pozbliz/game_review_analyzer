@@ -4,12 +4,12 @@
 
 ### Semantic-only Codex provider boundary
 
-- [ ] Add failing raw map and merge contract tests that exclude application-owned fields.
-- [ ] Add provider-facing semantic result types and advance the provider-contract version.
-- [ ] Add failing map-adapter tests for position binding, deduplication, invalid positions, local IDs, completion, and provenance.
-- [ ] Implement deterministic map-result binding behind the existing provider adapter.
-- [ ] Add failing merge-adapter tests for ordered assignments, existing Themes, new Themes, discard, counts, targets, and polarity.
-- [ ] Implement ordered merge binding, established Theme retention, and deterministic new Theme IDs.
+- [x] Add failing raw map and merge contract tests that exclude application-owned fields.
+- [x] Add provider-facing semantic result types and advance the provider-contract version.
+- [x] Add failing map-adapter tests for position binding, deduplication, invalid positions, local IDs, completion, and provenance.
+- [x] Implement deterministic map-result binding behind the existing provider adapter.
+- [x] Add failing merge-adapter tests for ordered assignments, existing Themes, new Themes, discard, counts, targets, and polarity.
+- [x] Implement ordered merge binding, established Theme retention, and deterministic new Theme IDs.
 - [ ] Add failing compatibility tests for obsolete checkpoints and existing completed reports.
 - [ ] Prevent old checkpoints from loading under the revised contract.
 - [ ] Add failing retry tests for each correctable semantic validation failure.

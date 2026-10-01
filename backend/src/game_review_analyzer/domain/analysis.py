@@ -8,7 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_vali
 
 NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 Sha256Digest = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
-ANALYSIS_CONTRACT_VERSION = "3.0"
+NonNegativePosition = Annotated[int, Field(strict=True, ge=0)]
+ANALYSIS_CONTRACT_VERSION = "3.1"
 
 
 class ContractModel(BaseModel):
@@ -77,7 +78,7 @@ class AnalysisRequest(ContractModel):
 class ThemeAnalysisRequest(ContractModel):
     """Bind a Version 3 Theme candidate request to one exact review scope."""
 
-    schema_version: Literal["3.0"]
+    schema_version: Literal["3.1"]
     request_id: NonEmptyString
     scope_sha256: Sha256Digest
     app_id: int = Field(gt=0)
@@ -104,10 +105,25 @@ class ThemeCandidate(ContractModel):
         return value
 
 
+class ThemeCandidateOutput(ContractModel):
+    """Return one semantic Theme candidate from a provider map call."""
+
+    title: NonEmptyString
+    summary: NonEmptyString
+    polarity: ThemePolarity
+    supporting_review_positions: tuple[NonNegativePosition, ...] = Field(min_length=1)
+
+
+class ThemeAnalysisOutput(ContractModel):
+    """Return only semantic Theme candidates from one provider map call."""
+
+    themes: tuple[ThemeCandidateOutput, ...]
+
+
 class ThemeAnalysisResult(ContractModel):
     """Return validated Theme candidates for one complete review batch."""
 
-    schema_version: Literal["3.0"]
+    schema_version: Literal["3.1"]
     request_id: NonEmptyString
     scope_sha256: Sha256Digest
     provider: NonEmptyString
@@ -157,7 +173,7 @@ class ThemeMergeTheme(ContractModel):
 class ThemeMergeRequest(ContractModel):
     """Bind one merge call to the complete set of mapped candidates."""
 
-    schema_version: Literal["3.0"]
+    schema_version: Literal["3.1"]
     request_id: NonEmptyString
     scope_sha256: Sha256Digest
     app_id: int = Field(gt=0)
@@ -173,10 +189,43 @@ class ThemeMergeAssignment(ContractModel):
     theme_id: NonEmptyString | None
 
 
+class ThemeMergeThemeOutput(ContractModel):
+    """Return one semantic Theme definition from a provider merge call."""
+
+    title: NonEmptyString
+    summary: NonEmptyString
+    polarity: ThemePolarity
+
+
+class ThemeMergeAssignmentOutput(ContractModel):
+    """Assign one ordered candidate to an established or new Theme position."""
+
+    established_theme_position: NonNegativePosition | None
+    new_theme_position: NonNegativePosition | None
+
+    @model_validator(mode="after")
+    def require_one_target(self) -> "ThemeMergeAssignmentOutput":
+        """Allow one target or discard, but never two targets."""
+
+        if (
+            self.established_theme_position is not None
+            and self.new_theme_position is not None
+        ):
+            raise ValueError("Merge assignment cannot target two Themes")
+        return self
+
+
+class ThemeMergeOutput(ContractModel):
+    """Return semantic new Themes and ordered candidate assignments."""
+
+    new_themes: tuple[ThemeMergeThemeOutput, ...]
+    assignments: tuple[ThemeMergeAssignmentOutput, ...]
+
+
 class ThemeMergeResult(ContractModel):
     """Return Themes and one Theme-or-discard assignment per source candidate."""
 
-    schema_version: Literal["3.0"]
+    schema_version: Literal["3.1"]
     request_id: NonEmptyString
     scope_sha256: Sha256Digest
     provider: NonEmptyString
@@ -186,7 +235,7 @@ class ThemeMergeResult(ContractModel):
 
     @model_validator(mode="after")
     def require_unique_identifiers(self) -> "ThemeMergeResult":
-        """Reject repeated Themes and assignments to missing or unused Themes."""
+        """Reject repeated Themes and assignments to missing Themes."""
 
         theme_ids: tuple[str, ...] = tuple(theme.theme_id for theme in self.themes)
         if len(theme_ids) != len(set(theme_ids)):
@@ -203,8 +252,6 @@ class ThemeMergeResult(ContractModel):
         }
         if not assigned_theme_ids <= set(theme_ids):
             raise ValueError("Assignments must reference returned Themes")
-        if set(theme_ids) != assigned_theme_ids:
-            raise ValueError("Every merged Theme must have an assignment")
         return self
 
 

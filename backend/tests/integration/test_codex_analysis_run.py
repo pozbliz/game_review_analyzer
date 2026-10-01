@@ -111,7 +111,7 @@ class FakeProvider:
         assert cancel_event is not None
         return ThemeProviderRun(
             ThemeAnalysisResult(
-                schema_version="3.0",
+                schema_version="3.1",
                 request_id=request.request_id,
                 scope_sha256=request.scope_sha256,
                 provider=self.provider,
@@ -223,7 +223,7 @@ def test_test_report_uses_one_call_and_replaces_only_its_slot(tmp_path: Path) ->
             )
             return ThemeProviderRun(
                 ThemeAnalysisResult(
-                    schema_version="3.0",
+                    schema_version="3.1",
                     request_id=request.request_id,
                     scope_sha256=request.scope_sha256,
                     provider=self.provider,
@@ -291,7 +291,7 @@ def test_invalid_theme_output_keeps_the_current_test_report(tmp_path: Path) -> N
         def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
             return ThemeProviderRun(
                 ThemeAnalysisResult(
-                    schema_version="3.0",
+                    schema_version="3.1",
                     request_id=request.request_id,
                     scope_sha256=request.scope_sha256,
                     provider=self.provider,

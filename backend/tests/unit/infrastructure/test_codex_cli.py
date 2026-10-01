@@ -17,6 +17,7 @@ from game_review_analyzer.domain.analysis import (
     AnalysisSourceReview,
     ThemeAnalysisRequest,
     ThemeMergeCandidate,
+    ThemeMergeTheme,
 )
 from game_review_analyzer.infrastructure.codex_cli import (
     CodexCliError,
@@ -60,9 +61,8 @@ class CompletedProcess:
                 "completed_review_revision_ids": ["revision-1"],
                 "opinion_points": [],
             }
-            if request_data["schema_version"] == "3.0":
-                result.pop("opinion_points")
-                result["themes"] = []
+            if request_data["schema_version"] == "3.1":
+                result = {"themes": []}
             elif not extraction:
                 result.update({"themes": [], "mechanic_classifications": []})
             output_path.write_text(
@@ -185,12 +185,12 @@ def test_codex_cli_returns_theme_candidates_without_evidence(monkeypatch) -> Non
 
     run = CodexCliProvider(executable="codex.cmd").analyze_themes(theme_request())
 
-    assert run.result.schema_version == "3.0"
+    assert run.result.schema_version == "3.1"
     assert run.result.completed_review_revision_ids == ("revision-1",)
     assert run.result.themes == ()
     assert run.usage.input_tokens == 120
     assert "Return no excerpts" in processes[0].prompt
-    assert "Include every supplied review_revision_id exactly once" in processes[0].prompt
+    assert "supporting review positions" in processes[0].prompt
 
 
 def test_codex_cli_launches_the_npm_script_without_an_orphanable_cmd_wrapper(
@@ -224,7 +224,7 @@ def test_codex_cli_launches_the_npm_script_without_an_orphanable_cmd_wrapper(
     assert processes[0].command[:2] == [str(node_path), str(script_path)]
 
 
-def test_codex_cli_constrains_theme_memberships_to_the_requested_reviews(
+def test_codex_cli_constrains_theme_memberships_to_requested_positions(
     monkeypatch,
 ) -> None:
     processes: list[CompletedProcess] = []
@@ -238,22 +238,90 @@ def test_codex_cli_constrains_theme_memberships_to_the_requested_reviews(
 
     CodexCliProvider(executable="codex.cmd").analyze_themes(theme_request())
 
-    completed_schema: dict[str, Any] = processes[0].schema["properties"][
-        "completed_review_revision_ids"
-    ]
     membership_schema: dict[str, Any] = processes[0].schema["$defs"][
-        "ThemeCandidate"
-    ]["properties"]["supporting_review_revision_ids"]
-    assert completed_schema["items"]["enum"] == ["revision-1"]
-    assert completed_schema["minItems"] == 1
-    assert completed_schema["maxItems"] == 1
-    assert membership_schema["items"]["enum"] == ["revision-1"]
-    assert processes[0].schema["properties"]["request_id"]["enum"] == [
-        "request-3"
-    ]
-    assert processes[0].schema["properties"]["scope_sha256"]["enum"] == [
-        theme_request().scope_sha256
-    ]
+        "ThemeCandidateOutput"
+    ]["properties"]["supporting_review_positions"]
+    assert membership_schema["items"] == {"maximum": 0, "minimum": 0, "type": "integer"}
+    assert set(processes[0].schema["properties"]) == {"themes"}
+
+
+def test_codex_cli_binds_theme_output_to_request_locally(monkeypatch) -> None:
+    class ThemeProcess(CompletedProcess):
+        def communicate(
+            self,
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            del timeout
+            assert input is not None
+            output_path: Path = Path(
+                self.command[self.command.index("--output-last-message") + 1]
+            )
+            output_path.write_text(
+                json.dumps({
+                    "themes": [{
+                        "title": "Responsive combat",
+                        "summary": "Players praise responsive combat.",
+                        "polarity": "positive",
+                        "supporting_review_positions": [0, 0],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            return super().communicate(None)
+
+    monkeypatch.setattr(
+        "subprocess.Popen",
+        lambda command, **options: ThemeProcess(command, **options),
+    )
+
+    run = CodexCliProvider(executable="codex.cmd").analyze_themes(theme_request())
+
+    assert run.result.request_id == "request-3"
+    assert run.result.scope_sha256 == "b" * 64
+    assert run.result.provider == "codex-cli"
+    assert run.result.model == "gpt-5.6-luna"
+    assert run.result.completed_review_revision_ids == ("revision-1",)
+    assert run.result.themes[0].candidate_id == "candidate-1"
+    assert run.result.themes[0].supporting_review_revision_ids == ("revision-1",)
+
+
+def test_codex_cli_rejects_theme_position_outside_request(monkeypatch) -> None:
+    class InvalidPositionProcess(CompletedProcess):
+        def communicate(
+            self,
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            del timeout
+            assert input is not None
+            output_path: Path = Path(
+                self.command[self.command.index("--output-last-message") + 1]
+            )
+            output_path.write_text(
+                json.dumps({
+                    "themes": [{
+                        "title": "Responsive combat",
+                        "summary": "Players praise responsive combat.",
+                        "polarity": "positive",
+                        "supporting_review_positions": [1],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            return super().communicate(None)
+
+    monkeypatch.setattr(
+        "subprocess.Popen",
+        lambda command, **options: InvalidPositionProcess(command, **options),
+    )
+
+    with pytest.raises(CodexCliError) as raised:
+        CodexCliProvider(executable="codex.cmd", max_attempts=1).analyze_themes(
+            theme_request()
+        )
+
+    assert raised.value.code == "theme_position_outside_scope"
 
 
 def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
@@ -269,25 +337,16 @@ def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
             output_path: Path = Path(
                 self.command[self.command.index("--output-last-message") + 1]
             )
-            request_data: dict[str, Any] = json.loads(
-                input.split("REQUEST_JSON\n", 1)[1]
-            )
             output_path.write_text(
                 json.dumps({
-                    "schema_version": "3.0",
-                    "request_id": request_data["request_id"],
-                    "scope_sha256": request_data["scope_sha256"],
-                    "provider": "codex-cli",
-                    "model": "gpt-5.6-luna",
-                    "themes": [{
-                        "theme_id": "responsive-combat",
+                    "new_themes": [{
                         "title": "Responsive combat",
                         "summary": "Players praise responsive combat.",
                         "polarity": "positive",
                     }],
                     "assignments": [{
-                        "candidate_key": "1:combat",
-                        "theme_id": "responsive-combat",
+                        "established_theme_position": None,
+                        "new_theme_position": 0,
                     }],
                 }),
                 encoding="utf-8",
@@ -317,25 +376,97 @@ def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:
 
     run = CodexCliProvider(executable="codex.cmd").merge_themes(request)
 
-    assert run.result.themes[0].theme_id == "responsive-combat"
+    assert run.result.themes[0].theme_id == "merge-1:theme:1"
+    assert run.result.assignments[0].candidate_key == "1:combat"
+    assert run.result.assignments[0].theme_id == "merge-1:theme:1"
     assert run.usage.input_tokens == 120
-    assert "one assignment item" in processes[0].prompt
+    assert "same order" in processes[0].prompt
     assignment_schema: dict[str, Any] = processes[0].schema["properties"][
         "assignments"
     ]
     assert assignment_schema["minItems"] == 1
     assert assignment_schema["maxItems"] == 1
     assignment_definition: dict[str, Any] = processes[0].schema["$defs"][
-        "ThemeMergeAssignment"
+        "ThemeMergeAssignmentOutput"
     ]
-    assert assignment_definition["properties"]["candidate_key"] == {
-        "enum": ["1:combat"],
-        "type": "string",
+    assert set(assignment_definition["properties"]) == {
+        "established_theme_position",
+        "new_theme_position",
     }
-    assert processes[0].schema["properties"]["request_id"]["enum"] == ["merge-1"]
-    assert processes[0].schema["properties"]["scope_sha256"]["enum"] == [
-        request.scope_sha256
-    ]
+    assert set(processes[0].schema["properties"]) == {"new_themes", "assignments"}
+
+
+def test_codex_cli_preserves_established_themes_and_ordered_discard(monkeypatch) -> None:
+    class MergeProcess(CompletedProcess):
+        def communicate(
+            self,
+            input: str | None = None,
+            timeout: float | None = None,
+        ) -> tuple[str, str]:
+            del timeout
+            assert input is not None
+            output_path: Path = Path(
+                self.command[self.command.index("--output-last-message") + 1]
+            )
+            output_path.write_text(
+                json.dumps({
+                    "new_themes": [],
+                    "assignments": [
+                        {
+                            "established_theme_position": 0,
+                            "new_theme_position": None,
+                        },
+                        {
+                            "established_theme_position": None,
+                            "new_theme_position": None,
+                        },
+                    ],
+                }),
+                encoding="utf-8",
+            )
+            return super().communicate(None)
+
+    monkeypatch.setattr(
+        "subprocess.Popen",
+        lambda command, **options: MergeProcess(command, **options),
+    )
+    candidates: tuple[ThemeMergeCandidate, ...] = (
+        ThemeMergeCandidate(
+            candidate_key="1:combat",
+            title="Combat",
+            summary="Combat feels responsive.",
+            polarity="positive",
+            supporting_review_revision_ids=("revision-1",),
+        ),
+        ThemeMergeCandidate(
+            candidate_key="1:discard",
+            title="General praise",
+            summary="The game is good.",
+            polarity="positive",
+            supporting_review_revision_ids=("revision-2",),
+        ),
+    )
+    established = ThemeMergeTheme(
+        theme_id="established-combat",
+        title="Responsive combat",
+        summary="Players praise responsive combat.",
+        polarity="positive",
+    )
+    request = build_theme_merge_request(
+        "merge-1",
+        1145350,
+        "Hades II",
+        candidates,
+        (established,),
+    )
+
+    run = CodexCliProvider(executable="codex.cmd").merge_themes(request)
+
+    assert run.result.themes == (established,)
+    assert tuple(
+        (assignment.candidate_key, assignment.theme_id)
+        for assignment in run.result.assignments
+    ) == (("1:combat", "established-combat"), ("1:discard", None))
 
 
 def test_codex_cli_retries_invalid_merge_with_safe_correction(monkeypatch) -> None:
@@ -353,26 +484,17 @@ def test_codex_cli_retries_invalid_merge_with_safe_correction(monkeypatch) -> No
             output_path: Path = Path(
                 self.command[self.command.index("--output-last-message") + 1]
             )
-            request_data: dict[str, Any] = json.loads(
-                input.split("REQUEST_JSON\n", 1)[1]
-            )
             valid: bool = len(processes) == 2
             output_path.write_text(
                 json.dumps({
-                    "schema_version": "3.0",
-                    "request_id": request_data["request_id"],
-                    "scope_sha256": request_data["scope_sha256"],
-                    "provider": "codex-cli",
-                    "model": "gpt-5.6-luna",
-                    "themes": ([{
-                        "theme_id": "responsive-combat",
+                    "new_themes": ([{
                         "title": "Responsive combat",
                         "summary": "Players praise responsive combat.",
                         "polarity": "positive",
                     }] if valid else []),
                     "assignments": [{
-                        "candidate_key": "1:combat",
-                        "theme_id": "responsive-combat",
+                        "established_theme_position": None,
+                        "new_theme_position": 0,
                     }],
                 }),
                 encoding="utf-8",
@@ -400,9 +522,9 @@ def test_codex_cli_retries_invalid_merge_with_safe_correction(monkeypatch) -> No
 
     run = CodexCliProvider(executable="codex.cmd", max_attempts=2).merge_themes(request)
 
-    assert run.result.themes[0].theme_id == "responsive-combat"
+    assert run.result.themes[0].theme_id == "merge-1:theme:1"
     assert len(processes) == 2
-    assert "theme_merge_assignment_unknown" in processes[1].prompt
+    assert "theme_merge_target_outside_scope" in processes[1].prompt
 
 
 def test_codex_cli_reports_incomplete_merge_scope(monkeypatch) -> None:
@@ -417,17 +539,9 @@ def test_codex_cli_reports_incomplete_merge_scope(monkeypatch) -> None:
             output_path: Path = Path(
                 self.command[self.command.index("--output-last-message") + 1]
             )
-            request_data: dict[str, Any] = json.loads(
-                input.split("REQUEST_JSON\n", 1)[1]
-            )
             output_path.write_text(
                 json.dumps({
-                    "schema_version": "3.0",
-                    "request_id": request_data["request_id"],
-                    "scope_sha256": request_data["scope_sha256"],
-                    "provider": "codex-cli",
-                    "model": "gpt-5.6-luna",
-                    "themes": [],
+                    "new_themes": [],
                     "assignments": [],
                 }),
                 encoding="utf-8",
@@ -516,66 +630,6 @@ def test_codex_cli_reports_invalid_theme_output_after_retry(monkeypatch) -> None
     assert raised.value.code == "invalid_theme_result"
     assert len(processes) == 2
     assert "invalid_theme_result" in processes[1].prompt
-
-
-def test_codex_cli_reports_incomplete_theme_scope(monkeypatch) -> None:
-    class IncompleteScopeProcess(CompletedProcess):
-        def communicate(
-            self,
-            input: str | None = None,
-            timeout: float | None = None,
-        ) -> tuple[str, str]:
-            stdout, stderr = super().communicate(input, timeout)
-            output_path: Path = Path(
-                self.command[self.command.index("--output-last-message") + 1]
-            )
-            result: dict[str, Any] = json.loads(output_path.read_text(encoding="utf-8"))
-            result["completed_review_revision_ids"] = ["wrong-review"]
-            output_path.write_text(json.dumps(result), encoding="utf-8")
-            return stdout, stderr
-
-    monkeypatch.setattr(
-        "subprocess.Popen",
-        lambda command, **options: IncompleteScopeProcess(command, **options),
-    )
-
-    with pytest.raises(CodexCliError) as raised:
-        CodexCliProvider(executable="codex.cmd").analyze_themes(theme_request())
-
-    assert raised.value.code == "theme_scope_incomplete"
-
-
-def test_codex_cli_reports_duplicate_theme_membership(monkeypatch) -> None:
-    class DuplicateMembershipProcess(CompletedProcess):
-        def communicate(
-            self,
-            input: str | None = None,
-            timeout: float | None = None,
-        ) -> tuple[str, str]:
-            stdout, stderr = super().communicate(input, timeout)
-            output_path: Path = Path(
-                self.command[self.command.index("--output-last-message") + 1]
-            )
-            result: dict[str, Any] = json.loads(output_path.read_text(encoding="utf-8"))
-            result["themes"] = [{
-                "candidate_id": "theme-1",
-                "title": "Responsive combat",
-                "summary": "Players praise responsive combat.",
-                "polarity": "positive",
-                "supporting_review_revision_ids": ["revision-1", "revision-1"],
-            }]
-            output_path.write_text(json.dumps(result), encoding="utf-8")
-            return stdout, stderr
-
-    monkeypatch.setattr(
-        "subprocess.Popen",
-        lambda command, **options: DuplicateMembershipProcess(command, **options),
-    )
-
-    with pytest.raises(CodexCliError) as raised:
-        CodexCliProvider(executable="codex.cmd").analyze_themes(theme_request())
-
-    assert raised.value.code == "theme_membership_duplicate"
 
 
 def test_codex_cli_consolidates_cached_points_with_cohort_audit(monkeypatch) -> None:
@@ -867,7 +921,7 @@ def request() -> AnalysisRequest:
 
 def theme_request() -> ThemeAnalysisRequest:
     return ThemeAnalysisRequest(
-        schema_version="3.0",
+        schema_version="3.1",
         request_id="request-3",
         scope_sha256="b" * 64,
         app_id=1145350,

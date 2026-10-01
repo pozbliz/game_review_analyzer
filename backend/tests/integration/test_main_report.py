@@ -112,7 +112,7 @@ def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
                 )
             return ThemeProviderRun(
                 result=ThemeAnalysisResult(
-                    schema_version="3.0",
+                    schema_version="3.1",
                     request_id=request.request_id,
                     scope_sha256=request.scope_sha256,
                     provider=self.provider,
@@ -129,7 +129,7 @@ def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
             by_title = {item.title: item.candidate_key for item in request.candidates}
             return ThemeMergeProviderRun(
                 result=ThemeMergeResult(
-                    schema_version="3.0",
+                    schema_version="3.1",
                     request_id=request.request_id,
                     scope_sha256=request.scope_sha256,
                     provider=self.provider,
@@ -209,7 +209,7 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
         def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
             return ThemeProviderRun(
                 result=ThemeAnalysisResult(
-                    schema_version="3.0",
+                    schema_version="3.1",
                     request_id=request.request_id,
                     scope_sha256=request.scope_sha256,
                     provider=self.provider,
@@ -286,7 +286,7 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
         def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
             return ThemeProviderRun(
                 result=ThemeAnalysisResult(
-                    schema_version="3.0",
+                    schema_version="3.1",
                     request_id=request.request_id,
                     scope_sha256=request.scope_sha256,
                     provider=self.provider,

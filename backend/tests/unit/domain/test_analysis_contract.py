@@ -7,19 +7,34 @@ from game_review_analyzer.domain.analysis import (
     ANALYSIS_CONTRACT_VERSION,
     AnalysisRequest,
     AnalysisResult,
+    ThemeAnalysisOutput,
     ThemeAnalysisRequest,
     ThemeAnalysisResult,
+    ThemeMergeOutput,
     ThemeMergeResult,
 )
 
 
-def test_theme_schema_avoids_unsupported_unique_items_keyword() -> None:
-    schema: dict = ThemeAnalysisResult.model_json_schema()
+def test_provider_outputs_contain_only_semantic_fields() -> None:
+    map_schema: dict = ThemeAnalysisOutput.model_json_schema()
+    merge_schema: dict = ThemeMergeOutput.model_json_schema()
 
-    assert "uniqueItems" not in schema["properties"]["completed_review_revision_ids"]
-    assert "uniqueItems" not in schema["$defs"]["ThemeCandidate"]["properties"][
-        "supporting_review_revision_ids"
-    ]
+    assert set(map_schema["properties"]) == {"themes"}
+    assert set(map_schema["$defs"]["ThemeCandidateOutput"]["properties"]) == {
+        "title",
+        "summary",
+        "polarity",
+        "supporting_review_positions",
+    }
+    assert set(merge_schema["properties"]) == {"new_themes", "assignments"}
+    assert set(merge_schema["$defs"]["ThemeMergeThemeOutput"]["properties"]) == {
+        "title",
+        "summary",
+        "polarity",
+    }
+    assert set(
+        merge_schema["$defs"]["ThemeMergeAssignmentOutput"]["properties"]
+    ) == {"established_theme_position", "new_theme_position"}
 
 
 def test_analysis_contracts_are_versioned_and_reject_unknown_fields() -> None:
@@ -59,7 +74,7 @@ def test_analysis_contracts_are_versioned_and_reject_unknown_fields() -> None:
 
 def test_theme_analysis_contract_contains_only_candidates_and_memberships() -> None:
     request_data: dict[str, object] = {
-        "schema_version": "3.0",
+        "schema_version": "3.1",
         "request_id": "request-3",
         "scope_sha256": "b" * 64,
         "app_id": 1145350,
@@ -76,7 +91,7 @@ def test_theme_analysis_contract_contains_only_candidates_and_memberships() -> N
         ],
     }
     result_data: dict[str, object] = {
-        "schema_version": "3.0",
+        "schema_version": "3.1",
         "request_id": "request-3",
         "scope_sha256": "b" * 64,
         "provider": "codex-cli",
@@ -96,7 +111,7 @@ def test_theme_analysis_contract_contains_only_candidates_and_memberships() -> N
     request: ThemeAnalysisRequest = ThemeAnalysisRequest.model_validate(request_data)
     result: ThemeAnalysisResult = ThemeAnalysisResult.model_validate(result_data)
 
-    assert ANALYSIS_CONTRACT_VERSION == "3.0"
+    assert ANALYSIS_CONTRACT_VERSION == "3.1"
     assert request.schema_version == ANALYSIS_CONTRACT_VERSION
     assert result.themes[0].supporting_review_revision_ids == (
         "revision-1",
@@ -119,7 +134,7 @@ def test_theme_analysis_contract_contains_only_candidates_and_memberships() -> N
 
 def test_theme_analysis_result_rejects_duplicate_or_unknown_memberships() -> None:
     result_data: dict[str, object] = {
-        "schema_version": "3.0",
+        "schema_version": "3.1",
         "request_id": "request-3",
         "scope_sha256": "b" * 64,
         "provider": "codex-cli",
@@ -151,7 +166,7 @@ def test_theme_analysis_result_rejects_duplicate_or_unknown_memberships() -> Non
 
 def test_theme_merge_result_rejects_duplicate_candidate_assignments() -> None:
     result_data: dict[str, object] = {
-        "schema_version": "3.0",
+        "schema_version": "3.1",
         "request_id": "merge-1",
         "scope_sha256": "c" * 64,
         "provider": "codex-cli",
