@@ -608,6 +608,102 @@ def test_main_report_merges_positive_and_negative_candidates_separately(
     assert get_analysis_run(database_path, run.id).input_tokens == 200
 
 
+def test_main_report_resumes_bounded_merge_chunks_from_checkpoints(
+    tmp_path: Path,
+) -> None:
+    class ChunkedMergeProvider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def __init__(self) -> None:
+            self.merge_calls: list[str] = []
+            self.failed_once: bool = False
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            review_ids: tuple[str, ...] = tuple(
+                review.review_revision_id for review in request.reviews
+            )
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version=ANALYSIS_CONTRACT_VERSION,
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=review_ids,
+                    themes=tuple(
+                        candidate(f"candidate-{index}", review_ids)
+                        for index in range(5)
+                    ),
+                ),
+                usage=ProviderUsage(10, 0, 1),
+            )
+
+        def merge_themes(self, request, *, cancel_event=None) -> ThemeMergeProviderRun:
+            self.merge_calls.append(request.request_id)
+            if request.request_id.endswith("positive-2") and not self.failed_once:
+                self.failed_once = True
+                raise AnalysisProviderError("provider_timeout", "test timeout")
+            theme_id: str = f"{request.request_id}:result"
+            return ThemeMergeProviderRun(
+                result=ThemeMergeResult(
+                    schema_version=ANALYSIS_CONTRACT_VERSION,
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    themes=(
+                        *request.established_themes,
+                        ThemeMergeTheme(
+                            theme_id=theme_id,
+                            title=theme_id,
+                            summary=f"{theme_id} summary.",
+                            polarity="positive",
+                        ),
+                    ),
+                    assignments=tuple(
+                        ThemeMergeAssignment(
+                            candidate_key=item.candidate_key,
+                            theme_id=theme_id,
+                        )
+                        for item in request.candidates
+                    ),
+                ),
+                usage=ProviderUsage(20, 0, 2),
+            )
+
+    database_path: Path = seeded_database(tmp_path, review_count=2)
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+        report_kind="main",
+    )
+    provider = ChunkedMergeProvider()
+    runner = AnalysisRunner(database_path, provider, merge_candidate_limit=3)
+
+    runner.run(run.id)
+    assert get_analysis_run(database_path, run.id).state == "failed"
+
+    retry_analysis_run(database_path, run.id)
+    runner.run(run.id)
+
+    assert provider.merge_calls == [
+        f"{run.id}-merge-positive-1",
+        f"{run.id}-merge-positive-2",
+        f"{run.id}-merge-positive-2",
+    ]
+    with connect(database_path) as connection:
+        checkpoint_count: int = connection.execute(
+            "SELECT COUNT(*) FROM analysis_theme_merge_batches WHERE run_id = ?",
+            (run.id,),
+        ).fetchone()[0]
+    assert checkpoint_count == 2
+    assert get_analysis_run(database_path, run.id).state == "completed"
+
+
 @pytest.mark.parametrize("cancel_stage", ("map", "merge"))
 def test_cancelled_main_report_never_replaces_the_report_slot(
     tmp_path: Path,

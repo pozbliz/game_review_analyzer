@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-10-02 - Main Report merges use bounded durable chunks
+
+**What changed:**
+
+- Limited each polarity-specific merge call to 25 candidates.
+- Passed Themes from completed chunks into later chunks as established Themes.
+- Added validated merge checkpoints keyed by run, polarity, and chunk number.
+
+**Why:**
+
+- A 51-candidate negative merge returned invalid output, then exceeded two 120-second attempts.
+- Bounded calls reduce provider work and let retry resume from the failed merge chunk.
+
+**New issues:**
+
+- Merge results can depend on deterministic candidate chunk order because established Themes remain fixed.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-01 - Extension identity and revision scope stay fixed
 
 **What changed:**

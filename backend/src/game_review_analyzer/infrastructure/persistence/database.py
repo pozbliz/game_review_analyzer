@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 16
+CURRENT_SCHEMA_VERSION = 17
 
 
 def initialize_database(database_path: Path) -> None:
@@ -251,6 +251,21 @@ def initialize_database(database_path: Path) -> None:
                 "WHERE report_kind IS NOT NULL AND state IN ('queued', 'running')"
             )
             connection.execute("INSERT INTO schema_migrations(version) VALUES (16)")
+        if 17 not in applied_versions:
+            connection.execute(
+                "CREATE TABLE analysis_theme_merge_batches ("
+                "run_id TEXT NOT NULL REFERENCES analysis_runs(id) ON DELETE CASCADE, "
+                "polarity TEXT NOT NULL CHECK (polarity IN ('positive', 'negative')), "
+                "batch_number INTEGER NOT NULL CHECK (batch_number > 0), "
+                "input_digest TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL, "
+                "contract_version TEXT NOT NULL, result_json TEXT NOT NULL, "
+                "input_tokens INTEGER CHECK (input_tokens >= 0), "
+                "cached_input_tokens INTEGER CHECK (cached_input_tokens >= 0), "
+                "output_tokens INTEGER CHECK (output_tokens >= 0), "
+                "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                "PRIMARY KEY(run_id, polarity, batch_number))"
+            )
+            connection.execute("INSERT INTO schema_migrations(version) VALUES (17)")
 
 
 def schema_version(database_path: Path) -> int:

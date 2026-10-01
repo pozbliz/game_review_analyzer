@@ -1,5 +1,16 @@
 # Tasks
 
+## 2026-10-02
+
+### Bounded Theme merge recovery
+
+- [x] Reproduce the negative Theme merge timeout after all map batches completed.
+- [x] Split each polarity into merge calls of at most 25 candidates.
+- [x] Carry established Themes through later merge chunks.
+- [x] Persist validated merge chunks and resume from the failed chunk.
+- [x] Add the schema migration and retry regression coverage.
+- [x] Run the complete backend test suite.
+
 ## 2026-10-01
 
 ### Polarity-separated Theme merging

@@ -74,6 +74,10 @@ from game_review_analyzer.infrastructure.persistence.theme_batches import (
     load_theme_batch,
     save_theme_batch,
 )
+from game_review_analyzer.infrastructure.persistence.theme_merge_batches import (
+    load_theme_merge_batch,
+    save_theme_merge_batch,
+)
 from game_review_analyzer.shared.telemetry import TRACER, log_event
 
 
@@ -146,12 +150,16 @@ class AnalysisRunner:
         refresh_runner: JobRunner | None = None,
         batch_review_limit: int = 50,
         batch_character_limit: int = 32_000,
+        merge_candidate_limit: int = 25,
     ) -> None:
+        if merge_candidate_limit <= 0:
+            raise ValueError("merge_candidate_limit must be positive")
         self._database_path = database_path
         self._provider = provider
         self._refresh_runner = refresh_runner
         self._batch_review_limit = batch_review_limit
         self._batch_character_limit = batch_character_limit
+        self._merge_candidate_limit = merge_candidate_limit
 
     def run(self, run_id: str) -> None:
         started_at: float = monotonic()
@@ -638,58 +646,86 @@ class AnalysisRunner:
                         for candidate in merge_candidates
                         if candidate.polarity == polarity
                     )
-                    if not polarity_candidates:
-                        continue
-                    merge_request: ThemeMergeRequest = build_theme_merge_request(
-                        request_id=f"{run.id}-merge-{polarity.value}",
-                        app_id=run.app_id,
-                        game_title=metadata.title,
-                        candidates=polarity_candidates,
-                        established_themes=(
-                            ThemeMergeTheme(
+                    for merge_batch_number, offset in enumerate(
+                        range(0, len(polarity_candidates), self._merge_candidate_limit),
+                        start=1,
+                    ):
+                        merge_request: ThemeMergeRequest = build_theme_merge_request(
+                            request_id=(
+                                f"{run.id}-merge-{polarity.value}-{merge_batch_number}"
+                            ),
+                            app_id=run.app_id,
+                            game_title=metadata.title,
+                            candidates=polarity_candidates[
+                                offset : offset + self._merge_candidate_limit
+                            ],
+                            established_themes=(
+                                ThemeMergeTheme(
+                                    theme_id=theme.theme_id,
+                                    title=theme.title,
+                                    summary=theme.summary,
+                                    polarity=theme.polarity,
+                                )
+                                for theme in themes
+                                if theme.polarity == polarity
+                            ),
+                        )
+                        merge_run: ThemeMergeProviderRun | None = (
+                            load_theme_merge_batch(
+                                self._database_path,
+                                run_id=run.id,
+                                polarity=polarity.value,
+                                batch_number=merge_batch_number,
+                                request=merge_request,
+                                provider=run.provider,
+                                model=run.model,
+                                contract_version=ANALYSIS_CONTRACT_VERSION,
+                            )
+                        )
+                        if merge_run is None:
+                            merge_run = self._theme_merge_provider().merge_themes(
+                                merge_request,
+                                cancel_event=cancellation,
+                            )
+                            validate_theme_merge_result(
+                                merge_request,
+                                merge_run.result,
+                                expected_provider=run.provider,
+                                expected_model=run.model,
+                            )
+                            save_theme_merge_batch(
+                                self._database_path,
+                                run_id=run.id,
+                                polarity=polarity.value,
+                                batch_number=merge_batch_number,
+                                request=merge_request,
+                                provider=run.provider,
+                                model=run.model,
+                                contract_version=ANALYSIS_CONTRACT_VERSION,
+                                provider_run=merge_run,
+                            )
+                        merge_usages.append(merge_run.usage)
+                        for theme in merge_run.result.themes:
+                            if theme.theme_id in known_theme_ids:
+                                continue
+                            themes += (ThemeDefinition(
                                 theme_id=theme.theme_id,
                                 title=theme.title,
                                 summary=theme.summary,
                                 polarity=theme.polarity,
+                            ),)
+                            known_theme_ids.add(theme.theme_id)
+                        membership_pairs.update(
+                            (
+                                assignment.theme_id,
+                                revision_id_by_review_id[review_id],
                             )
-                            for theme in themes
-                            if theme.polarity == polarity
-                        ),
-                    )
-                    merge_run: ThemeMergeProviderRun = (
-                        self._theme_merge_provider().merge_themes(
-                            merge_request,
-                            cancel_event=cancellation,
+                            for assignment in merge_run.result.assignments
+                            if assignment.theme_id is not None
+                            for review_id in candidate_by_key[
+                                assignment.candidate_key
+                            ].supporting_review_revision_ids
                         )
-                    )
-                    validate_theme_merge_result(
-                        merge_request,
-                        merge_run.result,
-                        expected_provider=run.provider,
-                        expected_model=run.model,
-                    )
-                    merge_usages.append(merge_run.usage)
-                    for theme in merge_run.result.themes:
-                        if theme.theme_id in known_theme_ids:
-                            continue
-                        themes += (ThemeDefinition(
-                            theme_id=theme.theme_id,
-                            title=theme.title,
-                            summary=theme.summary,
-                            polarity=theme.polarity,
-                        ),)
-                        known_theme_ids.add(theme.theme_id)
-                    membership_pairs.update(
-                        (
-                            assignment.theme_id,
-                            revision_id_by_review_id[review_id],
-                        )
-                        for assignment in merge_run.result.assignments
-                        if assignment.theme_id is not None
-                        for review_id in candidate_by_key[
-                            assignment.candidate_key
-                        ].supporting_review_revision_ids
-                    )
                 new_memberships: tuple[ThemeMembership, ...] = tuple(
                     ThemeMembership(
                         theme_id=theme_id,
