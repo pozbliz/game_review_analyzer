@@ -23,6 +23,24 @@ npm test
 npm run build
 ```
 
+## Development operation
+
+Run the backend from `backend/`:
+
+```powershell
+uv run uvicorn game_review_analyzer.interfaces.http.app:app --reload
+```
+
+Run the frontend from `frontend/` in another terminal:
+
+```powershell
+npm run dev
+```
+
+Open `http://localhost:5173`. Vite sends `/api` requests to `http://127.0.0.1:8000`.
+
+## Production operation
+
 For the production delivery path, run the compiled frontend through FastAPI:
 
 ```powershell
@@ -30,7 +48,9 @@ cd ../backend
 uv run uvicorn game_review_analyzer.interfaces.http.app:app
 ```
 
-Open `http://127.0.0.1:8000`. The database schema is initialized or migrated automatically at startup.
+Open `http://127.0.0.1:8000`. FastAPI serves both the compiled frontend and API on this port.
+
+The database schema is initialized or migrated automatically at backend startup.
 
 ## Configuration
 

@@ -127,9 +127,11 @@ cd frontend
 npm run dev
 ```
 
-Open <http://localhost:5173> in a browser.
+Open <http://localhost:5173> in a browser. This is the development frontend.
 
-For production, build the frontend and run only the backend.
+Vite proxies `/api` requests to the backend at <http://127.0.0.1:8000>.
+
+For production, build the frontend and run only the backend. Open <http://127.0.0.1:8000>; port `5173` is not used.
 
 FastAPI serves `frontend/dist/` with the API.
 
