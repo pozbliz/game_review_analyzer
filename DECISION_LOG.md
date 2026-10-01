@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-10-01 - Main Report merges are separated by polarity
+
+**What changed:**
+
+- Split Main Report candidate merging into one positive request and one negative request.
+- Kept exact candidate assignment, Theme support, provider validation, and token accounting for both requests.
+
+**Why:**
+
+- Two live 1,000-review runs failed after mixed-polarity merges returned about 8 KB of assignments and Theme definitions.
+- Positive and negative candidates cannot share a Theme, so combining them enlarged the response without allowing additional valid grouping.
+
+**New issues:**
+
+- A report with both polarities now requires two merge calls.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-01 - Application binds provider results locally
 
 **What changed:**

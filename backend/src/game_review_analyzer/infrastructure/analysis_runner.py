@@ -36,6 +36,7 @@ from game_review_analyzer.domain.analysis import (
     ThemeMergeCandidate,
     ThemeMergeRequest,
     ThemeMergeTheme,
+    ThemePolarity,
 )
 from game_review_analyzer.domain.reports import (
     AggregateReport,
@@ -551,7 +552,7 @@ class AnalysisRunner:
                     for candidate in provider_run.result.themes
                 )
 
-            merge_usage: ProviderUsage = ProviderUsage(None, None, None)
+            merge_usages: list[ProviderUsage] = []
             themes: tuple[ThemeDefinition, ...] = (
                 extension_report.themes if extension_report is not None else ()
             )
@@ -559,34 +560,6 @@ class AnalysisRunner:
                 extension_report.memberships if extension_report is not None else ()
             )
             if merge_candidates:
-                merge_request: ThemeMergeRequest = build_theme_merge_request(
-                    request_id=f"{run.id}-merge",
-                    app_id=run.app_id,
-                    game_title=metadata.title,
-                    candidates=merge_candidates,
-                    established_themes=(
-                        ThemeMergeTheme(
-                            theme_id=theme.theme_id,
-                            title=theme.title,
-                            summary=theme.summary,
-                            polarity=theme.polarity,
-                        )
-                        for theme in themes
-                    ),
-                )
-                merge_run: ThemeMergeProviderRun = (
-                    self._theme_merge_provider().merge_themes(
-                        merge_request,
-                        cancel_event=cancellation,
-                    )
-                )
-                validate_theme_merge_result(
-                    merge_request,
-                    merge_run.result,
-                    expected_provider=run.provider,
-                    expected_model=run.model,
-                )
-                merge_usage = merge_run.usage
                 candidate_by_key: dict[str, ThemeMergeCandidate] = {
                     candidate.candidate_key: candidate
                     for candidate in merge_candidates
@@ -595,26 +568,66 @@ class AnalysisRunner:
                     review.review_id: revision_id
                     for revision_id, review in revisions.items()
                 }
-                themes = tuple(
-                    ThemeDefinition(
-                        theme_id=theme.theme_id,
-                        title=theme.title,
-                        summary=theme.summary,
-                        polarity=theme.polarity,
+                known_theme_ids: set[str] = {theme.theme_id for theme in themes}
+                membership_pairs: set[tuple[str, int]] = set()
+                for polarity in ThemePolarity:
+                    polarity_candidates: tuple[ThemeMergeCandidate, ...] = tuple(
+                        candidate
+                        for candidate in merge_candidates
+                        if candidate.polarity == polarity
                     )
-                    for theme in merge_run.result.themes
-                )
-                membership_pairs: set[tuple[str, int]] = {
-                    (
-                        assignment.theme_id,
-                        revision_id_by_review_id[review_id],
+                    if not polarity_candidates:
+                        continue
+                    merge_request: ThemeMergeRequest = build_theme_merge_request(
+                        request_id=f"{run.id}-merge-{polarity.value}",
+                        app_id=run.app_id,
+                        game_title=metadata.title,
+                        candidates=polarity_candidates,
+                        established_themes=(
+                            ThemeMergeTheme(
+                                theme_id=theme.theme_id,
+                                title=theme.title,
+                                summary=theme.summary,
+                                polarity=theme.polarity,
+                            )
+                            for theme in themes
+                            if theme.polarity == polarity
+                        ),
                     )
-                    for assignment in merge_run.result.assignments
-                    if assignment.theme_id is not None
-                    for review_id in candidate_by_key[
-                        assignment.candidate_key
-                    ].supporting_review_revision_ids
-                }
+                    merge_run: ThemeMergeProviderRun = (
+                        self._theme_merge_provider().merge_themes(
+                            merge_request,
+                            cancel_event=cancellation,
+                        )
+                    )
+                    validate_theme_merge_result(
+                        merge_request,
+                        merge_run.result,
+                        expected_provider=run.provider,
+                        expected_model=run.model,
+                    )
+                    merge_usages.append(merge_run.usage)
+                    for theme in merge_run.result.themes:
+                        if theme.theme_id in known_theme_ids:
+                            continue
+                        themes += (ThemeDefinition(
+                            theme_id=theme.theme_id,
+                            title=theme.title,
+                            summary=theme.summary,
+                            polarity=theme.polarity,
+                        ),)
+                        known_theme_ids.add(theme.theme_id)
+                    membership_pairs.update(
+                        (
+                            assignment.theme_id,
+                            revision_id_by_review_id[review_id],
+                        )
+                        for assignment in merge_run.result.assignments
+                        if assignment.theme_id is not None
+                        for review_id in candidate_by_key[
+                            assignment.candidate_key
+                        ].supporting_review_revision_ids
+                    )
                 new_memberships: tuple[ThemeMembership, ...] = tuple(
                     ThemeMembership(
                         theme_id=theme_id,
@@ -696,7 +709,7 @@ class AnalysisRunner:
             save_aggregate_report(self._database_path, report)
             usages: tuple[ProviderUsage, ...] = tuple(
                 provider_run.usage for provider_run in map_runs
-            ) + (merge_usage,)
+            ) + tuple(merge_usages)
             finish_analysis_run(
                 self._database_path,
                 run.id,

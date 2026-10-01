@@ -2,6 +2,13 @@
 
 ## 2026-10-01
 
+### Polarity-separated Theme merging
+
+- [x] Reproduce the repeated large mixed-polarity merge failure.
+- [x] Merge positive and negative candidates separately while retaining exact validation and usage totals.
+- [x] Verify the focused Main Report and Codex provider tests.
+- [x] Leave the failed live analysis run stopped.
+
 ### Semantic-only Codex provider boundary
 
 - [x] Add failing raw map and merge contract tests that exclude application-owned fields.

@@ -207,6 +207,96 @@ def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
     assert retained_evidence.status_code == 404
 
 
+def test_main_report_merges_positive_and_negative_candidates_separately(
+    tmp_path: Path,
+) -> None:
+    class MixedPolarityProvider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def __init__(self) -> None:
+            self.merge_polarities: list[set[str]] = []
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            review_ids: tuple[str, ...] = tuple(
+                review.review_revision_id for review in request.reviews
+            )
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version="3.1",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=review_ids,
+                    themes=(
+                        candidate("positive", review_ids[:1]),
+                        ThemeCandidate(
+                            candidate_id="negative",
+                            title="negative",
+                            summary="Negative summary.",
+                            polarity="negative",
+                            supporting_review_revision_ids=review_ids[1:],
+                        ),
+                    ),
+                ),
+                usage=ProviderUsage(100, 0, 10),
+            )
+
+        def merge_themes(self, request, *, cancel_event=None) -> ThemeMergeProviderRun:
+            polarities: set[str] = {
+                candidate.polarity.value for candidate in request.candidates
+            }
+            self.merge_polarities.append(polarities)
+            polarity: str = next(iter(polarities))
+            theme_id: str = f"theme-{polarity}"
+            return ThemeMergeProviderRun(
+                result=ThemeMergeResult(
+                    schema_version="3.1",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    themes=(ThemeMergeTheme(
+                        theme_id=theme_id,
+                        title=f"{polarity.title()} Theme",
+                        summary=f"{polarity.title()} summary.",
+                        polarity=polarity,
+                    ),),
+                    assignments=tuple(
+                        ThemeMergeAssignment(
+                            candidate_key=item.candidate_key,
+                            theme_id=theme_id,
+                        )
+                        for item in request.candidates
+                    ),
+                ),
+                usage=ProviderUsage(50, 0, 5),
+            )
+
+    database_path: Path = seeded_database(tmp_path, review_count=2)
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+        report_kind="main",
+    )
+    provider = MixedPolarityProvider()
+
+    AnalysisRunner(database_path, provider).run(run.id)
+
+    report = load_aggregate_report_slot(database_path, 1145350, "main")
+    assert provider.merge_polarities == [{"positive"}, {"negative"}]
+    assert report is not None
+    assert {theme.theme_id for theme in report.themes} == {
+        "theme-positive",
+        "theme-negative",
+    }
+    assert get_analysis_run(database_path, run.id).input_tokens == 200
+
+
 def test_theme_batch_from_previous_contract_is_ignored(tmp_path: Path) -> None:
     database_path: Path = seeded_database(tmp_path, review_count=2)
     run = create_analysis_run(
