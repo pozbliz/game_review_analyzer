@@ -10,6 +10,7 @@
 - [x] Persist validated merge chunks and resume from the failed chunk.
 - [x] Add the schema migration and retry regression coverage.
 - [x] Run the complete backend test suite.
+- [x] Label the return action `Back` after failed and cancelled analyses.
 
 ## 2026-10-01
 

@@ -417,7 +417,10 @@ describe("application shell", () => {
     );
   });
 
-  it("restores the latest resumable analysis when its game is selected", async () => {
+  it.each([
+    ["failed", "Analysis failed"],
+    ["cancelled", "Analysis cancelled"],
+  ])("restores a %s analysis with a Back action", async (state, heading) => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
       const url: string = request.toString();
       if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
@@ -426,7 +429,7 @@ describe("application shell", () => {
       if (url === "/api/providers/ollama") return json(ollamaProvider());
       if (url === "/api/games/1145350/reports") return json([]);
       if (url === "/api/games/1145350/workspace") {
-        return json(workspace(true, analysisRun("cancelled")));
+        return json(workspace(true, analysisRun(state)));
       }
       return json(metadata());
     });
@@ -434,7 +437,7 @@ describe("application shell", () => {
     render(<App />);
     await previewGame();
 
-    expect(await screen.findByRole("heading", { name: "Analysis cancelled" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: heading })).toBeVisible();
     expect(screen.getByRole("button", { name: "Resume analysis" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByLabelText("Analysis provider")).toBeVisible();

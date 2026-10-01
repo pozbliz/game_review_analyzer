@@ -566,7 +566,7 @@ function CatalogApp(): JSX.Element {
                     <>
                       <button type="button" onClick={retryAnalysis}>Resume analysis</button>
                       <button type="button" onClick={chooseDifferentProvider}>
-                        {analysisRun.state === "cancelled" ? "Back" : "Choose different provider"}
+                        Back
                       </button>
                     </>
                   )}
