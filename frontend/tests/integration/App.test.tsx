@@ -436,7 +436,7 @@ describe("application shell", () => {
 
     expect(await screen.findByRole("heading", { name: "Analysis cancelled" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Resume analysis" })).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Choose different provider" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByLabelText("Analysis provider")).toBeVisible();
   });
 

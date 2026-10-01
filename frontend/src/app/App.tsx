@@ -565,7 +565,9 @@ function CatalogApp(): JSX.Element {
                     && analysisRun.error_code !== "no_unseen_reviews" && (
                     <>
                       <button type="button" onClick={retryAnalysis}>Resume analysis</button>
-                      <button type="button" onClick={chooseDifferentProvider}>Choose different provider</button>
+                      <button type="button" onClick={chooseDifferentProvider}>
+                        {analysisRun.state === "cancelled" ? "Back" : "Choose different provider"}
+                      </button>
                     </>
                   )}
                 </div>

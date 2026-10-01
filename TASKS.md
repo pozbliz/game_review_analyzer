@@ -121,6 +121,7 @@
 - [x] Update `README.md`, `DECISION_LOG.md`, and operation documentation after behavior is complete.
 - [x] Run backend tests, frontend tests, TypeScript checks, and the production build.
 - [x] Confirm no live Codex analysis ran during automated verification.
+- [x] Label the cancelled-analysis return action `Back`.
 - [ ] Show the current usable unseen-review count on `Extend Report` when fewer than 1,000 remain.
 
 ### Remove Version 2 Behavior
