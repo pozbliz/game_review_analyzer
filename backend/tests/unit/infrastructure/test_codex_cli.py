@@ -286,7 +286,43 @@ def test_codex_cli_binds_theme_output_to_request_locally(monkeypatch) -> None:
     assert run.result.themes[0].supporting_review_revision_ids == ("revision-1",)
 
 
-def test_codex_cli_retries_theme_position_outside_request(monkeypatch) -> None:
+@pytest.mark.parametrize(
+    ("invalid_theme", "error_code"),
+    (
+        (
+            {
+                "title": "Responsive combat",
+                "summary": "Players praise responsive combat.",
+                "polarity": "positive",
+                "supporting_review_positions": [1],
+            },
+            "theme_position_outside_scope",
+        ),
+        (
+            {
+                "title": "Responsive combat",
+                "summary": "Players praise responsive combat.",
+                "polarity": "positive",
+                "supporting_review_positions": [],
+            },
+            "theme_support_empty",
+        ),
+        (
+            {
+                "title": "Responsive combat",
+                "summary": "Players praise responsive combat.",
+                "polarity": "mixed",
+                "supporting_review_positions": [0],
+            },
+            "theme_polarity_invalid",
+        ),
+    ),
+)
+def test_codex_cli_retries_correctable_theme_output(
+    monkeypatch,
+    invalid_theme: dict[str, Any],
+    error_code: str,
+) -> None:
     processes: list[CompletedProcess] = []
 
     class InvalidPositionProcess(CompletedProcess):
@@ -303,12 +339,7 @@ def test_codex_cli_retries_theme_position_outside_request(monkeypatch) -> None:
             )
             output_path.write_text(
                 json.dumps({
-                    "themes": ([{
-                        "title": "Responsive combat",
-                        "summary": "Players praise responsive combat.",
-                        "polarity": "positive",
-                        "supporting_review_positions": [1],
-                    }] if len(processes) == 1 else []),
+                    "themes": [invalid_theme] if len(processes) == 1 else [],
                 }),
                 encoding="utf-8",
             )
@@ -325,7 +356,7 @@ def test_codex_cli_retries_theme_position_outside_request(monkeypatch) -> None:
 
     assert run.result.themes == ()
     assert len(processes) == 2
-    assert "theme_position_outside_scope" in processes[1].prompt
+    assert error_code in processes[1].prompt
 
 
 def test_codex_cli_merges_every_mapped_candidate(monkeypatch) -> None:

@@ -286,7 +286,7 @@ This slice records superseded Version 2 behavior. Slices 16–22 replace its rep
 
 **Tradeoff:** Existing incomplete analysis runs must restart under the revised contract. Ordered assignments make candidate order part of the semantic provider contract, and live-provider confirmation remains in Slice 22.
 
-**Status:** Approved; execution frontier.
+**Status:** Complete.
 
 ## Slice 19 — Grow or replace the Main Report safely
 

@@ -789,6 +789,12 @@ def _validation_retry_instructions(instructions: str, error_code: str) -> str:
         "theme_position_outside_scope": (
             "Use only zero-based review positions present in the reviews array."
         ),
+        "theme_support_empty": (
+            "Give every Theme at least one supporting review position."
+        ),
+        "theme_polarity_invalid": (
+            "Use only positive or negative polarity."
+        ),
         "theme_merge_scope_incomplete": (
             "Return exactly one ordered assignment for every candidate."
         ),
@@ -818,12 +824,16 @@ def _theme_validation_error_code(error: ValidationError | ValueError) -> str:
     """Classify Theme contract failures without retaining model output."""
 
     if isinstance(error, ValidationError):
-        if any(
-            "supporting_review_positions" in detail["loc"]
-            and detail["type"] == "greater_than_equal"
-            for detail in error.errors(include_input=False)
-        ):
-            return "theme_position_outside_scope"
+        for detail in error.errors(include_input=False):
+            location: tuple[int | str, ...] = detail["loc"]
+            error_type: str = detail["type"]
+            if "supporting_review_positions" in location:
+                if error_type == "greater_than_equal":
+                    return "theme_position_outside_scope"
+                if error_type == "too_short":
+                    return "theme_support_empty"
+            if "polarity" in location and error_type == "enum":
+                return "theme_polarity_invalid"
         return "invalid_theme_result"
     return {
         "Theme candidate references review position outside scope": (

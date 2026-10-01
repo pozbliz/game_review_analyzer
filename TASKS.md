@@ -17,8 +17,8 @@
 - [x] Update Test and Main Report integration tests to use the semantic provider seam.
 - [x] Verify invalid output never changes either report slot.
 - [x] Update current-state documentation and record the completed implementation decision.
-- [ ] Run backend tests, frontend tests, type checks, and the production build.
-- [ ] Confirm no live Codex analysis ran during Slice 18 verification.
+- [x] Run backend tests, frontend tests, type checks, and the production build.
+- [x] Confirm no live Codex analysis ran during Slice 18 verification.
 
 ## 2026-09-29
 
