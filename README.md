@@ -28,6 +28,8 @@ The current code includes authenticated Codex CLI analysis, Ollama, Evidence Fil
 
 The Version 3 Test Report, Main Report replacement, and 1,000-review Main Report extension are implemented.
 
+Codex returns only Theme text, polarity, supporting-review positions, and merge decisions. The application derives identifiers, completion, provenance, memberships, and metrics.
+
 The Test Report analyzes 25 oldest and 25 newest reviews in one Codex call.
 
 The shared `Create Report` action supports the 50-review Test Report and 1,000-review Main Report scopes. Before creation, users can set the minimum cohort support percentage and maximum Themes in each polarity list. Defaults remain 5% and 10 Themes.
@@ -37,7 +39,7 @@ Available reports appear as dated cards above `Create Report`. A Main Report can
 Each Test Report Theme can reveal its matching local reviews. Evidence is sorted by helpful votes and loaded only when opened. Individual reviews start expanded and can collapse independently.
 
 The current Test and Main Reports are saved separately from Version 2 reports. Remaining extension edge cases are still open.
-Invalid Theme batch or merge output is retried once with a safe correction before the run fails; completed batch checkpoints remain reusable.
+Invalid Theme batch or merge output is retried once with a specific correction before the run fails. Checkpoints remain reusable only under the same provider contract.
 Reports independently apply the selected Theme limit to positive and negative Themes that meet the selected cohort threshold. The two lists can have different counts. Evidence opens on a distinct sage review surface.
 
 Current application data was reset before this redesign. The gitignored evaluation corpus remains available.

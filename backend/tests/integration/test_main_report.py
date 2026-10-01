@@ -9,6 +9,7 @@ from game_review_analyzer.application.provider import (
     ThemeProviderRun,
 )
 from game_review_analyzer.domain.analysis import (
+    ANALYSIS_CONTRACT_VERSION,
     ThemeAnalysisResult,
     ThemeCandidate,
     ThemeMergeAssignment,
@@ -38,6 +39,11 @@ from game_review_analyzer.infrastructure.analysis_runner import AnalysisRunner
 from game_review_analyzer.infrastructure.codex_cli import CodexCliStatus
 from game_review_analyzer.infrastructure.persistence.report_versions import (
     load_aggregate_report_slot,
+    save_aggregate_report,
+)
+from game_review_analyzer.infrastructure.persistence.theme_batches import (
+    load_theme_batch,
+    save_theme_batch,
 )
 from game_review_analyzer.interfaces.http.app import create_app
 from game_review_analyzer.shared.config import Settings
@@ -201,6 +207,51 @@ def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
     assert retained_evidence.status_code == 404
 
 
+def test_theme_batch_from_previous_contract_is_ignored(tmp_path: Path) -> None:
+    database_path: Path = seeded_database(tmp_path, review_count=2)
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+    )
+    provider_run = ThemeProviderRun(
+        result=ThemeAnalysisResult(
+            schema_version="3.1",
+            request_id="old-map",
+            scope_sha256="a" * 64,
+            provider="codex-cli",
+            model="gpt-5.6-luna",
+            completed_review_revision_ids=("review-1",),
+            themes=(),
+        ),
+        usage=ProviderUsage(10, 0, 2),
+    )
+    save_theme_batch(
+        database_path,
+        run_id=run.id,
+        batch_number=1,
+        input_digest="a" * 64,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        contract_version="3.0",
+        provider_run=provider_run,
+    )
+
+    loaded = load_theme_batch(
+        database_path,
+        run_id=run.id,
+        batch_number=1,
+        input_digest="a" * 64,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        contract_version=ANALYSIS_CONTRACT_VERSION,
+    )
+
+    assert loaded is None
+
+
 def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
     class EmptyThemeProvider:
         model: str = "gpt-5.6-luna"
@@ -283,6 +334,9 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
         model: str = "gpt-5.6-luna"
         provider: str = "codex-cli"
 
+        def __init__(self) -> None:
+            self.invalid: bool = False
+
         def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
             return ThemeProviderRun(
                 result=ThemeAnalysisResult(
@@ -293,20 +347,21 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
                     model=self.model,
                     completed_review_revision_ids=tuple(
                         review.review_revision_id for review in request.reviews
-                    ),
+                    ) if not self.invalid else ("wrong-review",),
                     themes=(),
                 ),
                 usage=ProviderUsage(100, 0, 10),
             )
 
-    database_path: Path = seeded_database(tmp_path, review_count=2_000)
+    database_path: Path = seeded_database(tmp_path, review_count=3_000)
+    provider = EmptyThemeProvider()
     status = lambda: CodexCliStatus(
         True, True, "codex-cli test", "gpt-5.6-luna", "low"
     )
     with TestClient(create_app(
         Settings(database_path=database_path),
         codex_status_source=status,
-        analysis_provider=EmptyThemeProvider(),
+        analysis_provider=provider,
     )) as client:
         initial = client.post(
             "/api/games/1145350/reports/main",
@@ -317,11 +372,22 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
         )
         wait_for_completion(client, initial.json()["id"])
         first_report = client.get("/api/games/1145350/reports/main").json()
+        stored_report = load_aggregate_report_slot(database_path, 1145350, "main")
+        assert stored_report is not None
+        save_aggregate_report(
+            database_path,
+            stored_report.model_copy(update={"contract_version": "3.0"}),
+        )
 
         extension = client.post("/api/games/1145350/reports/main/extend")
         pending_report = client.get("/api/games/1145350/reports/main").json()
         completed = wait_for_completion(client, extension.json()["id"])
         extended_report = client.get("/api/games/1145350/reports/main").json()
+
+        provider.invalid = True
+        invalid_extension = client.post("/api/games/1145350/reports/main/extend")
+        failed = wait_for_completion(client, invalid_extension.json()["id"])
+        retained_report = client.get("/api/games/1145350/reports/main").json()
 
     assert extension.status_code == 202
     assert extension.json()["review_count"] == 1_000
@@ -331,6 +397,8 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
     assert completed["state"] == "completed"
     assert extended_report["scope"]["review_count"] == 2_000
     assert extended_report["created_at"]
+    assert failed["state"] == "failed"
+    assert retained_report["report_id"] == extended_report["report_id"]
 
 
 def wait_for_completion(client: TestClient, run_id: str) -> dict:

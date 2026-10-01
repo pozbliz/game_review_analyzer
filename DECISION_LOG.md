@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-10-01 - Application binds provider results locally
+
+**What changed:**
+
+- Advanced the Theme provider contract from `3.0` to `3.1`.
+- Replaced copied application fields with supporting-review positions and ordered merge targets.
+- Added local position binding, deduplication, identifiers, completion, provenance, established Theme retention, and targeted validation retries.
+- Kept completed Version 3 reports readable and extendable while excluding `3.0` map checkpoints from `3.1` runs.
+
+**Why:**
+
+- Codex had duplicated and altered deterministic fields that the application already knew.
+- Local binding removes those failure paths without changing report APIs or stored report format.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-01 - Semantic-only provider migration becomes the execution frontier
 
 **What changed:**

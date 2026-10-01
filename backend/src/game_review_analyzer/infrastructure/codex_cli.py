@@ -687,23 +687,6 @@ def _process_error_code(stderr: str, output_exists: bool) -> str:
     return "provider_nonzero_exit" if output_exists else "provider_missing_output"
 
 
-def _bind_result_identity(
-    result_schema: dict[str, Any],
-    request_id: str,
-    scope_sha256: str,
-) -> None:
-    """Require provider output to copy the exact request identity."""
-
-    result_schema["properties"]["request_id"] = {
-        "enum": [request_id],
-        "type": "string",
-    }
-    result_schema["properties"]["scope_sha256"] = {
-        "enum": [scope_sha256],
-        "type": "string",
-    }
-
-
 def _bind_theme_analysis_output(
     request: ThemeAnalysisRequest,
     output: ThemeAnalysisOutput,
@@ -803,12 +786,23 @@ def _validation_retry_instructions(instructions: str, error_code: str) -> str:
     """Request one complete corrected result without exposing provider output."""
 
     correction: str = {
+        "theme_position_outside_scope": (
+            "Use only zero-based review positions present in the reviews array."
+        ),
+        "theme_merge_scope_incomplete": (
+            "Return exactly one ordered assignment for every candidate."
+        ),
         "theme_merge_target_outside_scope": (
             "Every assignment position must reference an item in its selected array."
         ),
-        "theme_merge_assignment_unknown": (
-            "Every non-null assignment theme_id must exactly match a theme_id "
-            "in the returned themes array."
+        "theme_merge_target_ambiguous": (
+            "Choose an established Theme, a new Theme, or discard, never two targets."
+        ),
+        "theme_merge_theme_unassigned": (
+            "Reference every returned new Theme from at least one assignment."
+        ),
+        "theme_merge_polarity_mismatch": (
+            "Assign candidates only to Themes with the same polarity."
         ),
     }.get(
         error_code,
@@ -824,26 +818,17 @@ def _theme_validation_error_code(error: ValidationError | ValueError) -> str:
     """Classify Theme contract failures without retaining model output."""
 
     if isinstance(error, ValidationError):
-        messages: tuple[str, ...] = tuple(
-            str(detail["msg"]) for detail in error.errors(include_input=False)
-        )
-        classifications: tuple[tuple[str, str], ...] = (
-            ("Theme candidate memberships must be unique", "theme_membership_duplicate"),
-            ("Completed review identifiers must be unique", "theme_completed_ids_duplicate"),
-            ("Theme candidate identifiers must be unique", "theme_candidate_ids_duplicate"),
-            ("Theme candidates must reference completed reviews", "theme_membership_outside_scope"),
-        )
-        for message, error_code in classifications:
-            if any(message in validation_message for validation_message in messages):
-                return error_code
+        if any(
+            "supporting_review_positions" in detail["loc"]
+            and detail["type"] == "greater_than_equal"
+            for detail in error.errors(include_input=False)
+        ):
+            return "theme_position_outside_scope"
         return "invalid_theme_result"
     return {
         "Theme candidate references review position outside scope": (
             "theme_position_outside_scope"
         ),
-        "Theme result does not match its request": "theme_request_mismatch",
-        "Theme result does not complete the exact review scope": "theme_scope_incomplete",
-        "Theme result provenance does not match the selected provider": "theme_provenance_mismatch",
     }.get(str(error), "invalid_theme_result")
 
 
@@ -854,24 +839,11 @@ def _theme_merge_validation_error_code(error: ValidationError | ValueError) -> s
         messages: tuple[str, ...] = tuple(
             str(detail["msg"]) for detail in error.errors(include_input=False)
         )
-        classifications: tuple[tuple[str, str], ...] = (
-            ("Merged Theme identifiers must be unique", "theme_merge_ids_duplicate"),
-            (
-                "Merge assignment candidate keys must be unique",
-                "theme_merge_mapping_duplicate",
-            ),
-            (
-                "Assignments must reference returned Themes",
-                "theme_merge_assignment_unknown",
-            ),
-            (
-                "Every merged Theme must have an assignment",
-                "theme_merge_theme_unassigned",
-            ),
-        )
-        for message, error_code in classifications:
-            if any(message in validation_message for validation_message in messages):
-                return error_code
+        if any(
+            "Merge assignment cannot target two Themes" in message
+            for message in messages
+        ):
+            return "theme_merge_target_ambiguous"
         return "invalid_theme_merge_result"
     return {
         "Theme merge target position outside scope": (

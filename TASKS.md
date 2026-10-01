@@ -10,13 +10,13 @@
 - [x] Implement deterministic map-result binding behind the existing provider adapter.
 - [x] Add failing merge-adapter tests for ordered assignments, existing Themes, new Themes, discard, counts, targets, and polarity.
 - [x] Implement ordered merge binding, established Theme retention, and deterministic new Theme IDs.
-- [ ] Add failing compatibility tests for obsolete checkpoints and existing completed reports.
-- [ ] Prevent old checkpoints from loading under the revised contract.
-- [ ] Add failing retry tests for each correctable semantic validation failure.
-- [ ] Implement specific correction instructions and remove obsolete copied-field error paths.
-- [ ] Update Test and Main Report integration tests to use the semantic provider seam.
-- [ ] Verify invalid output never changes either report slot.
-- [ ] Update current-state documentation and record the completed implementation decision.
+- [x] Add failing compatibility tests for obsolete checkpoints and existing completed reports.
+- [x] Prevent old checkpoints from loading under the revised contract.
+- [x] Add failing retry tests for each correctable semantic validation failure.
+- [x] Implement specific correction instructions and remove obsolete copied-field error paths.
+- [x] Update Test and Main Report integration tests to use the semantic provider seam.
+- [x] Verify invalid output never changes either report slot.
+- [x] Update current-state documentation and record the completed implementation decision.
 - [ ] Run backend tests, frontend tests, type checks, and the production build.
 - [ ] Confirm no live Codex analysis ran during Slice 18 verification.
 
