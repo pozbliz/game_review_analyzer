@@ -49,6 +49,10 @@ from game_review_analyzer.infrastructure.persistence.theme_batches import (
     load_theme_batch,
     save_theme_batch,
 )
+from game_review_analyzer.infrastructure.steam_reviews import (
+    ReviewPage,
+    SteamReviewsUnavailable,
+)
 from game_review_analyzer.interfaces.http.app import create_app
 from game_review_analyzer.shared.config import Settings
 from fastapi.testclient import TestClient
@@ -151,6 +155,26 @@ def test_main_report_selects_500_oldest_and_500_newest_complete_reviews(
     assert oldest_times == list(range(2, 502))
     assert newest_times == list(range(1_501, 2_001))
     assert reviews[run.early_review_revision_ids[0]].text == "Review 2"
+
+
+def test_test_report_replaces_oversized_reviews(tmp_path: Path) -> None:
+    database_path: Path = seeded_database(tmp_path, review_count=60, oversized=1)
+
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+        cohort_size=25,
+        report_kind="test",
+        operation="test",
+    )
+
+    reviews = load_review_revisions_by_ids(database_path, run.review_revision_ids)
+    assert run.review_count == 50
+    assert run.oversized_review_count == 1
+    assert 1 not in {review.source_created_at for review in reviews.values()}
 
 
 def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
@@ -407,6 +431,11 @@ def test_theme_batch_from_previous_contract_is_ignored(tmp_path: Path) -> None:
 
 
 def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
+    class EmptyRefreshSource:
+        def iter_pages(self, app_id: int, start_cursor: str = "*"):
+            del app_id, start_cursor
+            yield ReviewPage(reviews=(), next_cursor="done")
+
     class EmptyThemeProvider:
         model: str = "gpt-5.6-luna"
         provider: str = "codex-cli"
@@ -436,6 +465,7 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
             Settings(database_path=database_path),
             codex_status_source=status,
             analysis_provider=EmptyThemeProvider(),
+            review_source=EmptyRefreshSource(),
         )
     ) as client:
         started = client.post(
@@ -484,6 +514,18 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
 
 
 def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> None:
+    class EmptyRefreshSource:
+        def __init__(self) -> None:
+            self.calls: int = 0
+            self.fail: bool = False
+
+        def iter_pages(self, app_id: int, start_cursor: str = "*"):
+            del app_id, start_cursor
+            self.calls += 1
+            if self.fail:
+                raise SteamReviewsUnavailable
+            yield ReviewPage(reviews=(), next_cursor="done")
+
     class EmptyThemeProvider:
         model: str = "gpt-5.6-luna"
         provider: str = "codex-cli"
@@ -509,6 +551,7 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
 
     database_path: Path = seeded_database(tmp_path, review_count=3_000)
     provider = EmptyThemeProvider()
+    refresh_source = EmptyRefreshSource()
     status = lambda: CodexCliStatus(
         True, True, "codex-cli test", "gpt-5.6-luna", "low"
     )
@@ -516,6 +559,7 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
         Settings(database_path=database_path),
         codex_status_source=status,
         analysis_provider=provider,
+        review_source=refresh_source,
     )) as client:
         initial = client.post(
             "/api/games/1145350/reports/main",
@@ -538,21 +582,33 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
         completed = wait_for_completion(client, extension.json()["id"])
         extended_report = client.get("/api/games/1145350/reports/main").json()
 
+        refresh_source.fail = True
+        refresh_failure = client.post("/api/games/1145350/reports/main/extend")
+        refresh_failed = wait_for_completion(client, refresh_failure.json()["id"])
+        report_after_refresh_failure = client.get(
+            "/api/games/1145350/reports/main"
+        ).json()
+        refresh_source.fail = False
         provider.invalid = True
         invalid_extension = client.post("/api/games/1145350/reports/main/extend")
         failed = wait_for_completion(client, invalid_extension.json()["id"])
         retained_report = client.get("/api/games/1145350/reports/main").json()
 
     assert extension.status_code == 202
-    assert extension.json()["review_count"] == 1_000
+    assert extension.json()["review_count"] == 0
+    assert completed["review_count"] == 1_000
     assert extension.json()["metric_policy"]["minimum_support_percentage"] == 7.5
     assert extension.json()["metric_policy"]["maximum_headlines_per_polarity"] == 4
     assert pending_report["report_id"] == first_report["report_id"]
     assert completed["state"] == "completed"
     assert extended_report["scope"]["review_count"] == 2_000
     assert extended_report["created_at"]
+    assert refresh_failed["state"] == "failed"
+    assert refresh_failed["error_code"] == "steam_unavailable"
+    assert report_after_refresh_failure["report_id"] == extended_report["report_id"]
     assert failed["state"] == "failed"
     assert retained_report["report_id"] == extended_report["report_id"]
+    assert refresh_source.calls == 3
 
 
 def wait_for_completion(client: TestClient, run_id: str) -> dict:

@@ -96,12 +96,12 @@
 - [x] Add failing persistence tests for run intent, base report identity, exact reserved scope, and independent Main and Test Report reservations.
 - [x] Add the database migration and repository behavior for atomic report-slot reservations.
 - [x] Add concurrency tests that reject duplicate reservations while allowing independent Main and Test Report work.
-- [ ] Add failing orchestration tests proving Extend and Replace refresh Steam before review selection.
-- [ ] Connect Extend and Replace to the existing durable refresh path.
-- [ ] Preserve the current report and expose a safe failure code when refresh fails.
+- [x] Add failing orchestration tests proving Extend and Replace refresh Steam before review selection.
+- [x] Connect Extend and Replace to the existing durable refresh path.
+- [x] Preserve the current report and expose a safe failure code when refresh fails.
 - [ ] Add selection tests for new reviews, ignored edits, partial final extensions, and oversized-review replacement.
-- [ ] Apply oversized-review replacement to both Main and Test Report selection.
-- [ ] Select and reserve the exact post-refresh review scope in one transaction.
+- [x] Apply oversized-review replacement to both Main and Test Report selection.
+- [x] Select and reserve the exact post-refresh review scope in one transaction.
 - [ ] Add extension tests for fixed Theme definitions, candidate promotion, membership deduplication, and cumulative metrics.
 - [ ] Implement cumulative extension from the reserved base report.
 - [ ] Add replacement tests proving prior memberships, candidates, and checkpoints are never reused.

@@ -61,12 +61,29 @@ def create_refresh_job(
     """Create one queued refresh only when the game already owns reviews."""
 
     with connect(database_path) as connection:
-        review_count: int = connection.execute(
-            "SELECT COUNT(*) FROM reviews WHERE app_id = ?", (app_id,)
-        ).fetchone()[0]
+        job_id: str = insert_refresh_job(connection, app_id, target_count)
+    return get_job(database_path, job_id)
+
+
+def insert_refresh_job(
+    connection: sqlite3.Connection,
+    app_id: int,
+    target_count: int,
+) -> str:
+    """Insert one refresh inside a caller-owned reservation transaction."""
+
+    review_count: int = connection.execute(
+        "SELECT COUNT(*) FROM reviews WHERE app_id = ?", (app_id,)
+    ).fetchone()[0]
     if review_count == 0:
         raise ValueError("Refresh requires an existing review dataset")
-    return _create_job(database_path, app_id, target_count, "refresh")
+    job_id: str = str(uuid4())
+    connection.execute(
+        "INSERT INTO analysis_jobs(id, app_id, scope, state, target_count) "
+        "VALUES (?, ?, 'refresh', 'queued', ?)",
+        (job_id, app_id, target_count),
+    )
+    return job_id
 
 
 def create_full_job(database_path: Path, app_id: int) -> AnalysisJob:
@@ -200,7 +217,12 @@ def recoverable_job_ids(database_path: Path) -> list[str]:
             "WHERE state = 'running'"
         )
         rows = connection.execute(
-            "SELECT id FROM analysis_jobs WHERE state = 'queued' ORDER BY created_at, id"
+            "SELECT analysis_jobs.id FROM analysis_jobs "
+            "WHERE analysis_jobs.state = 'queued' AND NOT EXISTS ("
+            "SELECT 1 FROM analysis_runs "
+            "WHERE analysis_runs.refresh_job_id = analysis_jobs.id "
+            "AND analysis_runs.state IN ('queued', 'running')) "
+            "ORDER BY analysis_jobs.created_at, analysis_jobs.id"
         ).fetchall()
     return [row[0] for row in rows]
 

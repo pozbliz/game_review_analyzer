@@ -50,8 +50,11 @@ from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     AnalysisRun,
     finish_analysis_run,
     get_analysis_run,
+    reserve_refreshed_analysis_scope,
     start_analysis_run,
 )
+from game_review_analyzer.infrastructure.job_runner import JobRunner
+from game_review_analyzer.infrastructure.persistence.jobs import get_job
 from game_review_analyzer.infrastructure.persistence.game_datasets import load_game_dataset
 from game_review_analyzer.infrastructure.persistence.report_versions import (
     load_aggregate_report_slot,
@@ -138,11 +141,13 @@ class AnalysisRunner:
         database_path: Path,
         provider: AnalysisProvider | ThemeAnalysisProvider,
         *,
+        refresh_runner: JobRunner | None = None,
         batch_review_limit: int = 50,
         batch_character_limit: int = 32_000,
     ) -> None:
         self._database_path = database_path
         self._provider = provider
+        self._refresh_runner = refresh_runner
         self._batch_review_limit = batch_review_limit
         self._batch_character_limit = batch_character_limit
 
@@ -151,6 +156,36 @@ class AnalysisRunner:
         run = start_analysis_run(self._database_path, run_id)
         if run is None:
             return
+        if run.refresh_job_id is not None:
+            if self._refresh_runner is None:
+                finish_analysis_run(
+                    self._database_path,
+                    run.id,
+                    "failed",
+                    error_code="refresh_runner_unavailable",
+                )
+                return
+            self._refresh_runner.run(run.refresh_job_id)
+            refresh_job = get_job(self._database_path, run.refresh_job_id)
+            if refresh_job.state != "completed":
+                state = "cancelled" if refresh_job.state == "cancelled" else "failed"
+                finish_analysis_run(
+                    self._database_path,
+                    run.id,
+                    state,
+                    error_code=refresh_job.error_code,
+                )
+                return
+            try:
+                run = reserve_refreshed_analysis_scope(self._database_path, run.id)
+            except ValueError:
+                finish_analysis_run(
+                    self._database_path,
+                    run.id,
+                    "failed",
+                    error_code="invalid_refresh_scope",
+                )
+                return
         log_event(
             "analysis.started",
             run_id=run.id,
@@ -471,14 +506,17 @@ class AnalysisRunner:
                 self._database_path, run.id, "completed", report_version_id=report_id
             )
             return
-        extension_report: AggregateReport | None = (
-            current_report
-            if current_report is not None
-            and set(run.review_revision_ids).isdisjoint(
-                current_report.review_revision_ids
-            )
-            else None
-        )
+        extension_report: AggregateReport | None = None
+        if run.operation == "extend":
+            if current_report is None or current_report.report_id != run.base_report_id:
+                finish_analysis_run(
+                    self._database_path,
+                    run.id,
+                    "failed",
+                    error_code="base_report_changed",
+                )
+                return
+            extension_report = current_report
         try:
             metadata: SteamMetadata | None = load_game_dataset(
                 self._database_path, run.app_id

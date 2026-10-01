@@ -61,9 +61,11 @@ from game_review_analyzer.infrastructure.ollama import (
 )
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     AnalysisRun,
+    AnalysisReservationConflict,
     AnalysisRunNotFound,
     FullHistoryRequired,
     create_analysis_run,
+    create_refresh_analysis_run,
     get_analysis_run,
     load_latest_analysis_run,
     recoverable_analysis_run_ids,
@@ -297,6 +299,7 @@ def create_app(
         AnalysisRunner(
             resolved_settings.database_path,
             provider,
+            refresh_runner=runner,
             batch_review_limit=250 if run.report_kind == "main" else 10,
         ).run(run_id)
 
@@ -461,7 +464,12 @@ def create_app(
                 metric_policy=_aggregate_metric_policy(report_settings),
                 cohort_size=25,
                 report_kind="test",
+                operation="test",
             )
+        except AnalysisReservationConflict as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "test_report_analysis_active"}
+            ) from error
         except FullHistoryRequired as error:
             raise HTTPException(
                 status_code=409, detail={"code": "analysis_requires_full_history"}
@@ -489,27 +497,36 @@ def create_app(
             )
         if load_game_dataset(resolved_settings.database_path, app_id) is None:
             raise HTTPException(status_code=404, detail={"code": "game_not_found"})
-        latest_run: AnalysisRun | None = load_latest_analysis_run(
-            resolved_settings.database_path, app_id
+        current_report = load_aggregate_report_slot(
+            resolved_settings.database_path, app_id, "main"
         )
-        if (
-            latest_run is not None
-            and latest_run.report_kind == "main"
-            and latest_run.state in ("queued", "running")
-        ):
+        try:
+            run: AnalysisRun = (
+                create_analysis_run(
+                    resolved_settings.database_path,
+                    app_id=app_id,
+                    provider="codex-cli",
+                    model=status.model,
+                    metric_policy=_aggregate_metric_policy(report_settings),
+                    cohort_size=500,
+                    report_kind="main",
+                    operation="create",
+                )
+                if current_report is None
+                else create_refresh_analysis_run(
+                    resolved_settings.database_path,
+                    app_id=app_id,
+                    provider="codex-cli",
+                    model=status.model,
+                    metric_policy=_aggregate_metric_policy(report_settings),
+                    operation="replace",
+                    base_report_id=current_report.report_id,
+                )
+            )
+        except AnalysisReservationConflict as error:
             raise HTTPException(
                 status_code=409, detail={"code": "main_report_analysis_active"}
-            )
-        try:
-            run: AnalysisRun = create_analysis_run(
-                resolved_settings.database_path,
-                app_id=app_id,
-                provider="codex-cli",
-                model=status.model,
-                metric_policy=_aggregate_metric_policy(report_settings),
-                cohort_size=500,
-                report_kind="main",
-            )
+            ) from error
         except FullHistoryRequired as error:
             raise HTTPException(
                 status_code=409, detail={"code": "analysis_requires_full_history"}
@@ -539,28 +556,20 @@ def create_app(
             raise HTTPException(
                 status_code=409, detail={"code": "main_report_required"}
             )
-        latest_run: AnalysisRun | None = load_latest_analysis_run(
-            resolved_settings.database_path, app_id
-        )
-        if (
-            latest_run is not None
-            and latest_run.report_kind == "main"
-            and latest_run.state in ("queued", "running")
-        ):
-            raise HTTPException(
-                status_code=409, detail={"code": "main_report_analysis_active"}
-            )
         try:
-            run: AnalysisRun = create_analysis_run(
+            run: AnalysisRun = create_refresh_analysis_run(
                 resolved_settings.database_path,
                 app_id=app_id,
                 provider="codex-cli",
                 model=status.model,
                 metric_policy=current_report.metric_policy,
-                cohort_size=500,
-                report_kind="main",
-                excluded_revision_ids=current_report.review_revision_ids,
+                operation="extend",
+                base_report_id=current_report.report_id,
             )
+        except AnalysisReservationConflict as error:
+            raise HTTPException(
+                status_code=409, detail={"code": "main_report_analysis_active"}
+            ) from error
         except ValueError as error:
             raise HTTPException(
                 status_code=409, detail={"code": "no_unseen_reviews"}

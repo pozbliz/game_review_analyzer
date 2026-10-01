@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-10-01 - Extend and Replace own durable refresh jobs
+
+**What changed:**
+
+- Bound each Extend and Replace run to a durable refresh job in the reservation transaction.
+- Reserved the exact eligible review scope only after that refresh completed.
+- Kept the current Main Report when refresh or provider work failed.
+
+**Why:**
+
+- Review selection before refresh could miss new Steam reviews and could change after a restart.
+- Reusing refresh checkpoints gives analysis recovery one durable acquisition path.
+
+**New issues:**
+
+- The frontend must present the new refreshing phase and safe refresh failure codes.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-01 - Analysis runs reserve report slots atomically
 
 **What changed:**
