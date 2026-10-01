@@ -3,6 +3,8 @@
 from pathlib import Path
 
 import pytest
+import game_review_analyzer.infrastructure.analysis_runner as analysis_runner_module
+import game_review_analyzer.interfaces.http.app as http_app_module
 
 from game_review_analyzer.application.provider import (
     AnalysisProviderError,
@@ -24,7 +26,11 @@ from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     AnalysisReservationConflict,
     create_analysis_run,
+    create_refresh_analysis_run,
     get_analysis_run,
+    load_latest_analysis_run,
+    recoverable_analysis_run_ids,
+    reserve_refreshed_analysis_scope,
     request_analysis_cancellation,
     retry_analysis_run,
 )
@@ -34,6 +40,8 @@ from game_review_analyzer.infrastructure.persistence.jobs import (
     connect,
     create_full_job,
     finish_job,
+    get_job,
+    recoverable_job_ids,
     start_job,
 )
 from game_review_analyzer.infrastructure.persistence.review_revisions import (
@@ -176,6 +184,213 @@ def test_test_report_replaces_oversized_reviews(tmp_path: Path) -> None:
     assert run.review_count == 50
     assert run.oversized_review_count == 1
     assert 1 not in {review.source_created_at for review in reviews.values()}
+
+
+def test_extension_selects_new_reviews_ignores_edits_and_allows_partial_scope(
+    tmp_path: Path,
+) -> None:
+    class EmptyThemeProvider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version="3.1",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=tuple(
+                        review.review_revision_id for review in request.reviews
+                    ),
+                    themes=(),
+                ),
+                usage=ProviderUsage(1, 0, 1),
+            )
+
+    database_path: Path = seeded_database(
+        tmp_path,
+        review_count=1_200,
+        oversized=1_001,
+    )
+    first_revision = load_review_revisions_by_ids(database_path, (1,))[1]
+    refreshed_reviews = (
+        first_revision.model_copy(
+            update={"text": "Edited review", "source_updated_at": 9_999}
+        ),
+        first_revision.model_copy(
+            update={
+                "review_id": "new-review-1",
+                "text": "New review 1",
+                "source_created_at": 2_001,
+                "source_updated_at": 2_001,
+            }
+        ),
+        first_revision.model_copy(
+            update={
+                "review_id": "new-review-2",
+                "text": "New review 2",
+                "source_created_at": 2_002,
+                "source_updated_at": 2_002,
+            }
+        ),
+    )
+
+    class RefreshSource:
+        def iter_pages(self, app_id: int, start_cursor: str = "*"):
+            del app_id, start_cursor
+            yield ReviewPage(reviews=refreshed_reviews, next_cursor="done")
+            yield ReviewPage(reviews=(), next_cursor="done")
+
+    status = lambda: CodexCliStatus(
+        True, True, "codex-cli test", "gpt-5.6-luna", "low"
+    )
+    with TestClient(create_app(
+        Settings(database_path=database_path),
+        codex_status_source=status,
+        analysis_provider=EmptyThemeProvider(),
+        review_source=RefreshSource(),
+    )) as client:
+        initial = client.post("/api/games/1145350/reports/main")
+        wait_for_completion(client, initial.json()["id"])
+        extension = client.post("/api/games/1145350/reports/main/extend")
+        completed = wait_for_completion(client, extension.json()["id"])
+
+    selected = load_review_revisions_by_ids(
+        database_path, tuple(completed["review_revision_ids"])
+    )
+    assert completed["review_count"] == 201
+    assert completed["oversized_review_count"] == 1
+    assert {"new-review-1", "new-review-2"}.issubset(
+        review.review_id for review in selected.values()
+    )
+    assert "review-0001" not in {review.review_id for review in selected.values()}
+
+
+def test_extension_keeps_theme_definitions_deduplicates_and_promotes_candidates(
+    tmp_path: Path,
+) -> None:
+    class ExtensionProvider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def __init__(self) -> None:
+            self.initial_merged: bool = False
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            ids = tuple(review.review_revision_id for review in request.reviews)
+            themes = (
+                candidate("shared-a", ids[:10]),
+                candidate("shared-b", ids[:10]),
+            )
+            if self.initial_merged:
+                themes += (candidate("promoted", ids[10:20]),)
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version="3.1",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=ids,
+                    themes=themes,
+                ),
+                usage=ProviderUsage(1, 0, 1),
+            )
+
+        def merge_themes(self, request, *, cancel_event=None) -> ThemeMergeProviderRun:
+            extending: bool = bool(request.established_themes)
+            replacing: bool = self.initial_merged and not extending
+            themes = tuple(request.established_themes)
+            if extending:
+                themes += (ThemeMergeTheme(
+                    theme_id="promoted",
+                    title="Promoted",
+                    summary="Promoted summary.",
+                    polarity="positive",
+                ),)
+            elif not replacing:
+                themes = (ThemeMergeTheme(
+                    theme_id="shared",
+                    title="Original shared title",
+                    summary="Original shared summary.",
+                    polarity="positive",
+                ),)
+                self.initial_merged = True
+            else:
+                themes = (ThemeMergeTheme(
+                    theme_id="replacement",
+                    title="Replacement",
+                    summary="Replacement summary.",
+                    polarity="positive",
+                ),)
+            return ThemeMergeProviderRun(
+                result=ThemeMergeResult(
+                    schema_version="3.1",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    themes=themes,
+                    assignments=tuple(
+                        ThemeMergeAssignment(
+                            candidate_key=item.candidate_key,
+                            theme_id=(
+                                "replacement" if replacing else
+                                "promoted" if item.title == "promoted" else "shared"
+                            ),
+                        )
+                        for item in request.candidates
+                    ),
+                ),
+                usage=ProviderUsage(1, 0, 1),
+            )
+
+    class EmptyRefreshSource:
+        def iter_pages(self, app_id: int, start_cursor: str = "*"):
+            del app_id, start_cursor
+            yield ReviewPage(reviews=(), next_cursor="done")
+
+    database_path: Path = seeded_database(tmp_path, review_count=2_000)
+    provider = ExtensionProvider()
+    status = lambda: CodexCliStatus(
+        True, True, "codex-cli test", "gpt-5.6-luna", "low"
+    )
+    with TestClient(create_app(
+        Settings(database_path=database_path),
+        codex_status_source=status,
+        analysis_provider=provider,
+        review_source=EmptyRefreshSource(),
+    )) as client:
+        initial = client.post("/api/games/1145350/reports/main")
+        wait_for_completion(client, initial.json()["id"])
+        extension = client.post("/api/games/1145350/reports/main/extend")
+        wait_for_completion(client, extension.json()["id"])
+        extended_report = load_aggregate_report_slot(database_path, 1145350, "main")
+        replacement = client.post("/api/games/1145350/reports/main")
+        wait_for_completion(client, replacement.json()["id"])
+
+    assert extended_report is not None
+    definitions = {theme.theme_id: theme for theme in extended_report.themes}
+    membership_counts = {
+        theme_id: sum(
+            membership.theme_id == theme_id for membership in extended_report.memberships
+        )
+        for theme_id in definitions
+    }
+    metric_counts = {
+        metric.theme_id: metric.support_count
+        for metric in extended_report.theme_metrics.all_themes
+    }
+    assert definitions["shared"].title == "Original shared title"
+    assert set(definitions) == {"shared", "promoted"}
+    assert membership_counts == {"shared": 80, "promoted": 40}
+    assert metric_counts == membership_counts
+    replaced_report = load_aggregate_report_slot(database_path, 1145350, "main")
+    assert replaced_report is not None
+    assert {theme.theme_id for theme in replaced_report.themes} == {"replacement"}
+    assert len(replaced_report.review_revision_ids) == 1_000
 
 
 def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
@@ -392,7 +607,11 @@ def test_main_report_merges_positive_and_negative_candidates_separately(
     assert get_analysis_run(database_path, run.id).input_tokens == 200
 
 
-def test_cancelled_main_report_never_replaces_the_report_slot(tmp_path: Path) -> None:
+@pytest.mark.parametrize("cancel_stage", ("map", "merge"))
+def test_cancelled_main_report_never_replaces_the_report_slot(
+    tmp_path: Path,
+    cancel_stage: str,
+) -> None:
     database_path: Path = seeded_database(tmp_path, review_count=2)
     run = create_analysis_run(
         database_path,
@@ -409,7 +628,73 @@ def test_cancelled_main_report_never_replaces_the_report_slot(tmp_path: Path) ->
         provider: str = "codex-cli"
 
         def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            if cancel_stage == "map":
+                request_analysis_cancellation(database_path, run.id)
+            review_ids = tuple(
+                review.review_revision_id for review in request.reviews
+            )
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version="3.1",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=review_ids,
+                    themes=(candidate("cancel-theme", review_ids),),
+                ),
+                usage=ProviderUsage(1, 0, 1),
+            )
+
+        def merge_themes(self, request, *, cancel_event=None) -> ThemeMergeProviderRun:
             request_analysis_cancellation(database_path, run.id)
+            return ThemeMergeProviderRun(
+                result=ThemeMergeResult(
+                    schema_version="3.1",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    themes=(ThemeMergeTheme(
+                        theme_id="cancel-theme",
+                        title="Cancel theme",
+                        summary="Cancel summary.",
+                        polarity="positive",
+                    ),),
+                    assignments=tuple(
+                        ThemeMergeAssignment(
+                            candidate_key=item.candidate_key,
+                            theme_id="cancel-theme",
+                        )
+                        for item in request.candidates
+                    ),
+                ),
+                usage=ProviderUsage(1, 0, 1),
+            )
+
+    AnalysisRunner(database_path, CancellingProvider()).run(run.id)
+
+    assert get_analysis_run(database_path, run.id).state == "cancelled"
+    assert load_aggregate_report_slot(database_path, 1145350, "main") is None
+
+
+def test_cancelling_before_refresh_cancels_the_owned_job(tmp_path: Path) -> None:
+    database_path: Path = seeded_database(tmp_path, review_count=2)
+    base_run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+        report_kind="main",
+        operation="create",
+    )
+
+    class EmptyProvider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
             return ThemeProviderRun(
                 result=ThemeAnalysisResult(
                     schema_version="3.1",
@@ -425,10 +710,245 @@ def test_cancelled_main_report_never_replaces_the_report_slot(tmp_path: Path) ->
                 usage=ProviderUsage(1, 0, 1),
             )
 
-    AnalysisRunner(database_path, CancellingProvider()).run(run.id)
+    AnalysisRunner(database_path, EmptyProvider()).run(base_run.id)
+    report = load_aggregate_report_slot(database_path, 1145350, "main")
+    assert report is not None
+    replacement = create_refresh_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=report.metric_policy,
+        operation="replace",
+        base_report_id=report.report_id,
+    )
+    assert replacement.refresh_job_id is not None
 
-    assert get_analysis_run(database_path, run.id).state == "cancelled"
+    request_analysis_cancellation(database_path, replacement.id)
+
+    assert get_analysis_run(database_path, replacement.id).state == "cancelled"
+    assert get_job(database_path, replacement.refresh_job_id).state == "cancelled"
+    assert load_aggregate_report_slot(
+        database_path, 1145350, "main"
+    ).report_id == report.report_id
+
+
+@pytest.mark.parametrize(
+    ("failure_stage", "expected_code"),
+    (
+        ("database", "database_failed"),
+        ("provider", "provider_execution_failed"),
+        ("calculation", "calculation_failed"),
+        ("persistence", "persistence_failed"),
+        ("tracing", "tracing_failed"),
+    ),
+)
+def test_main_report_worker_records_stage_failures(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_stage: str,
+    expected_code: str,
+) -> None:
+    database_path: Path = seeded_database(tmp_path, review_count=2)
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+        report_kind="main",
+        operation="create",
+    )
+
+    class Provider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            if failure_stage == "provider":
+                raise RuntimeError("provider failed")
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version="3.1",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=tuple(
+                        review.review_revision_id for review in request.reviews
+                    ),
+                    themes=(),
+                ),
+                usage=ProviderUsage(1, 0, 1),
+            )
+
+    def fail(*args, **kwargs):
+        del args, kwargs
+        raise RuntimeError("stage failed")
+
+    if failure_stage == "database":
+        monkeypatch.setattr(analysis_runner_module, "load_aggregate_report_slot", fail)
+    elif failure_stage == "calculation":
+        monkeypatch.setattr(
+            analysis_runner_module, "calculate_aggregate_theme_metrics", fail
+        )
+    elif failure_stage == "persistence":
+        monkeypatch.setattr(analysis_runner_module, "complete_aggregate_report_run", fail)
+    elif failure_stage == "tracing":
+        class FailingTracer:
+            start_as_current_span = staticmethod(fail)
+
+        monkeypatch.setattr(analysis_runner_module, "TRACER", FailingTracer())
+
+    AnalysisRunner(database_path, Provider()).run(run.id)
+
+    failed = get_analysis_run(database_path, run.id)
+    assert failed.state == "failed"
+    assert failed.error_code == expected_code
     assert load_aggregate_report_slot(database_path, 1145350, "main") is None
+
+
+def test_provider_setup_failure_finishes_the_accepted_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_path: Path = seeded_database(tmp_path, review_count=2)
+
+    def fail_provider(*args, **kwargs):
+        del args, kwargs
+        raise RuntimeError("provider setup failed")
+
+    monkeypatch.setattr(http_app_module, "CodexCliProvider", fail_provider)
+    status = lambda: CodexCliStatus(
+        True, True, "codex-cli test", "gpt-5.6-luna", "low"
+    )
+    with TestClient(create_app(
+        Settings(database_path=database_path),
+        codex_status_source=status,
+    )) as client:
+        started = client.post("/api/games/1145350/reports/main")
+        failed = wait_for_terminal_state(client, started.json()["id"])
+
+    assert failed["state"] == "failed"
+    assert failed["error_code"] == "provider_setup_failed"
+
+
+def test_dispatch_failure_finishes_the_reserved_run(tmp_path: Path) -> None:
+    database_path: Path = seeded_database(tmp_path, review_count=2)
+    status = lambda: CodexCliStatus(
+        True, True, "codex-cli test", "gpt-5.6-luna", "low"
+    )
+
+    class FailingExecutor:
+        def submit(self, *args, **kwargs):
+            del args, kwargs
+            raise RuntimeError("dispatch failed")
+
+    with TestClient(create_app(
+        Settings(database_path=database_path),
+        codex_status_source=status,
+    )) as client:
+        client.app.state.analysis_executor = FailingExecutor()
+        response = client.post("/api/games/1145350/reports/main")
+
+    run = load_latest_analysis_run(database_path, 1145350)
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "analysis_dispatch_failed"
+    assert run is not None
+    assert run.state == "failed"
+    assert run.error_code == "dispatch_failed"
+
+
+def test_restart_preserves_the_reserved_scope_and_valid_checkpoint(
+    tmp_path: Path,
+) -> None:
+    class EmptyThemeProvider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version="3.1",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=tuple(
+                        review.review_revision_id for review in request.reviews
+                    ),
+                    themes=(),
+                ),
+                usage=ProviderUsage(1, 0, 1),
+            )
+
+    database_path: Path = seeded_database(tmp_path, review_count=2_000)
+    initial = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+        cohort_size=500,
+        report_kind="main",
+        operation="create",
+    )
+    AnalysisRunner(database_path, EmptyThemeProvider(), batch_review_limit=250).run(
+        initial.id
+    )
+    report = load_aggregate_report_slot(database_path, 1145350, "main")
+    assert report is not None
+    extension = create_refresh_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=report.metric_policy,
+        operation="extend",
+        base_report_id=report.report_id,
+    )
+    assert extension.refresh_job_id is not None
+    start_job(database_path, extension.refresh_job_id)
+    finish_job(database_path, extension.refresh_job_id, "completed")
+    analysis_runner_module.start_analysis_run(database_path, extension.id)
+    reserved = reserve_refreshed_analysis_scope(database_path, extension.id)
+    provider_run = ThemeProviderRun(
+        result=ThemeAnalysisResult(
+            schema_version="3.1",
+            request_id=f"{extension.id}-map-1",
+            scope_sha256="a" * 64,
+            provider="codex-cli",
+            model="gpt-5.6-luna",
+            completed_review_revision_ids=("review-0501",),
+            themes=(),
+        ),
+        usage=ProviderUsage(1, 0, 1),
+    )
+    save_theme_batch(
+        database_path,
+        run_id=extension.id,
+        batch_number=1,
+        input_digest="a" * 64,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        contract_version=ANALYSIS_CONTRACT_VERSION,
+        provider_run=provider_run,
+    )
+
+    assert recoverable_job_ids(database_path) == []
+    assert recoverable_analysis_run_ids(database_path) == [extension.id]
+    recovered = get_analysis_run(database_path, extension.id)
+    checkpoint = load_theme_batch(
+        database_path,
+        run_id=extension.id,
+        batch_number=1,
+        input_digest="a" * 64,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        contract_version=ANALYSIS_CONTRACT_VERSION,
+    )
+    assert recovered.review_revision_ids == reserved.review_revision_ids
+    assert checkpoint is not None
 
 
 def test_theme_batch_from_previous_contract_is_ignored(tmp_path: Path) -> None:
@@ -713,6 +1233,15 @@ def wait_for_completion(client: TestClient, run_id: str) -> dict:
     response = client.get(f"/api/analysis-runs/{run_id}")
     for _ in range(100):
         if response.json()["state"] == "completed":
+            break
+        response = client.get(f"/api/analysis-runs/{run_id}")
+    return response.json()
+
+
+def wait_for_terminal_state(client: TestClient, run_id: str) -> dict:
+    response = client.get(f"/api/analysis-runs/{run_id}")
+    for _ in range(100):
+        if response.json()["state"] in ("completed", "failed", "cancelled"):
             break
         response = client.get(f"/api/analysis-runs/{run_id}")
     return response.json()

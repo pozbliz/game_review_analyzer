@@ -66,6 +66,7 @@ from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     FullHistoryRequired,
     create_analysis_run,
     create_refresh_analysis_run,
+    fail_analysis_run,
     get_analysis_run,
     load_latest_analysis_run,
     recoverable_analysis_run_ids,
@@ -286,22 +287,41 @@ def create_app(
     )
 
     def run_analysis(run_id: str) -> None:
-        run = get_analysis_run(resolved_settings.database_path, run_id)
-        provider: AnalysisProvider | ThemeAnalysisProvider
-        if analysis_provider is not None:
-            provider = analysis_provider
-        elif run.provider == "codex-cli":
-            provider = CodexCliProvider(executable=shutil.which("codex") or "codex")
-        elif run.provider == "ollama":
-            provider = OllamaProvider(model=run.model)
-        else:
-            raise ValueError(f"Unsupported analysis provider: {run.provider}")
-        AnalysisRunner(
-            resolved_settings.database_path,
-            provider,
-            refresh_runner=runner,
-            batch_review_limit=250 if run.report_kind == "main" else 10,
-        ).run(run_id)
+        provider_ready: bool = False
+        try:
+            run = get_analysis_run(resolved_settings.database_path, run_id)
+            provider: AnalysisProvider | ThemeAnalysisProvider
+            if analysis_provider is not None:
+                provider = analysis_provider
+            elif run.provider == "codex-cli":
+                provider = CodexCliProvider(executable=shutil.which("codex") or "codex")
+            elif run.provider == "ollama":
+                provider = OllamaProvider(model=run.model)
+            else:
+                raise ValueError(f"Unsupported analysis provider: {run.provider}")
+            provider_ready = True
+            AnalysisRunner(
+                resolved_settings.database_path,
+                provider,
+                refresh_runner=runner,
+                batch_review_limit=250 if run.report_kind == "main" else 10,
+            ).run(run_id)
+        except Exception as error:
+            error_code: str = (
+                "internal_worker_error" if provider_ready else "provider_setup_failed"
+            )
+            fail_analysis_run(
+                resolved_settings.database_path,
+                run_id,
+                error_code,
+            )
+            log_event(
+                "analysis.failed",
+                level="error",
+                run_id=run_id,
+                error_code=error_code,
+                error_type=type(error).__name__,
+            )
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -325,6 +345,20 @@ def create_app(
 
     app = FastAPI(title="Game Review Analyzer", lifespan=lifespan)
     configure_telemetry(app, resolved_settings.database_path)
+
+    def submit_analysis(run: AnalysisRun) -> None:
+        try:
+            app.state.analysis_executor.submit(run_analysis, run.id)
+        except Exception as error:
+            fail_analysis_run(
+                resolved_settings.database_path,
+                run.id,
+                "dispatch_failed",
+            )
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "analysis_dispatch_failed"},
+            ) from error
 
     @app.middleware("http")
     async def record_http_errors(
@@ -436,7 +470,7 @@ def create_app(
             raise HTTPException(
                 status_code=409, detail={"code": "analysis_requires_reviews"}
             ) from error
-        app.state.analysis_executor.submit(run_analysis, run.id)
+        submit_analysis(run)
         return run
 
     @app.post(
@@ -478,7 +512,7 @@ def create_app(
             raise HTTPException(
                 status_code=409, detail={"code": "analysis_requires_reviews"}
             ) from error
-        app.state.analysis_executor.submit(run_analysis, run.id)
+        submit_analysis(run)
         return run
 
     @app.post(
@@ -535,7 +569,7 @@ def create_app(
             raise HTTPException(
                 status_code=409, detail={"code": "analysis_requires_reviews"}
             ) from error
-        app.state.analysis_executor.submit(run_analysis, run.id)
+        submit_analysis(run)
         return run
 
     @app.post(
@@ -574,7 +608,7 @@ def create_app(
             raise HTTPException(
                 status_code=409, detail={"code": "no_unseen_reviews"}
             ) from error
-        app.state.analysis_executor.submit(run_analysis, run.id)
+        submit_analysis(run)
         return run
 
     @app.get(
@@ -690,7 +724,7 @@ def create_app(
             raise HTTPException(
                 status_code=409, detail={"code": "analysis_requires_reviews"}
             ) from error
-        app.state.analysis_executor.submit(run_analysis, run.id)
+        submit_analysis(run)
         return run
 
     def existing_analysis_run(run_id: str) -> AnalysisRun:
@@ -728,7 +762,7 @@ def create_app(
             raise HTTPException(
                 status_code=409, detail={"code": "analysis_not_retryable"}
             ) from error
-        app.state.analysis_executor.submit(run_analysis, run.id)
+        submit_analysis(run)
         return run
 
     @app.post(f"{API_PREFIX}/catalog/sync", response_model=CatalogSyncResult)

@@ -99,28 +99,28 @@
 - [x] Add failing orchestration tests proving Extend and Replace refresh Steam before review selection.
 - [x] Connect Extend and Replace to the existing durable refresh path.
 - [x] Preserve the current report and expose a safe failure code when refresh fails.
-- [ ] Add selection tests for new reviews, ignored edits, partial final extensions, and oversized-review replacement.
+- [x] Add selection tests for new reviews, ignored edits, partial final extensions, and oversized-review replacement.
 - [x] Apply oversized-review replacement to both Main and Test Report selection.
 - [x] Select and reserve the exact post-refresh review scope in one transaction.
-- [ ] Add extension tests for fixed Theme definitions, candidate promotion, membership deduplication, and cumulative metrics.
+- [x] Add extension tests for fixed Theme definitions, candidate promotion, membership deduplication, and cumulative metrics.
 - [x] Implement cumulative extension from the reserved base report.
-- [ ] Add replacement tests proving prior memberships, candidates, and checkpoints are never reused.
+- [x] Add replacement tests proving prior memberships, candidates, and checkpoints are never reused.
 - [x] Implement fresh replacement runs while preserving the current report until success.
-- [ ] Add cancellation tests covering every boundary before report persistence.
+- [x] Add cancellation tests covering every boundary before report persistence.
 - [x] Prevent cancelled runs from saving or replacing either report slot.
 - [x] Add corrupted-checkpoint tests that require only the damaged batch to run again.
 - [x] Invalidate unreadable or incompatible checkpoints before retry.
-- [ ] Add worker tests for provider setup, dispatch, tracing, database, calculation, and persistence failures.
-- [ ] Guard the complete background-worker lifecycle and move every accepted run to a terminal state.
-- [ ] Add stage-specific safe failure codes without storing provider output or review text.
+- [x] Add worker tests for provider setup, dispatch, tracing, database, calculation, and persistence failures.
+- [x] Guard the complete background-worker lifecycle and move every accepted run to a terminal state.
+- [x] Add stage-specific safe failure codes without storing provider output or review text.
 - [x] Add frontend tests for actionable refresh, reservation, provider, checkpoint, cancellation, and internal failure messages.
 - [x] Map stable analysis codes to recovery instructions while retaining the raw code for diagnostics.
-- [ ] Add restart and retry tests proving the reserved scope and valid checkpoints survive interruption.
-- [ ] Verify every failed or cancelled path leaves the current report and bindings unchanged.
+- [x] Add restart and retry tests proving the reserved scope and valid checkpoints survive interruption.
+- [x] Verify every failed or cancelled path leaves the current report and bindings unchanged.
 - [x] Verify successful replacement updates the report and bindings in one transaction.
-- [ ] Update `README.md`, `DECISION_LOG.md`, and operation documentation after behavior is complete.
-- [ ] Run backend tests, frontend tests, TypeScript checks, and the production build.
-- [ ] Confirm no live Codex analysis ran during automated verification.
+- [x] Update `README.md`, `DECISION_LOG.md`, and operation documentation after behavior is complete.
+- [x] Run backend tests, frontend tests, TypeScript checks, and the production build.
+- [x] Confirm no live Codex analysis ran during automated verification.
 
 ### Remove Version 2 Behavior
 

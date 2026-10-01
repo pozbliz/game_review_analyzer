@@ -106,7 +106,11 @@ Back up the SQLite database before destructive maintenance or updates. Report ex
 4. Run both test suites.
 5. Start FastAPI; migrations run automatically and preserve existing data.
 
-Interrupted imports and analyses retain durable state. Use the visible retry or cancellation controls rather than editing SQLite. Run the storage integrity check from the Local data section when corruption is suspected. If startup fails, restore the database backup and the previous source revision together.
+Interrupted imports and analyses retain durable state. Extend and Replace resume their owned Steam refresh, exact reserved scope, and valid provider checkpoints.
+
+Use the visible retry or cancellation controls rather than editing SQLite. A failed or cancelled report update leaves the current report available. The interface shows a safe failure code and recovery instruction without storing provider output or review text.
+
+Run the storage integrity check from the Local data section when corruption is suspected. If startup fails, restore the database backup and the previous source revision together.
 
 ## Current release limits
 

@@ -38,9 +38,9 @@ Available reports appear as dated cards above `Create Report`. A Main Report can
 
 Each Test Report Theme can reveal its matching local reviews. Evidence is sorted by helpful votes and loaded only when opened. Individual reviews start expanded and can collapse independently.
 
-The current Test and Main Reports are saved separately from Version 2 reports. Remaining extension edge cases are still open.
+The current Test and Main Reports are saved separately from Version 2 reports. Extend and Replace reserve their report slot and exact post-refresh scope durably.
 Positive and negative Main Report candidates use separate merge calls. Invalid Theme output is retried once before the run fails.
-Checkpoints remain reusable only under the same provider contract.
+Retries keep the reserved scope and valid checkpoints. Corrupt or incompatible batch checkpoints are discarded and rebuilt without replacing the current report.
 Reports independently apply the selected Theme limit to positive and negative Themes that meet the selected cohort threshold. The two lists can have different counts. Evidence opens on a distinct sage review surface.
 
 Current application data was reset before this redesign. The gitignored evaluation corpus remains available.

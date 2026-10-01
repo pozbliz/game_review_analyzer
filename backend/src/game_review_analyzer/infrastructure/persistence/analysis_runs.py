@@ -452,6 +452,18 @@ def finish_analysis_run(
         )
 
 
+def fail_analysis_run(database_path: Path, run_id: str, error_code: str) -> None:
+    """Move accepted queued or running work to a safe failed state."""
+
+    with connect(database_path) as connection:
+        connection.execute(
+            "UPDATE analysis_runs SET state = 'failed', error_code = ?, "
+            "updated_at = CURRENT_TIMESTAMP WHERE id = ? "
+            "AND state IN ('queued', 'running')",
+            (error_code, run_id),
+        )
+
+
 def recoverable_analysis_run_ids(database_path: Path) -> list[str]:
     """Requeue interrupted provider runs and return queued identifiers."""
 

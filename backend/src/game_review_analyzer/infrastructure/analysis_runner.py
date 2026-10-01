@@ -48,6 +48,7 @@ from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     AnalysisRun,
+    fail_analysis_run,
     finish_analysis_run,
     get_analysis_run,
     reserve_refreshed_analysis_scope,
@@ -186,25 +187,28 @@ class AnalysisRunner:
                     error_code="invalid_refresh_scope",
                 )
                 return
-        log_event(
-            "analysis.started",
-            run_id=run.id,
-            app_id=run.app_id,
-            provider=run.provider,
-            model=run.model,
-            review_count=len(run.review_revision_ids),
-        )
-        with TRACER.start_as_current_span(
-            "analysis.run",
-            attributes={
-                "analysis.run.id": run.id,
-                "game.app_id": run.app_id,
-                "analysis.provider": run.provider,
-                "analysis.model": run.model,
-                "analysis.review.count": len(run.review_revision_ids),
-            },
-        ):
-            self._run_started(run, started_at)
+        try:
+            log_event(
+                "analysis.started",
+                run_id=run.id,
+                app_id=run.app_id,
+                provider=run.provider,
+                model=run.model,
+                review_count=len(run.review_revision_ids),
+            )
+            with TRACER.start_as_current_span(
+                "analysis.run",
+                attributes={
+                    "analysis.run.id": run.id,
+                    "game.app_id": run.app_id,
+                    "analysis.provider": run.provider,
+                    "analysis.model": run.model,
+                    "analysis.review.count": len(run.review_revision_ids),
+                },
+            ):
+                self._run_started(run, started_at)
+        except Exception:
+            fail_analysis_run(self._database_path, run.id, "tracing_failed")
 
     def _run_started(self, run: AnalysisRun, started_at: float) -> None:
         if run.report_kind == "test":
@@ -498,9 +502,15 @@ class AnalysisRunner:
 
     def _run_main_report(self, run: AnalysisRun, started_at: float) -> None:
         report_id: str = f"analysis-{run.id}"
-        current_report: AggregateReport | None = load_aggregate_report_slot(
-            self._database_path, run.app_id, "main"
-        )
+        try:
+            current_report: AggregateReport | None = load_aggregate_report_slot(
+                self._database_path, run.app_id, "main"
+            )
+        except Exception:
+            finish_analysis_run(
+                self._database_path, run.id, "failed", error_code="database_failed"
+            )
+            return
         if current_report is not None and current_report.report_id == report_id:
             finish_analysis_run(
                 self._database_path, run.id, "completed", report_version_id=report_id
@@ -517,6 +527,7 @@ class AnalysisRunner:
                 )
                 return
             extension_report = current_report
+        stage: str = "database"
         try:
             metadata: SteamMetadata | None = load_game_dataset(
                 self._database_path, run.app_id
@@ -531,6 +542,7 @@ class AnalysisRunner:
             )
             map_runs: list[ThemeProviderRun] = []
             merge_candidates: list[ThemeMergeCandidate] = []
+            stage = "provider_execution"
             for batch_number, batch_revision_ids in enumerate(
                 self._batches(run.review_revision_ids, revisions), start=1
             ):
@@ -691,6 +703,7 @@ class AnalysisRunner:
                 + run.recent_review_revision_ids
             )
 
+            stage = "calculation"
             all_metrics: AggregateThemeMetrics = calculate_aggregate_theme_metrics(
                 review_revision_ids,
                 oldest_revision_ids,
@@ -753,6 +766,7 @@ class AnalysisRunner:
             usages: tuple[ProviderUsage, ...] = tuple(
                 provider_run.usage for provider_run in map_runs
             ) + tuple(merge_usages)
+            stage = "persistence"
             completed: bool = complete_aggregate_report_run(
                 self._database_path,
                 run.id,
@@ -796,8 +810,9 @@ class AnalysisRunner:
                 error_type=type(error).__name__,
             )
         except Exception as error:
+            error_code: str = f"{stage}_failed"
             finish_analysis_run(
-                self._database_path, run.id, "failed", error_code="internal_analysis_error"
+                self._database_path, run.id, "failed", error_code=error_code
             )
             log_event(
                 "analysis.failed",
@@ -805,20 +820,27 @@ class AnalysisRunner:
                 run_id=run.id,
                 report_kind="main",
                 duration_ms=round((monotonic() - started_at) * 1000),
-                error_code="internal_analysis_error",
+                error_code=error_code,
                 error_type=type(error).__name__,
             )
 
     def _run_test_report(self, run: AnalysisRun, started_at: float) -> None:
         report_id: str = f"analysis-{run.id}"
-        current_report: AggregateReport | None = load_aggregate_report_slot(
-            self._database_path, run.app_id, "test"
-        )
+        try:
+            current_report: AggregateReport | None = load_aggregate_report_slot(
+                self._database_path, run.app_id, "test"
+            )
+        except Exception:
+            finish_analysis_run(
+                self._database_path, run.id, "failed", error_code="database_failed"
+            )
+            return
         if current_report is not None and current_report.report_id == report_id:
             finish_analysis_run(
                 self._database_path, run.id, "completed", report_version_id=report_id
             )
             return
+        stage: str = "database"
         try:
             metadata = load_game_dataset(self._database_path, run.app_id)
             if metadata is None:
@@ -839,6 +861,7 @@ class AnalysisRunner:
                 ),
             )
             cancellation = _DurableCancellation(self._database_path, run.id)
+            stage = "provider_execution"
             provider_run: ThemeProviderRun = self._theme_provider().analyze_themes(
                 request,
                 cancel_event=cancellation,
@@ -870,6 +893,7 @@ class AnalysisRunner:
                 for candidate in provider_run.result.themes
                 for review_id in candidate.supporting_review_revision_ids
             )
+            stage = "calculation"
             all_metrics: AggregateThemeMetrics = calculate_aggregate_theme_metrics(
                 run.review_revision_ids,
                 run.early_review_revision_ids,
@@ -922,6 +946,7 @@ class AnalysisRunner:
             if cancellation.is_set():
                 finish_analysis_run(self._database_path, run.id, "cancelled")
                 return
+            stage = "persistence"
             completed: bool = complete_aggregate_report_run(
                 self._database_path,
                 run.id,
@@ -964,8 +989,9 @@ class AnalysisRunner:
                 error_type=type(error).__name__,
             )
         except Exception as error:
+            error_code: str = f"{stage}_failed"
             finish_analysis_run(
-                self._database_path, run.id, "failed", error_code="internal_analysis_error"
+                self._database_path, run.id, "failed", error_code=error_code
             )
             log_event(
                 "analysis.failed",
@@ -973,7 +999,7 @@ class AnalysisRunner:
                 run_id=run.id,
                 report_kind="test",
                 duration_ms=round((monotonic() - started_at) * 1000),
-                error_code="internal_analysis_error",
+                error_code=error_code,
                 error_type=type(error).__name__,
             )
 

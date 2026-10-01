@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-10-01 - Accepted analysis runs fail by named stage
+
+**What changed:**
+
+- Guarded provider setup, executor dispatch, tracing, database access, provider execution, calculation, and persistence.
+- Added safe stage codes and actionable frontend recovery text while retaining the raw code.
+- Kept reserved scopes and valid checkpoints across retry and restart recovery.
+
+**Why:**
+
+- An exception outside the prior provider try blocks could leave accepted work queued or running forever.
+- Named stages identify the failed boundary without persisting review text or provider output.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-01 - Report completion is one guarded transaction
 
 **What changed:**
