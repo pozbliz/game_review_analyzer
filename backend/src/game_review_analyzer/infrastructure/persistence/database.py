@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 15
+CURRENT_SCHEMA_VERSION = 16
 
 
 def initialize_database(database_path: Path) -> None:
@@ -224,6 +224,33 @@ def initialize_database(database_path: Path) -> None:
                 "CHECK (oversized_review_count >= 0)"
             )
             connection.execute("INSERT INTO schema_migrations(version) VALUES (15)")
+        if 16 not in applied_versions:
+            connection.execute(
+                "ALTER TABLE analysis_runs ADD COLUMN operation TEXT "
+                "CHECK (operation IN ('create', 'extend', 'replace', 'test'))"
+            )
+            connection.execute(
+                "ALTER TABLE analysis_runs ADD COLUMN base_report_id TEXT"
+            )
+            connection.execute(
+                "ALTER TABLE analysis_runs ADD COLUMN refresh_job_id TEXT "
+                "REFERENCES analysis_jobs(id)"
+            )
+            connection.execute(
+                "UPDATE analysis_runs SET state = 'failed', "
+                "error_code = 'reservation_conflict' "
+                "WHERE report_kind IS NOT NULL "
+                "AND state IN ('queued', 'running') AND rowid NOT IN ("
+                "SELECT MIN(rowid) FROM analysis_runs "
+                "WHERE report_kind IS NOT NULL AND state IN ('queued', 'running') "
+                "GROUP BY app_id, report_kind)"
+            )
+            connection.execute(
+                "CREATE UNIQUE INDEX analysis_runs_active_report_slot "
+                "ON analysis_runs(app_id, report_kind) "
+                "WHERE report_kind IS NOT NULL AND state IN ('queued', 'running')"
+            )
+            connection.execute("INSERT INTO schema_migrations(version) VALUES (16)")
 
 
 def schema_version(database_path: Path) -> int:

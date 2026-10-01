@@ -93,15 +93,34 @@
 - [x] Return to the selected game page automatically after report deletion.
 - [x] Analyze up to 1,000 unseen reviews and replace the Main Report only after success.
 - [x] Let `Create Report` run a fresh 1,000-review replacement while preserving the current report until success.
-- [ ] Add refresh and unseen-review selection tests.
-- [ ] Cover new reviews, ignored edits, partial final extensions, and exact reservations.
-- [ ] Add concurrency tests preventing duplicate scope reservations.
-- [ ] Add extension merge tests for fixed Themes and candidate promotion.
-- [ ] Add replacement tests that prohibit prior-analysis reuse.
-- [ ] Implement atomic extension and replacement.
-- [ ] Add cancellation, retry, restart, and checkpoint-reuse tests.
-- [ ] Build Extend and Replace controls with current-report preservation.
-- [ ] Verify failures never change the current Main Report.
+- [x] Add failing persistence tests for run intent, base report identity, exact reserved scope, and independent Main and Test Report reservations.
+- [x] Add the database migration and repository behavior for atomic report-slot reservations.
+- [x] Add concurrency tests that reject duplicate reservations while allowing independent Main and Test Report work.
+- [ ] Add failing orchestration tests proving Extend and Replace refresh Steam before review selection.
+- [ ] Connect Extend and Replace to the existing durable refresh path.
+- [ ] Preserve the current report and expose a safe failure code when refresh fails.
+- [ ] Add selection tests for new reviews, ignored edits, partial final extensions, and oversized-review replacement.
+- [ ] Apply oversized-review replacement to both Main and Test Report selection.
+- [ ] Select and reserve the exact post-refresh review scope in one transaction.
+- [ ] Add extension tests for fixed Theme definitions, candidate promotion, membership deduplication, and cumulative metrics.
+- [ ] Implement cumulative extension from the reserved base report.
+- [ ] Add replacement tests proving prior memberships, candidates, and checkpoints are never reused.
+- [ ] Implement fresh replacement runs while preserving the current report until success.
+- [ ] Add cancellation tests covering every boundary before report persistence.
+- [ ] Prevent cancelled runs from saving or replacing either report slot.
+- [ ] Add corrupted-checkpoint tests that require only the damaged batch to run again.
+- [ ] Invalidate unreadable or incompatible checkpoints before retry.
+- [ ] Add worker tests for provider setup, dispatch, tracing, database, calculation, and persistence failures.
+- [ ] Guard the complete background-worker lifecycle and move every accepted run to a terminal state.
+- [ ] Add stage-specific safe failure codes without storing provider output or review text.
+- [ ] Add frontend tests for actionable refresh, reservation, provider, checkpoint, cancellation, and internal failure messages.
+- [ ] Map stable analysis codes to recovery instructions while retaining the raw code for diagnostics.
+- [ ] Add restart and retry tests proving the reserved scope and valid checkpoints survive interruption.
+- [ ] Verify every failed or cancelled path leaves the current report and bindings unchanged.
+- [ ] Verify successful replacement updates the report and bindings in one transaction.
+- [ ] Update `README.md`, `DECISION_LOG.md`, and operation documentation after behavior is complete.
+- [ ] Run backend tests, frontend tests, TypeScript checks, and the production build.
+- [ ] Confirm no live Codex analysis ran during automated verification.
 
 ### Remove Version 2 Behavior
 

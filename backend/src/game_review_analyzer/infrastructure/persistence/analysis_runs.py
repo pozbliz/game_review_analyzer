@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+import sqlite3
 from typing import Literal
 from uuid import uuid4
 
@@ -12,6 +13,7 @@ from game_review_analyzer.infrastructure.persistence.jobs import connect
 
 
 MAIN_REPORT_BATCH_CHARACTER_LIMIT = 32_000
+AnalysisOperation = Literal["create", "extend", "replace", "test"]
 
 
 class AnalysisRun(BaseModel):
@@ -35,6 +37,9 @@ class AnalysisRun(BaseModel):
     extracted_review_count: int
     report_kind: Literal["main", "test"] | None
     oversized_review_count: int
+    operation: AnalysisOperation | None
+    base_report_id: str | None
+    refresh_job_id: str | None
 
     @computed_field
     @property
@@ -63,6 +68,10 @@ class FullHistoryRequired(ValueError):
     """Require a completed Full import before chronological cohort selection."""
 
 
+class AnalysisReservationConflict(ValueError):
+    """Reject a second active run for one report slot."""
+
+
 def create_analysis_run(
     database_path: Path,
     *,
@@ -73,121 +82,135 @@ def create_analysis_run(
     cohort_size: int = 2_500,
     report_kind: Literal["main", "test"] | None = None,
     excluded_revision_ids: tuple[int, ...] = (),
+    operation: AnalysisOperation | None = None,
+    base_report_id: str | None = None,
+    refresh_job_id: str | None = None,
 ) -> AnalysisRun:
     """Queue a provider run over non-overlapping oldest and newest review cohorts."""
 
     if not 1 <= cohort_size <= 2_500:
         raise ValueError("Cohort size must be between 1 and 2,500")
 
-    with connect(database_path) as connection:
-        completed_full_import: tuple[int] | None = connection.execute(
-            "SELECT 1 FROM analysis_jobs WHERE app_id = ? AND scope = 'full' "
-            "AND state = 'completed' LIMIT 1",
-            (app_id,),
-        ).fetchone()
-        if completed_full_import is None:
-            raise FullHistoryRequired(
-                "Analysis requires a completed full-history import"
-            )
-        excluded_review_ids: set[str] = set()
-        if excluded_revision_ids:
-            placeholders: str = ",".join("?" for _ in excluded_revision_ids)
-            excluded_review_ids = {
-                str(row[0])
-                for row in connection.execute(
-                    "SELECT review_id FROM review_revisions "
-                    f"WHERE id IN ({placeholders})",
-                    excluded_revision_ids,
-                )
-            }
-        ordered_revisions: tuple[tuple[int, str], ...] = tuple(
-            (int(row[0]), str(row[1]))
-            for row in connection.execute(
-                "SELECT review_revisions.id, review_revisions.content_json, reviews.id "
-                "FROM review_revisions "
-                "JOIN reviews ON reviews.id = review_revisions.review_id "
-                "WHERE reviews.app_id = ? AND NOT EXISTS ("
-                "SELECT 1 FROM review_revisions newer "
-                "WHERE newer.review_id = review_revisions.review_id "
-                "AND newer.id > review_revisions.id) "
-                "ORDER BY json_extract(review_revisions.content_json, '$.source_created_at'), "
-                "reviews.id, review_revisions.id",
+    try:
+        with connect(database_path) as connection:
+            completed_full_import: tuple[int] | None = connection.execute(
+                "SELECT 1 FROM analysis_jobs WHERE app_id = ? AND scope = 'full' "
+                "AND state = 'completed' LIMIT 1",
                 (app_id,),
-            )
-            if str(row[2]) not in excluded_review_ids
-        )
-        eligible_by_id: dict[int, bool] = {
-            revision_id: (
-                report_kind != "main"
-                or len(str(json.loads(content_json)["text"]))
-                <= MAIN_REPORT_BATCH_CHARACTER_LIMIT
-            )
-            for revision_id, content_json in ordered_revisions
-        }
-        ordered_revision_ids: tuple[int, ...] = tuple(
-            revision_id
-            for revision_id, _ in ordered_revisions
-            if eligible_by_id[revision_id]
-        )
-        if not ordered_revision_ids:
-            raise ValueError("Analysis requires an existing review dataset")
-        oversized_review_count: int = 0
-        if report_kind == "main" and len(ordered_revision_ids) > cohort_size * 2:
-            early_list: list[int] = []
-            skipped_ids: set[int] = set()
-            for revision_id, _ in ordered_revisions:
-                if eligible_by_id[revision_id]:
-                    early_list.append(revision_id)
-                    if len(early_list) == cohort_size:
-                        break
-                else:
-                    skipped_ids.add(revision_id)
-            early_revision_ids = tuple(early_list)
-            early_ids: set[int] = set(early_revision_ids)
-            recent_list: list[int] = []
-            for revision_id, _ in reversed(ordered_revisions):
-                if revision_id in early_ids:
-                    continue
-                if eligible_by_id[revision_id]:
-                    recent_list.append(revision_id)
-                    if len(recent_list) == cohort_size:
-                        break
-                else:
-                    skipped_ids.add(revision_id)
-            recent_revision_ids = tuple(reversed(recent_list))
-            oversized_review_count = len(skipped_ids)
-        elif len(ordered_revision_ids) <= cohort_size * 2:
-            midpoint: int = len(ordered_revision_ids) // 2
-            early_revision_ids: tuple[int, ...] = ordered_revision_ids[:midpoint]
-            recent_revision_ids: tuple[int, ...] = ordered_revision_ids[midpoint:]
-            if report_kind == "main":
-                oversized_review_count = len(ordered_revisions) - len(
-                    ordered_revision_ids
+            ).fetchone()
+            if completed_full_import is None:
+                raise FullHistoryRequired(
+                    "Analysis requires a completed full-history import"
                 )
-        else:
-            early_revision_ids = ordered_revision_ids[:cohort_size]
-            recent_revision_ids = ordered_revision_ids[-cohort_size:]
-        revision_ids: tuple[int, ...] = early_revision_ids + recent_revision_ids
-        run_id = str(uuid4())
-        connection.execute(
-            "INSERT INTO analysis_runs("
-            "id, app_id, provider, model, state, review_revision_ids_json, "
-            "early_review_revision_ids_json, recent_review_revision_ids_json, "
-            "metric_policy_json, report_kind, oversized_review_count) "
-            "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?)",
-            (
-                run_id,
-                app_id,
-                provider,
-                model,
-                json.dumps(revision_ids),
-                json.dumps(early_revision_ids),
-                json.dumps(recent_revision_ids),
-                metric_policy.model_dump_json(),
-                report_kind,
-                oversized_review_count,
-            ),
-        )
+            excluded_review_ids: set[str] = set()
+            if excluded_revision_ids:
+                placeholders: str = ",".join("?" for _ in excluded_revision_ids)
+                excluded_review_ids = {
+                    str(row[0])
+                    for row in connection.execute(
+                        "SELECT review_id FROM review_revisions "
+                        f"WHERE id IN ({placeholders})",
+                        excluded_revision_ids,
+                    )
+                }
+            ordered_revisions: tuple[tuple[int, str], ...] = tuple(
+                (int(row[0]), str(row[1]))
+                for row in connection.execute(
+                    "SELECT review_revisions.id, review_revisions.content_json, reviews.id "
+                    "FROM review_revisions "
+                    "JOIN reviews ON reviews.id = review_revisions.review_id "
+                    "WHERE reviews.app_id = ? AND NOT EXISTS ("
+                    "SELECT 1 FROM review_revisions newer "
+                    "WHERE newer.review_id = review_revisions.review_id "
+                    "AND newer.id > review_revisions.id) "
+                    "ORDER BY json_extract(review_revisions.content_json, "
+                    "'$.source_created_at'), reviews.id, review_revisions.id",
+                    (app_id,),
+                )
+                if str(row[2]) not in excluded_review_ids
+            )
+            eligible_by_id: dict[int, bool] = {
+                revision_id: (
+                    report_kind is None
+                    or len(str(json.loads(content_json)["text"]))
+                    <= MAIN_REPORT_BATCH_CHARACTER_LIMIT
+                )
+                for revision_id, content_json in ordered_revisions
+            }
+            ordered_revision_ids: tuple[int, ...] = tuple(
+                revision_id
+                for revision_id, _ in ordered_revisions
+                if eligible_by_id[revision_id]
+            )
+            if not ordered_revision_ids:
+                raise ValueError("Analysis requires an existing review dataset")
+            oversized_review_count: int = 0
+            if report_kind is not None and len(ordered_revision_ids) > cohort_size * 2:
+                early_list: list[int] = []
+                skipped_ids: set[int] = set()
+                for revision_id, _ in ordered_revisions:
+                    if eligible_by_id[revision_id]:
+                        early_list.append(revision_id)
+                        if len(early_list) == cohort_size:
+                            break
+                    else:
+                        skipped_ids.add(revision_id)
+                early_revision_ids = tuple(early_list)
+                early_ids: set[int] = set(early_revision_ids)
+                recent_list: list[int] = []
+                for revision_id, _ in reversed(ordered_revisions):
+                    if revision_id in early_ids:
+                        continue
+                    if eligible_by_id[revision_id]:
+                        recent_list.append(revision_id)
+                        if len(recent_list) == cohort_size:
+                            break
+                    else:
+                        skipped_ids.add(revision_id)
+                recent_revision_ids = tuple(reversed(recent_list))
+                oversized_review_count = len(skipped_ids)
+            elif len(ordered_revision_ids) <= cohort_size * 2:
+                midpoint: int = len(ordered_revision_ids) // 2
+                early_revision_ids = ordered_revision_ids[:midpoint]
+                recent_revision_ids = ordered_revision_ids[midpoint:]
+                if report_kind is not None:
+                    oversized_review_count = len(ordered_revisions) - len(
+                        ordered_revision_ids
+                    )
+            else:
+                early_revision_ids = ordered_revision_ids[:cohort_size]
+                recent_revision_ids = ordered_revision_ids[-cohort_size:]
+            revision_ids: tuple[int, ...] = early_revision_ids + recent_revision_ids
+            run_id: str = str(uuid4())
+            connection.execute(
+                "INSERT INTO analysis_runs("
+                "id, app_id, provider, model, state, review_revision_ids_json, "
+                "early_review_revision_ids_json, recent_review_revision_ids_json, "
+                "metric_policy_json, report_kind, oversized_review_count, operation, "
+                "base_report_id, refresh_job_id) "
+                "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    run_id,
+                    app_id,
+                    provider,
+                    model,
+                    json.dumps(revision_ids),
+                    json.dumps(early_revision_ids),
+                    json.dumps(recent_revision_ids),
+                    metric_policy.model_dump_json(),
+                    report_kind,
+                    oversized_review_count,
+                    operation,
+                    base_report_id,
+                    refresh_job_id,
+                ),
+            )
+    except sqlite3.IntegrityError as error:
+        if "analysis_runs.app_id, analysis_runs.report_kind" in str(error):
+            raise AnalysisReservationConflict(
+                "Another analysis already reserves this report slot"
+            ) from error
+        raise
     return get_analysis_run(database_path, run_id)
 
 
@@ -200,7 +223,8 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
             "metric_policy_json, cancel_requested, error_code, report_version_id, "
             "input_tokens, cached_input_tokens, output_tokens, "
             "early_review_revision_ids_json, recent_review_revision_ids_json, "
-            "report_kind, oversized_review_count, "
+            "report_kind, oversized_review_count, operation, base_report_id, "
+            "refresh_job_id, "
             "CASE WHEN report_kind = 'main' THEN COALESCE(("
             "SELECT SUM(json_array_length(json_extract(batch.result_json, "
             "'$.completed_review_revision_ids'))) FROM analysis_theme_batches batch "
@@ -226,7 +250,10 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
         recent_review_revision_ids=tuple(json.loads(row[14])),
         report_kind=row[15],
         oversized_review_count=int(row[16]),
-        extracted_review_count=int(row[17]),
+        operation=row[17],
+        base_report_id=row[18],
+        refresh_job_id=row[19],
+        extracted_review_count=int(row[20]),
     )
 
 

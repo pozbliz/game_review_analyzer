@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-10-01 - Analysis runs reserve report slots atomically
+
+**What changed:**
+
+- Added persisted analysis operation and base-report identity fields.
+- Added one active reservation per game and report kind while keeping Main and Test Report reservations independent.
+- Migrated duplicate active reservations to failed state before enforcing the database constraint.
+
+**Why:**
+
+- Request-time checks could race and allow two runs to target the same report slot.
+- Persisted intent prevents queued work from inferring its meaning from a later report state.
+
+**New issues:**
+
+- Refresh-backed runs still need a durable refresh-job association and post-refresh scope reservation.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-01 - Main Report merges are separated by polarity
 
 **What changed:**

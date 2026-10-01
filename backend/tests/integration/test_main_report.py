@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from game_review_analyzer.application.provider import (
     AnalysisProviderError,
     ProviderUsage,
@@ -20,8 +22,10 @@ from game_review_analyzer.domain.reports import ThemeMetricPolicy
 from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
+    AnalysisReservationConflict,
     create_analysis_run,
     get_analysis_run,
+    request_analysis_cancellation,
     retry_analysis_run,
 )
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
@@ -48,6 +52,66 @@ from game_review_analyzer.infrastructure.persistence.theme_batches import (
 from game_review_analyzer.interfaces.http.app import create_app
 from game_review_analyzer.shared.config import Settings
 from fastapi.testclient import TestClient
+
+
+def test_report_slots_reserve_persisted_run_intent_independently(
+    tmp_path: Path,
+) -> None:
+    database_path: Path = seeded_database(tmp_path, review_count=100)
+
+    main_run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+        cohort_size=25,
+        report_kind="main",
+        operation="create",
+    )
+
+    assert main_run.operation == "create"
+    assert main_run.base_report_id is None
+    assert main_run.review_count == 50
+    with pytest.raises(AnalysisReservationConflict):
+        create_analysis_run(
+            database_path,
+            app_id=1145350,
+            provider="codex-cli",
+            model="gpt-5.6-luna",
+            metric_policy=metric_policy(),
+            cohort_size=25,
+            report_kind="main",
+            operation="replace",
+            base_report_id="report-1",
+        )
+
+    test_run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+        cohort_size=25,
+        report_kind="test",
+        operation="test",
+    )
+    assert test_run.operation == "test"
+
+    request_analysis_cancellation(database_path, main_run.id)
+    replacement = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+        cohort_size=25,
+        report_kind="main",
+        operation="replace",
+        base_report_id="report-1",
+    )
+    assert replacement.operation == "replace"
+    assert replacement.base_report_id == "report-1"
 
 
 def test_main_report_selects_500_oldest_and_500_newest_complete_reviews(
