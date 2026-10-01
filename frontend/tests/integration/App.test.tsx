@@ -15,12 +15,39 @@ describe("application shell", () => {
   it.each([
     ["steam_unavailable", "Steam refresh failed"],
     ["reservation_conflict", "Another analysis owns this report slot"],
+    ["no_unseen_reviews", "No unseen usable reviews remain"],
     ["provider_nonzero_exit", "The analysis provider failed"],
     ["checkpoint_invalid", "Saved progress was invalid"],
     ["cancelled", "Analysis was cancelled"],
     ["internal_analysis_error", "internal error"],
   ])("maps %s to actionable recovery text", (code, expected) => {
     expect(analysisFailureMessage(code)).toContain(expected);
+  });
+
+  it("shows the reservation code returned when report creation conflicts", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/games/1145350/reports") return json([]);
+      if (url === "/api/games/1145350/workspace") return json(workspace(true));
+      if (url === "/api/games/1145350/reports/test" && options?.method === "POST") {
+        return new Response(JSON.stringify({
+          detail: { code: "test_report_analysis_active" },
+        }), { status: 409 });
+      }
+      return json(metadata());
+    });
+
+    render(<App />);
+    await previewGame();
+    fireEvent.click(await screen.findByRole("button", { name: "Create Report" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Another analysis owns this report slot",
+    );
   });
 
   it("shows recent saved reports beside game search", async () => {

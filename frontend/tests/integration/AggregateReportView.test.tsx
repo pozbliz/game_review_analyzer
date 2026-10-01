@@ -119,6 +119,31 @@ describe("aggregate Test Report", () => {
     );
   });
 
+  it("shows the reservation code returned when extension conflicts", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
+      if (options?.method === "POST") {
+        return new Response(JSON.stringify({
+          detail: { code: "main_report_analysis_active" },
+        }), { status: 409 });
+      }
+      return new Response(JSON.stringify({
+        schema_version: "3.0", report_id: "main-report",
+        created_at: "2026-09-30 04:06:47", kind: "main",
+        game: { app_id: 1145350, title: "Hades II" }, metadata: metadata(),
+        scope: { review_count: 1_000, oldest_review_count: 500, newest_review_count: 500, oversized_review_count: 0 },
+        provider: "codex-cli", model: "gpt-5.6-luna",
+        positive_themes: [], negative_themes: [],
+      }), { status: 200 });
+    });
+
+    render(<AggregateReportView appId={1145350} kind="main" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Extend Report" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Another analysis owns this report slot",
+    );
+  });
+
   it("deletes a report immediately from the bottom button", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
       if (options?.method === "POST") return new Response(null, { status: 204 });

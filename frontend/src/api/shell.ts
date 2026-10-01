@@ -160,6 +160,28 @@ export interface AggregateReportSettings {
   maximum_headlines_per_polarity: number;
 }
 
+export function analysisFailureMessage(code: string): string {
+  if (["steam_unavailable", "invalid_steam_response", "cursor_repeated", "internal_import_error"].includes(code)) {
+    return "Steam refresh failed. Retry to resume from the saved refresh checkpoint.";
+  }
+  if (["reservation_conflict", "main_report_analysis_active", "test_report_analysis_active"].includes(code)) {
+    return "Another analysis owns this report slot. Wait for it to finish or cancel it.";
+  }
+  if (code === "no_unseen_reviews") {
+    return "No unseen usable reviews remain. The current report already covers every eligible review.";
+  }
+  if (code.startsWith("provider_") || code === "codex_cli_not_ready") {
+    return "The analysis provider failed. Check provider access, then retry this run.";
+  }
+  if (code.includes("checkpoint") || code === "invalid_refresh_scope") {
+    return "Saved progress was invalid. Retry to rebuild only the affected stage.";
+  }
+  if (code === "cancelled") {
+    return "Analysis was cancelled. Resume to continue from saved progress.";
+  }
+  return "Analysis stopped because of an internal error. Retry once, then inspect the error code if it repeats.";
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -176,7 +198,18 @@ function isMissingMetadataField(value: unknown): value is MissingMetadataField {
 
 async function requestJson(path: string, options?: RequestInit): Promise<unknown> {
   const response: Response = options ? await fetch(path, options) : await fetch(path);
-  if (!response.ok) throw new Error(`Request failed: ${path}`);
+  if (!response.ok) {
+    let code: string = "request_failed";
+    try {
+      const payload: unknown = await response.json();
+      if (isRecord(payload) && isRecord(payload.detail) && typeof payload.detail.code === "string") {
+        code = payload.detail.code;
+      }
+    } catch {
+      // The stable fallback keeps non-JSON proxy failures actionable.
+    }
+    throw new Error(code);
+  }
   return response.json() as Promise<unknown>;
 }
 

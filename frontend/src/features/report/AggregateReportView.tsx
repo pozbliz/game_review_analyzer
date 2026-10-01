@@ -8,7 +8,7 @@ import {
   getTestReport,
 } from "../../api/reports";
 import StorefrontOverview from "../game/StorefrontOverview";
-import { extendMainReport } from "../../api/shell";
+import { analysisFailureMessage, extendMainReport } from "../../api/shell";
 import { deleteReport } from "../../api/storage";
 
 interface AggregateReportViewProps {
@@ -25,6 +25,7 @@ export default function AggregateReportView(
   const [evidence, setEvidence] = useState<Record<string, AggregateThemeEvidence>>({});
   const [evidenceError, setEvidenceError] = useState<string>("");
   const [extensionState, setExtensionState] = useState<"idle" | "starting" | "started" | "failed">("idle");
+  const [extensionError, setExtensionError] = useState<string>("");
   const [deleteState, setDeleteState] = useState<"idle" | "deleting" | "failed">("idle");
 
   useEffect(() => {
@@ -54,12 +55,20 @@ export default function AggregateReportView(
 
   function extendReport(): void {
     setExtensionState("starting");
+    setExtensionError("");
     extendMainReport(appId)
       .then((run) => {
         window.localStorage.setItem("active-analysis-run", run.id);
         setExtensionState("started");
       })
-      .catch(() => setExtensionState("failed"));
+      .catch((error: unknown) => {
+        setExtensionState("failed");
+        setExtensionError(
+          error instanceof Error
+            ? analysisFailureMessage(error.message)
+            : "Unable to extend this report.",
+        );
+      });
   }
 
   function removeReport(): void {
@@ -104,7 +113,7 @@ export default function AggregateReportView(
         <div><span>Provider</span><strong>{report.provider} · {report.model}</strong></div>
       </section>
       {extensionState === "started" && <p role="status">Report extension started. You can return to the game catalog to follow progress.</p>}
-      {extensionState === "failed" && <p className="error" role="alert">Unable to extend this report.</p>}
+      {extensionState === "failed" && <p className="error" role="alert">{extensionError}</p>}
       {report.positive_themes.length === 0 && report.negative_themes.length === 0 ? (
         <section className="empty-report" role="status">
           <h2>No main Theme met the 5% threshold</h2>

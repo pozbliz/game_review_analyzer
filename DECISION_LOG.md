@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-10-01 - Extension identity and revision scope stay fixed
+
+**What changed:**
+
+- Pinned Extend to the current report's provider and model.
+- Selected exact Review Revisions from the completed refresh snapshot, even if a later import records an edit.
+- Added a terminal `no_unseen_reviews` outcome and propagated reservation codes to report controls.
+
+**Why:**
+
+- Extension must preserve one analysis contract and must not silently lose identities during concurrent imports.
+- Retrying a fully covered report cannot create new work and needs distinct recovery guidance.
+
+**New issues:**
+
+- The Extend control does not show the remaining usable count before refresh.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-01 - Accepted analysis runs fail by named stage
 
 **What changed:**

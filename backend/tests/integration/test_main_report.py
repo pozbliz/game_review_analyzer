@@ -95,8 +95,7 @@ def test_report_slots_reserve_persisted_run_intent_independently(
             metric_policy=metric_policy(),
             cohort_size=25,
             report_kind="main",
-            operation="replace",
-            base_report_id="report-1",
+            operation="create",
         )
 
     test_run = create_analysis_run(
@@ -120,11 +119,10 @@ def test_report_slots_reserve_persisted_run_intent_independently(
         metric_policy=metric_policy(),
         cohort_size=25,
         report_kind="main",
-        operation="replace",
-        base_report_id="report-1",
+        operation="create",
     )
-    assert replacement.operation == "replace"
-    assert replacement.base_report_id == "report-1"
+    assert replacement.operation == "create"
+    assert replacement.base_report_id is None
 
 
 def test_main_report_selects_500_oldest_and_500_newest_complete_reviews(
@@ -243,8 +241,9 @@ def test_extension_selects_new_reviews_ignores_edits_and_allows_partial_scope(
             yield ReviewPage(reviews=refreshed_reviews, next_cursor="done")
             yield ReviewPage(reviews=(), next_cursor="done")
 
+    selected_model: list[str] = ["gpt-5.6-luna"]
     status = lambda: CodexCliStatus(
-        True, True, "codex-cli test", "gpt-5.6-luna", "low"
+        True, True, "codex-cli test", selected_model[0], "low"
     )
     with TestClient(create_app(
         Settings(database_path=database_path),
@@ -254,6 +253,7 @@ def test_extension_selects_new_reviews_ignores_edits_and_allows_partial_scope(
     )) as client:
         initial = client.post("/api/games/1145350/reports/main")
         wait_for_completion(client, initial.json()["id"])
+        selected_model[0] = "gpt-new-default"
         extension = client.post("/api/games/1145350/reports/main/extend")
         completed = wait_for_completion(client, extension.json()["id"])
 
@@ -261,6 +261,7 @@ def test_extension_selects_new_reviews_ignores_edits_and_allows_partial_scope(
         database_path, tuple(completed["review_revision_ids"])
     )
     assert completed["review_count"] == 201
+    assert completed["model"] == "gpt-5.6-luna"
     assert completed["oversized_review_count"] == 1
     assert {"new-review-1", "new-review-2"}.issubset(
         review.review_id for review in selected.values()
@@ -910,6 +911,15 @@ def test_restart_preserves_the_reserved_scope_and_valid_checkpoint(
     assert extension.refresh_job_id is not None
     start_job(database_path, extension.refresh_job_id)
     finish_job(database_path, extension.refresh_job_id, "completed")
+    old_revision = load_review_revisions_by_ids(database_path, (501,))[501]
+    save_review_revisions(
+        database_path,
+        1145350,
+        (old_revision.model_copy(update={
+            "text": "Edited after refresh",
+            "source_updated_at": 9_999,
+        }),),
+    )
     analysis_runner_module.start_analysis_run(database_path, extension.id)
     reserved = reserve_refreshed_analysis_scope(database_path, extension.id)
     provider_run = ThemeProviderRun(
@@ -948,6 +958,7 @@ def test_restart_preserves_the_reserved_scope_and_valid_checkpoint(
         contract_version=ANALYSIS_CONTRACT_VERSION,
     )
     assert recovered.review_revision_ids == reserved.review_revision_ids
+    assert 501 in recovered.review_revision_ids
     assert checkpoint is not None
 
 
@@ -1227,6 +1238,54 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
     assert failed["state"] == "failed"
     assert retained_report["report_id"] == extended_report["report_id"]
     assert refresh_source.calls == 3
+
+
+def test_extension_reports_when_no_unseen_reviews_remain(tmp_path: Path) -> None:
+    class EmptyRefreshSource:
+        def iter_pages(self, app_id: int, start_cursor: str = "*"):
+            del app_id, start_cursor
+            yield ReviewPage(reviews=(), next_cursor="done")
+
+    class EmptyThemeProvider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version="3.1",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=tuple(
+                        review.review_revision_id for review in request.reviews
+                    ),
+                    themes=(),
+                ),
+                usage=ProviderUsage(1, 0, 1),
+            )
+
+    database_path: Path = seeded_database(tmp_path, review_count=2)
+    status = lambda: CodexCliStatus(
+        True, True, "codex-cli test", "gpt-5.6-luna", "low"
+    )
+    with TestClient(create_app(
+        Settings(database_path=database_path),
+        codex_status_source=status,
+        analysis_provider=EmptyThemeProvider(),
+        review_source=EmptyRefreshSource(),
+    )) as client:
+        initial = client.post("/api/games/1145350/reports/main")
+        wait_for_completion(client, initial.json()["id"])
+        report_before = client.get("/api/games/1145350/reports/main").json()
+        extension = client.post("/api/games/1145350/reports/main/extend")
+        failed = wait_for_terminal_state(client, extension.json()["id"])
+        report_after = client.get("/api/games/1145350/reports/main").json()
+
+    assert failed["state"] == "failed"
+    assert failed["error_code"] == "no_unseen_reviews"
+    assert report_after["report_id"] == report_before["report_id"]
 
 
 def wait_for_completion(client: TestClient, run_id: str) -> dict:

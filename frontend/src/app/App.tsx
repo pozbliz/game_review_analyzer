@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   AnalysisJob,
   AnalysisRun,
+  analysisFailureMessage,
   AggregateReportSettings,
   AvailableReport,
   cancelJob,
@@ -34,24 +35,7 @@ import StorefrontOverview from "../features/game/StorefrontOverview";
 
 type HealthState = "loading" | "ready" | "unavailable";
 
-export function analysisFailureMessage(code: string): string {
-  if (["steam_unavailable", "invalid_steam_response", "cursor_repeated", "internal_import_error"].includes(code)) {
-    return "Steam refresh failed. Retry to resume from the saved refresh checkpoint.";
-  }
-  if (["reservation_conflict", "main_report_analysis_active", "test_report_analysis_active"].includes(code)) {
-    return "Another analysis owns this report slot. Wait for it to finish or cancel it.";
-  }
-  if (code.startsWith("provider_") || code === "codex_cli_not_ready") {
-    return "The analysis provider failed. Check provider access, then retry this run.";
-  }
-  if (code.includes("checkpoint") || code === "invalid_refresh_scope") {
-    return "Saved progress was invalid. Retry to rebuild only the affected stage.";
-  }
-  if (code === "cancelled") {
-    return "Analysis was cancelled. Resume to continue from saved progress.";
-  }
-  return "Analysis stopped because of an internal error. Retry once, then inspect the error code if it repeats.";
-}
+export { analysisFailureMessage } from "../api/shell";
 
 export default function App(): JSX.Element {
   const testReportMatch: RegExpMatchArray | null = window.location.pathname.match(
@@ -328,7 +312,11 @@ function CatalogApp(): JSX.Element {
         window.localStorage.setItem("active-analysis-run", run.id);
         setAnalysisRun(run);
       })
-      .catch(() => setAnalysisError("Unable to start the selected analysis provider."));
+      .catch((error: unknown) => setAnalysisError(
+        error instanceof Error
+          ? analysisFailureMessage(error.message)
+          : "Unable to start the selected analysis provider.",
+      ));
   }
 
   function cancelAnalysis(): void {
@@ -573,7 +561,8 @@ function CatalogApp(): JSX.Element {
                       </a>
                     </>
                   )}
-                  {["failed", "cancelled"].includes(analysisRun.state) && (
+                  {["failed", "cancelled"].includes(analysisRun.state)
+                    && analysisRun.error_code !== "no_unseen_reviews" && (
                     <>
                       <button type="button" onClick={retryAnalysis}>Resume analysis</button>
                       <button type="button" onClick={chooseDifferentProvider}>Choose different provider</button>

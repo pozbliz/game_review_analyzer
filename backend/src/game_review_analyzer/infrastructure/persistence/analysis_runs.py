@@ -74,6 +74,10 @@ class AnalysisReservationConflict(ValueError):
     """Reject a second active run for one report slot."""
 
 
+class NoUnseenReviews(ValueError):
+    """Tell callers that an extension has no usable unseen identities."""
+
+
 def create_analysis_run(
     database_path: Path,
     *,
@@ -85,8 +89,6 @@ def create_analysis_run(
     report_kind: Literal["main", "test"] | None = None,
     excluded_revision_ids: tuple[int, ...] = (),
     operation: AnalysisOperation | None = None,
-    base_report_id: str | None = None,
-    refresh_job_id: str | None = None,
 ) -> AnalysisRun:
     """Queue a provider run over non-overlapping oldest and newest review cohorts."""
 
@@ -121,7 +123,7 @@ def create_analysis_run(
                 "early_review_revision_ids_json, recent_review_revision_ids_json, "
                 "metric_policy_json, report_kind, oversized_review_count, operation, "
                 "base_report_id, refresh_job_id) "
-                "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, NULL, NULL)",
                 (
                     run_id,
                     app_id,
@@ -134,8 +136,6 @@ def create_analysis_run(
                     report_kind,
                     oversized_review_count,
                     operation,
-                    base_report_id,
-                    refresh_job_id,
                 ),
             )
     except sqlite3.IntegrityError as error:
@@ -271,12 +271,8 @@ def _select_analysis_scope(
                 excluded_revision_ids,
             )
         }
-    available_ids: set[int] | None = (
-        set(available_revision_ids) if available_revision_ids is not None else None
-    )
-    ordered_revisions: tuple[tuple[int, str], ...] = tuple(
-        (int(row[0]), str(row[1]))
-        for row in connection.execute(
+    if available_revision_ids is None:
+        rows = connection.execute(
             "SELECT review_revisions.id, review_revisions.content_json, reviews.id "
             "FROM review_revisions JOIN reviews ON reviews.id = review_revisions.review_id "
             "WHERE reviews.app_id = ? AND NOT EXISTS ("
@@ -287,8 +283,20 @@ def _select_analysis_scope(
             "'$.source_created_at'), reviews.id, review_revisions.id",
             (app_id,),
         )
+    else:
+        placeholders = ",".join("?" for _ in available_revision_ids)
+        rows = connection.execute(
+            "SELECT review_revisions.id, review_revisions.content_json, reviews.id "
+            "FROM review_revisions JOIN reviews ON reviews.id = review_revisions.review_id "
+            f"WHERE reviews.app_id = ? AND review_revisions.id IN ({placeholders}) "
+            "ORDER BY json_extract(review_revisions.content_json, "
+            "'$.source_created_at'), reviews.id, review_revisions.id",
+            (app_id, *available_revision_ids),
+        )
+    ordered_revisions: tuple[tuple[int, str], ...] = tuple(
+        (int(row[0]), str(row[1]))
+        for row in rows
         if str(row[2]) not in excluded_review_ids
-        and (available_ids is None or int(row[0]) in available_ids)
     )
     eligible_by_id: dict[int, bool] = {
         revision_id: (
@@ -304,6 +312,8 @@ def _select_analysis_scope(
         if eligible_by_id[revision_id]
     )
     if not eligible_ids:
+        if excluded_revision_ids:
+            raise NoUnseenReviews("No usable unseen reviews remain")
         raise ValueError("Analysis requires an existing review dataset")
     if len(eligible_ids) <= cohort_size * 2:
         midpoint: int = len(eligible_ids) // 2

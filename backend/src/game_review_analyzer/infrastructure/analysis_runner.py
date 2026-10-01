@@ -48,6 +48,7 @@ from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     AnalysisRun,
+    NoUnseenReviews,
     fail_analysis_run,
     finish_analysis_run,
     get_analysis_run,
@@ -179,6 +180,14 @@ class AnalysisRunner:
                 return
             try:
                 run = reserve_refreshed_analysis_scope(self._database_path, run.id)
+            except NoUnseenReviews:
+                finish_analysis_run(
+                    self._database_path,
+                    run.id,
+                    "failed",
+                    error_code="no_unseen_reviews",
+                )
+                return
             except ValueError:
                 finish_analysis_run(
                     self._database_path,

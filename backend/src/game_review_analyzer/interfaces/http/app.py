@@ -594,8 +594,8 @@ def create_app(
             run: AnalysisRun = create_refresh_analysis_run(
                 resolved_settings.database_path,
                 app_id=app_id,
-                provider="codex-cli",
-                model=status.model,
+                provider=current_report.provider,
+                model=current_report.model,
                 metric_policy=current_report.metric_policy,
                 operation="extend",
                 base_report_id=current_report.report_id,
