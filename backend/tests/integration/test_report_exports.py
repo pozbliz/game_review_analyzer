@@ -41,7 +41,9 @@ def test_json_contract_round_trips_only_with_exact_local_evidence(tmp_path: Path
     assert document["format_version"] == "2.0"
     assert document["full_review_text_included"] is False
     assert "provider" not in document["report"]["analysis_result"]
+    assert "model" not in document["report"]["analysis_result"]
     assert "manual-codex" not in exported
+    assert "fixture-model" not in exported
     assert "Combat is responsive." not in exported
     assert all("review_text" not in item for item in document["evidence_bindings"])
     assert len(document["evidence_bindings"]) == 2

@@ -57,9 +57,10 @@ describe("aggregate Test Report", () => {
 
     expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
     expect(screen.getByText("Test Report")).toBeVisible();
-    expect(screen.getByText("gpt-5.6-luna")).toBeVisible();
+    expect(screen.queryByText("gpt-5.6-luna")).not.toBeInTheDocument();
     expect(screen.queryByText("codex-cli")).not.toBeInTheDocument();
     expect(screen.queryByText("Provider")).not.toBeInTheDocument();
+    expect(screen.queryByText("Model")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Responsive combat" })).toBeVisible();
     expect(screen.getByText("4 reviews · 8% total")).toBeVisible();
     expect(screen.getByText("Oldest 4% · Newest 12% · +8 percentage points")).toBeVisible();

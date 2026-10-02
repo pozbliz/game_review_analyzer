@@ -103,6 +103,7 @@ def export_report_json(
     report_payload: dict[str, object] = payload["report"]
     analysis_payload: dict[str, object] = report_payload["analysis_result"]
     analysis_payload.pop("provider")
+    analysis_payload.pop("model")
     if not include_full_review_text:
         for binding in payload["evidence_bindings"]:
             binding.pop("review_text")
@@ -120,6 +121,7 @@ def import_report_json(database_path: Path, payload: str) -> ReportVersion:
                 analysis_payload: object = report_payload.get("analysis_result")
                 if isinstance(analysis_payload, dict):
                     analysis_payload.setdefault("provider", "report-import")
+                    analysis_payload.setdefault("model", "report-import")
         document: JsonReportExport = JsonReportExport.model_validate(raw_document)
     except (ValidationError, ValueError) as error:
         raise ValueError("Invalid report export") from error

@@ -295,7 +295,7 @@ The main progress sequence is:
 
 Starting an extension opens this progress view automatically. During Steam refresh, the view shows imported reviews as a percentage of the refresh scan limit.
 
-Report pages, saved-report cards, and exports omit provider names. Provider provenance remains internal for validation, extension compatibility, and diagnostics. Import assigns neutral internal provenance when an export omits it.
+Report pages, saved-report cards, and exports omit provider and model names. Provider and model provenance remain internal for validation, extension compatibility, and diagnostics. Import assigns neutral internal provenance when an export omits it.
 
 Selection and run creation reserve an exact review scope atomically. Concurrent runs cannot reserve the same extension scope.
 

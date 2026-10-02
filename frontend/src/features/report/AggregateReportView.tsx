@@ -112,7 +112,6 @@ export default function AggregateReportView(
         {report.scope.oversized_review_count > 0 && (
           <div><span>Oversized reviews skipped</span><strong>{report.scope.oversized_review_count}</strong></div>
         )}
-        <div><span>Model</span><strong>{report.model}</strong></div>
       </section>
       {extensionState === "failed" && <p className="error" role="alert">{extensionError}</p>}
       {report.positive_themes.length === 0 && report.negative_themes.length === 0 ? (

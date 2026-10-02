@@ -786,7 +786,7 @@ function CatalogApp(): JSX.Element {
 
 function formatReportHistoryEntry(entry: ReportHistoryEntry): string {
   const date: Date = new Date(`${entry.created_at.replace(" ", "T")}Z`);
-  return `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date)} · ${entry.model}`;
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
 }
 
 function formatReportDate(createdAt: string): string {

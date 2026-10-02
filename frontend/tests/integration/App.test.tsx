@@ -69,7 +69,7 @@ describe("application shell", () => {
       "href",
       "/reports/recent-report",
     );
-    expect(screen.getByText(/qwen3\.5:4b/)).toBeVisible();
+    expect(screen.queryByText(/qwen3\.5:4b/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Ollama/)).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /select the game to analyze/i })).toBeVisible();
   });
@@ -304,7 +304,9 @@ describe("application shell", () => {
       "href",
       "/reports/report-latest",
     );
-    expect(screen.getByText(/Aug 12, 2026.*gpt-5.6-luna/i)).toBeVisible();
+    const savedReports: HTMLElement = screen.getByRole("region", { name: "Saved reports" });
+    expect(within(savedReports).queryByText(/gpt-5.6-luna/i)).not.toBeInTheDocument();
+    expect(within(savedReports).queryByText(/qwen3\.5:4b/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create Report" })).toBeEnabled();
     expect(fetchMock).toHaveBeenCalledWith("/api/games/1145350/reports");
   });
