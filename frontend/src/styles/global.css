@@ -64,6 +64,12 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .identity-grid div { padding: 1rem; border: 1px solid var(--line); border-radius: 10px; background: rgb(255 255 255 / 58%); }
 .identity-grid dt { color: var(--muted); font-size: .78rem; }
 .identity-grid dd { margin: .35rem 0 0; font-weight: 750; }
+.review-language-toggle { padding: 0; border: 0; color: var(--forest); background: transparent; font: inherit; text-align: left; text-decoration: underline; text-underline-offset: .2rem; }
+.review-language-toggle::after { content: " ▾"; }
+.review-language-toggle[aria-expanded="true"]::after { content: " ▴"; }
+.review-language-details { margin-top: .75rem; color: var(--ink); font-size: .85rem; font-weight: 500; }
+.review-language-details ul { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+.review-language-details li { display: flex; justify-content: space-between; gap: 1rem; }
 .source-note { padding: .8rem 1rem; border-left: 3px solid #84a990; background: rgb(255 255 255 / 55%); }
 .create-report { width: 100%; margin-top: 1rem; }
 .create-report-secondary { border: 1px solid var(--forest); color: var(--forest); background: transparent; }

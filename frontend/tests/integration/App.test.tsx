@@ -46,6 +46,21 @@ describe("application shell", () => {
     expect(screen.queryByLabelText("Analysis provider")).not.toBeInTheDocument();
   });
 
+  it("loads Steam review totals by language only when expanded", async () => {
+    const fetchMock = mockShell();
+
+    render(<App />);
+    await previewGame();
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/games/1145350/review-languages");
+
+    fireEvent.click(screen.getByRole("button", { name: "100 reviews" }));
+
+    expect(await screen.findByText("English")).toBeVisible();
+    expect(screen.getByText("60 reviews")).toBeVisible();
+    expect(screen.getByText("German")).toBeVisible();
+    expect(screen.getByText("40 reviews")).toBeVisible();
+  });
+
   it("starts a Test Report with the selected visibility settings", async () => {
     const fetchMock = mockShell({
       workspace: workspace(true),
@@ -140,6 +155,12 @@ function mockShell(options: MockOptions = {}): ReturnType<typeof vi.spyOn> {
     if (url === "/api/config") return json(publicConfig());
     if (url === "/api/providers/codex-cli") return json(codexProvider());
     if (url === "/api/games/preview?appid=1145350") return json(metadata());
+    if (url === "/api/games/1145350/review-languages") {
+      return json([
+        { language: "English", review_count: 60 },
+        { language: "German", review_count: 40 },
+      ]);
+    }
     if (url === "/api/games/1145350/workspace") {
       return json(options.workspace ?? workspace(false));
     }

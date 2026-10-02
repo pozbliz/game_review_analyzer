@@ -28,6 +28,8 @@ The Test Report analyzes 25 oldest and 25 newest reviews in one Codex call.
 
 The shared `Create Report` action supports the 50-review Test Report and 1,000-review Main Report scopes. Before creation, users can set the minimum cohort support percentage and maximum Themes in each polarity list. Defaults remain 5% and 10 Themes.
 
+Game details keep Steam's overall review count and can load the current nonzero review totals by language on demand. Report scope labels identify analyzed reviews as English Reviews.
+
 Available reports appear as dated cards above `Create Report` without analysis engine labels. A Main Report can add 500 oldest and 500 newest unseen reviews through `Extend Report` beside its review count. The action shows the usable unseen count when fewer than 1,000 remain before refresh. Starting an extension opens its analysis progress screen automatically. Steam refresh shows measured percentage progress. Each report has a delete control at the bottom and returns to its game page after deletion.
 
 The current Test and Main Reports occupy separate per-game slots. Extend and Replace reserve their report slot and exact post-refresh scope durably.

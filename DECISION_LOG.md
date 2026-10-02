@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-10-02 - Review counts distinguish English analysis from Steam totals
+
+**What changed:**
+
+- Renamed the report scope label to `English Reviews`.
+- Kept Steam's overall review count on the game page.
+- Added an on-demand disclosure for nonzero review totals by Steam API language.
+
+**Why:**
+
+- The report count covers analyzed English reviews, while the game-page count uses Steam's broader storefront total.
+- Steam exposes each language total through a separate review-summary request.
+
+**New issues:**
+
+- Opening the disclosure sends one bounded request for each Steam API language and can fail under Steam rate limits.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-02 - Version 2 report behavior removed
 
 **What changed:**

@@ -15,7 +15,9 @@ import {
   getJob,
   getAnalysisRun,
   getPublicConfig,
+  getReviewLanguageCounts,
   GameSearchResult,
+  ReviewLanguageCount,
   retryJob,
   retryAnalysisRun,
   searchGames,
@@ -58,6 +60,9 @@ function CatalogApp(): JSX.Element {
   const [preview, setPreview] = useState<SteamMetadata | null>(null);
   const [previewError, setPreviewError] = useState<string>("");
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [reviewLanguages, setReviewLanguages] = useState<ReviewLanguageCount[] | null>(null);
+  const [reviewLanguagesOpen, setReviewLanguagesOpen] = useState<boolean>(false);
+  const [reviewLanguagesError, setReviewLanguagesError] = useState<string>("");
   const [fullHistoryReady, setFullHistoryReady] = useState<boolean>(false);
   const [job, setJob] = useState<AnalysisJob | null>(null);
   const [jobError, setJobError] = useState<string>("");
@@ -180,6 +185,9 @@ function CatalogApp(): JSX.Element {
     const requestId: number = ++previewRequestId.current;
     setPreviewLoading(true);
     setPreviewError("");
+    setReviewLanguages(null);
+    setReviewLanguagesOpen(false);
+    setReviewLanguagesError("");
     setFullHistoryReady(false);
     setAvailableReports([]);
     setJob(null);
@@ -218,6 +226,17 @@ function CatalogApp(): JSX.Element {
       .finally(() => {
         if (requestId === previewRequestId.current) setPreviewLoading(false);
       });
+  }
+
+  function toggleReviewLanguages(): void {
+    if (!preview) return;
+    const opening: boolean = !reviewLanguagesOpen;
+    setReviewLanguagesOpen(opening);
+    if (!opening || reviewLanguages !== null) return;
+    setReviewLanguagesError("");
+    getReviewLanguageCounts(preview.app_id)
+      .then(setReviewLanguages)
+      .catch(() => setReviewLanguagesError("Unable to load review languages."));
   }
 
   function submitSearch(event: FormEvent<HTMLFormElement>): void {
@@ -549,7 +568,39 @@ function CatalogApp(): JSX.Element {
                 <div><dt>AppID</dt><dd>{preview.app_id}</dd></div>
                 <div><dt>Release date</dt><dd>{preview.release_date ?? unknown}</dd></div>
                 <div><dt>Release status</dt><dd>{preview.release_status === "unknown" ? unknown : preview.release_status === "coming_soon" ? "Coming soon" : "Released"}</dd></div>
-                <div><dt>Review availability</dt><dd>{preview.review_count === null ? unknown : `${preview.review_count.toLocaleString()} reviews`}</dd></div>
+                <div className="review-availability">
+                  <dt>Review availability</dt>
+                  <dd>{preview.review_count === null ? unknown : (
+                    <>
+                      <button
+                        type="button"
+                        className="review-language-toggle"
+                        aria-expanded={reviewLanguagesOpen}
+                        onClick={toggleReviewLanguages}
+                      >
+                        {preview.review_count.toLocaleString()} reviews
+                      </button>
+                      {reviewLanguagesOpen && (
+                        <div className="review-language-details">
+                          {reviewLanguages === null && !reviewLanguagesError && (
+                            <span role="status">Loading languages...</span>
+                          )}
+                          {reviewLanguagesError && <span role="alert">{reviewLanguagesError}</span>}
+                          {reviewLanguages && (
+                            <ul>
+                              {reviewLanguages.map((item) => (
+                                <li key={item.language}>
+                                  <span>{item.language}</span>
+                                  <span>{item.review_count.toLocaleString()} reviews</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}</dd>
+                </div>
               </dl>
               {preview.source_status === "partial" && (
                 <p className="source-note">Some optional Steam metadata is unavailable. You can still continue.</p>

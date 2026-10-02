@@ -52,6 +52,8 @@ The Catalog supports game-name search and direct AppID entry. It shows enough me
 
 The identity view includes title, capsule artwork, developer, release status, AppID, and review availability when Steam supplies them.
 
+The overall Steam review count remains visible. Users can expand it to load current nonzero review totals for each Steam API language.
+
 Games with retained work expose their current Main Report and Test Report separately. Neither slot presents superseded report history.
 
 A completed Full Import is required before analysis. The Full Import establishes access to the true oldest and newest retained reviews.

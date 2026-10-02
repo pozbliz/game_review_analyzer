@@ -78,7 +78,7 @@ export default function AggregateReportView(
       </header>
       <section className="report-facts" aria-label="Report scope and provenance">
         <div className="report-review-count">
-          <span>Reviews</span>
+          <span>English Reviews</span>
           <p className="report-review-value">
             <strong>{report.scope.review_count}</strong>
             {kind === "main" && (

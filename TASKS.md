@@ -2,6 +2,13 @@
 
 ## 2026-10-02
 
+### Review count clarity
+
+- [x] Label report scope counts as English Reviews.
+- [x] Keep the game page's overall Steam review count.
+- [x] Load and disclose Steam review totals by language only when requested.
+- [x] Add backend and frontend regression coverage.
+
 ### Report output and extension progress
 
 - [x] Remove provider and model names from report pages, report history, saved-report cards, and JSON exports.

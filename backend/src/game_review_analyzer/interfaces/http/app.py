@@ -96,7 +96,14 @@ from game_review_analyzer.infrastructure.steam_catalog import (
     SteamCatalogUnavailable,
     SteamStoreSearchAdapter,
 )
-from game_review_analyzer.infrastructure.steam_reviews import SteamReviewIngestionAdapter
+from game_review_analyzer.infrastructure.steam_reviews import (
+    ReviewLanguageCount,
+    ReviewLanguageSource,
+    SteamReviewIngestionAdapter,
+    SteamReviewLanguageAdapter,
+    SteamReviewsMalformed,
+    SteamReviewsUnavailable,
+)
 from game_review_analyzer.shared.config import Settings
 from game_review_analyzer.shared.telemetry import configure_telemetry, log_event
 from game_review_analyzer.interfaces.http.reports import (
@@ -216,6 +223,7 @@ def create_app(
     fallback_search_source: FallbackSearchSource | None = None,
     codex_status_source: Callable[[], CodexCliStatus] | None = None,
     analysis_provider: ThemeAnalysisProvider | None = None,
+    review_language_source: ReviewLanguageSource | None = None,
 ) -> FastAPI:
     """Create an application instance, optionally using test-specific settings."""
 
@@ -226,6 +234,9 @@ def create_app(
     resolved_catalog_source = catalog_source or SteamCatalogAdapter()
     resolved_fallback_source = fallback_search_source or SteamStoreSearchAdapter()
     resolved_codex_status_source = codex_status_source or codex_cli_status
+    resolved_review_language_source = (
+        review_language_source or SteamReviewLanguageAdapter()
+    )
     runner = JobRunner(
         resolved_settings.database_path,
         review_source or SteamReviewIngestionAdapter(),
@@ -642,6 +653,24 @@ def create_app(
             raise HTTPException(
                 status_code=503,
                 detail={"code": "steam_unavailable", "message": "Steam metadata is temporarily unavailable"},
+            ) from error
+
+    @app.get(
+        f"{API_PREFIX}/games/{{app_id}}/review-languages",
+        response_model=tuple[ReviewLanguageCount, ...],
+    )
+    def review_languages(app_id: int) -> tuple[ReviewLanguageCount, ...]:
+        if load_game_dataset(resolved_settings.database_path, app_id) is None:
+            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
+        try:
+            return resolved_review_language_source.fetch(app_id)
+        except SteamReviewsMalformed as error:
+            raise HTTPException(
+                status_code=502, detail={"code": "invalid_steam_response"}
+            ) from error
+        except SteamReviewsUnavailable as error:
+            raise HTTPException(
+                status_code=503, detail={"code": "steam_unavailable"}
             ) from error
 
     def submit(job_id: str) -> None:

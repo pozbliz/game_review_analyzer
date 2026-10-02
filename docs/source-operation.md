@@ -43,6 +43,8 @@ Open `http://127.0.0.1:8000`. Port `5173` is not used for normal operation.
 
 The database schema is initialized or migrated automatically at backend startup.
 
+Opening the game-page review-language disclosure requests current summary totals for Steam's supported API languages. The application does not store these totals.
+
 ## Development operation
 
 When editing backend code, run the backend from `backend/` with reload enabled:

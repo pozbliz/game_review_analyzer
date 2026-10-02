@@ -12,10 +12,31 @@ import pytest
 from game_review_analyzer.infrastructure.steam_reviews import (
     ReviewCursorRepeated,
     SteamReviewIngestionAdapter,
+    SteamReviewLanguageAdapter,
     SteamReviewsUnavailable,
 )
 
 FIXTURE_DIRECTORY = Path(__file__).parents[2] / "fixtures" / "steam_reviews"
+
+
+def test_language_adapter_returns_nonzero_totals_in_descending_order() -> None:
+    def open_summary(request: Request, *, timeout: float) -> BytesIO:
+        assert timeout == 15.0
+        language: str = parse_qs(urlparse(request.full_url).query)["language"][0]
+        total: int = {"english": 3_786, "german": 2_410}.get(language, 0)
+        return BytesIO(
+            (
+                '{"success":1,"query_summary":{"total_reviews":'
+                f"{total}" + '},"reviews":[],"cursor":"*"}'
+            ).encode()
+        )
+
+    counts = SteamReviewLanguageAdapter(open_url=open_summary).fetch(65540)
+
+    assert [(item.language, item.review_count) for item in counts] == [
+        ("English", 3_786),
+        ("German", 2_410),
+    ]
 
 
 def fixture_responses(*names: str) -> Iterator[BytesIO]:

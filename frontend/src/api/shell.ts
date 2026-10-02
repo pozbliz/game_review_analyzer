@@ -34,6 +34,11 @@ export interface SteamMetadata {
   storefront_missing_fields: string[];
 }
 
+export interface ReviewLanguageCount {
+  language: string;
+  review_count: number;
+}
+
 export interface SteamPrice {
   country_code: string;
   currency: string;
@@ -415,6 +420,22 @@ export async function getGamePreview(appId: string): Promise<SteamMetadata> {
   return parseSteamMetadata(await requestJson(
     `/api/games/preview?appid=${encodeURIComponent(appId)}`,
   ));
+}
+
+export async function getReviewLanguageCounts(
+  appId: number,
+): Promise<ReviewLanguageCount[]> {
+  const payload: unknown = await requestJson(`/api/games/${appId}/review-languages`);
+  if (!Array.isArray(payload) || !payload.every((item) => (
+    isRecord(item)
+    && typeof item.language === "string"
+    && typeof item.review_count === "number"
+    && Number.isInteger(item.review_count)
+    && item.review_count >= 0
+  ))) {
+    throw new Error("Invalid review language response");
+  }
+  return payload as ReviewLanguageCount[];
 }
 
 export function parseSteamMetadata(payload: unknown): SteamMetadata {

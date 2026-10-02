@@ -12,6 +12,7 @@ from game_review_analyzer.infrastructure.steam_metadata import (
     SteamMetadataMalformed,
     SteamMetadataUnavailable,
 )
+from game_review_analyzer.infrastructure.steam_reviews import ReviewLanguageCount
 from game_review_analyzer.interfaces.http.app import create_app
 from game_review_analyzer.shared.config import Settings
 
@@ -34,6 +35,17 @@ class StubMetadataSource:
             raise self.error
         assert self.result is not None
         return self.result
+
+
+class StubReviewLanguageSource:
+    """Return deterministic Steam review totals by language."""
+
+    def fetch(self, app_id: int) -> tuple[ReviewLanguageCount, ...]:
+        assert app_id == 1145350
+        return (
+            ReviewLanguageCount(language="English", review_count=3_786),
+            ReviewLanguageCount(language="German", review_count=2_410),
+        )
 
 
 def partial_metadata() -> SteamMetadata:
@@ -66,6 +78,25 @@ def test_preview_validates_persists_and_returns_partial_metadata(tmp_path: Path)
     assert response.json()["capsule_image_url"] is None
     assert source.requested_app_ids == [1145350]
     assert load_game_dataset(database_path, 1145350) == partial_metadata()
+
+
+def test_review_language_totals_are_loaded_on_demand(tmp_path: Path) -> None:
+    database_path: Path = tmp_path / "app.sqlite3"
+    source = StubMetadataSource(result=partial_metadata())
+
+    with TestClient(create_app(
+        Settings(database_path=database_path),
+        metadata_source=source,
+        review_language_source=StubReviewLanguageSource(),
+    )) as client:
+        client.get("/api/games/preview", params={"appid": "1145350"})
+        response = client.get("/api/games/1145350/review-languages")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {"language": "English", "review_count": 3_786},
+        {"language": "German", "review_count": 2_410},
+    ]
 
 
 @pytest.mark.parametrize("app_id", ["abc", "0", "-1", "01"])

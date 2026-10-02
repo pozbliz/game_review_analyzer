@@ -1,10 +1,11 @@
 """Paginated Steam review ingestion with bounded source handling."""
 
 from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 import json
 from time import sleep
-from typing import Any
+from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -32,6 +33,123 @@ class ReviewPage:
 
     reviews: tuple[SteamReview, ...]
     next_cursor: str
+
+
+@dataclass(frozen=True)
+class ReviewLanguageCount:
+    """Expose Steam's current review total for one language."""
+
+    language: str
+    review_count: int
+
+
+class ReviewLanguageSource(Protocol):
+    """Load Steam review totals grouped by supported API language."""
+
+    def fetch(self, app_id: int) -> tuple[ReviewLanguageCount, ...]:
+        """Return non-empty language totals for one game."""
+
+
+STEAM_REVIEW_LANGUAGES: tuple[tuple[str, str], ...] = (
+    ("arabic", "Arabic"),
+    ("bulgarian", "Bulgarian"),
+    ("schinese", "Chinese (Simplified)"),
+    ("tchinese", "Chinese (Traditional)"),
+    ("czech", "Czech"),
+    ("danish", "Danish"),
+    ("dutch", "Dutch"),
+    ("english", "English"),
+    ("finnish", "Finnish"),
+    ("french", "French"),
+    ("german", "German"),
+    ("greek", "Greek"),
+    ("hungarian", "Hungarian"),
+    ("indonesian", "Indonesian"),
+    ("italian", "Italian"),
+    ("japanese", "Japanese"),
+    ("koreana", "Korean"),
+    ("malay", "Malay"),
+    ("norwegian", "Norwegian"),
+    ("polish", "Polish"),
+    ("portuguese", "Portuguese"),
+    ("brazilian", "Portuguese-Brazil"),
+    ("romanian", "Romanian"),
+    ("russian", "Russian"),
+    ("spanish", "Spanish-Spain"),
+    ("latam", "Spanish-Latin America"),
+    ("swedish", "Swedish"),
+    ("thai", "Thai"),
+    ("turkish", "Turkish"),
+    ("ukrainian", "Ukrainian"),
+    ("vietnamese", "Vietnamese"),
+)
+
+
+class SteamReviewLanguageAdapter:
+    """Load per-language review totals from Steam only when requested."""
+
+    def __init__(
+        self,
+        open_url: Callable[..., Any] = urlopen,
+        timeout_seconds: float = 15.0,
+    ) -> None:
+        self._open_url = open_url
+        self._timeout_seconds = timeout_seconds
+
+    def fetch(self, app_id: int) -> tuple[ReviewLanguageCount, ...]:
+        """Return nonzero language totals, largest first."""
+
+        if app_id <= 0:
+            raise ValueError("AppID must be a positive integer")
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            counts: tuple[ReviewLanguageCount, ...] = tuple(
+                executor.map(
+                    lambda item: self._fetch_language(app_id, *item),
+                    STEAM_REVIEW_LANGUAGES,
+                )
+            )
+        return tuple(
+            sorted(
+                (item for item in counts if item.review_count > 0),
+                key=lambda item: (-item.review_count, item.language),
+            )
+        )
+
+    def _fetch_language(
+        self,
+        app_id: int,
+        language_code: str,
+        language_name: str,
+    ) -> ReviewLanguageCount:
+        query: str = urlencode({
+            "json": 1,
+            "filter": "recent",
+            "language": language_code,
+            "purchase_type": "all",
+            "num_per_page": 1,
+            "filter_offtopic_activity": 1,
+        })
+        request = Request(
+            f"https://store.steampowered.com/appreviews/{app_id}?{query}",
+            headers={"User-Agent": "GameReviewAnalyzer/0.1"},
+        )
+        try:
+            with self._open_url(request, timeout=self._timeout_seconds) as response:
+                payload: Any = json.loads(response.read())
+        except (OSError, URLError) as error:
+            raise SteamReviewsUnavailable("Steam review summary request failed") from error
+        except (json.JSONDecodeError, UnicodeDecodeError, TypeError) as error:
+            raise SteamReviewsMalformed("Steam returned invalid review summary JSON") from error
+        summary: Any = payload.get("query_summary") if isinstance(payload, dict) else None
+        total: Any = summary.get("total_reviews") if isinstance(summary, dict) else None
+        if (
+            not isinstance(payload, dict)
+            or payload.get("success") != 1
+            or not isinstance(total, int)
+            or total < 0
+        ):
+            raise SteamReviewsMalformed("Steam review summary omitted its total")
+        return ReviewLanguageCount(language=language_name, review_count=total)
 
 
 class SteamReviewIngestionAdapter:

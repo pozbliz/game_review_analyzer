@@ -44,6 +44,7 @@ describe("aggregate Test Report", () => {
 
     expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
     expect(screen.getByText("Test Report")).toBeVisible();
+    expect(screen.getByText("English Reviews")).toBeVisible();
     expect(screen.getByRole("heading", { name: "Responsive combat" })).toBeVisible();
     expect(screen.getByText("4 reviews · 8% total")).toBeVisible();
     expect(screen.getByText("Oldest 4% · Newest 12% · +8 percentage points")).toBeVisible();
