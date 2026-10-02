@@ -8,23 +8,17 @@ The current code implements catalog synchronization, game preview, rich Steam me
 
 Jobs survive backend and browser restarts. They expose progress, cancellation, retry, and checkpoints.
 
-The current code also implements evidence-heavy Version 2 reports, Opinion Points, categories, mixed reception, Evidence Filters, and immutable history.
-
-Existing HTML, CSV, and JSON exports omit reviewer identity and full review text by default.
-
 Connected-browser acceptance and real-world reliability calibration remain deferred.
 
 Steam review imports wait two seconds between pages and honor rate-limit delays while preserving their latest checkpoint.
 
-The proposed target replaces report history with one progressive Main Report and one separate 50-review Test Report per game.
+The application uses one progressive Main Report and one separate 50-review Test Report per game.
 
-It removes Opinion Points, excerpts, evidence browsing, categories, filters, mixed-reception links, and Version 2 compatibility.
+It has no Opinion Points, excerpts, evidence browsing, categories, filters, mixed-reception links, or Version 2 compatibility.
 
 ## Current implementation status
 
-Slices 1–8 and 10–12 implement the earlier evidence-heavy report system.
-
-The current code includes authenticated Codex CLI analysis, Ollama, Evidence Filters, immutable history, and exports.
+Slices 16–20 implement the current progressive aggregate-report system.
 
 The Version 3 Test Report, Main Report replacement, and 1,000-review Main Report extension are implemented.
 
@@ -34,14 +28,12 @@ The Test Report analyzes 25 oldest and 25 newest reviews in one Codex call.
 
 The shared `Create Report` action supports the 50-review Test Report and 1,000-review Main Report scopes. Before creation, users can set the minimum cohort support percentage and maximum Themes in each polarity list. Defaults remain 5% and 10 Themes.
 
-Available reports appear as dated cards above `Create Report` without provider or model labels. Report pages and exports also omit provider and model names. A Main Report can add 500 oldest and 500 newest unseen reviews through `Extend Report` beside its review count. The action shows the usable unseen count when fewer than 1,000 remain before refresh. Starting an extension opens its analysis progress screen automatically. Steam refresh shows measured percentage progress. Each report has a delete control at the bottom and returns to its game page after deletion.
+Available reports appear as dated cards above `Create Report` without analysis engine labels. A Main Report can add 500 oldest and 500 newest unseen reviews through `Extend Report` beside its review count. The action shows the usable unseen count when fewer than 1,000 remain before refresh. Starting an extension opens its analysis progress screen automatically. Steam refresh shows measured percentage progress. Each report has a delete control at the bottom and returns to its game page after deletion.
 
-Each Test Report Theme can reveal its matching local reviews. Evidence is sorted by helpful votes and loaded only when opened. Individual reviews start expanded and can collapse independently.
-
-The current Test and Main Reports are saved separately from Version 2 reports. Extend and Replace reserve their report slot and exact post-refresh scope durably.
+The current Test and Main Reports occupy separate per-game slots. Extend and Replace reserve their report slot and exact post-refresh scope durably.
 Positive and negative Main Report candidates use separate merge calls of at most 25 candidates. Invalid Theme output is retried once before the run fails.
 Retries keep the reserved scope and valid map and merge checkpoints. Corrupt or incompatible checkpoints are discarded and rebuilt without replacing the current report.
-Reports independently apply the selected Theme limit to positive and negative Themes that meet the selected cohort threshold. The two lists can have different counts. Evidence opens on a distinct sage review surface.
+Reports independently apply the selected Theme limit to positive and negative Themes that meet the selected cohort threshold. The two lists can have different counts.
 
 Current application data was reset before this redesign. The gitignored evaluation corpus remains available.
 
@@ -162,6 +154,5 @@ The frontend shell lives under `frontend/src/app/`. Shared styles use `frontend/
 - The Main Report starts with 500 oldest and 500 newest reviews, then grows through explicit 1,000-review extensions.
 - A separate Test Report uses 25 oldest and 25 newest reviews without refreshing Steam.
 - Full imports and Codex CLI analysis can be slow or quota-intensive for popular games. Each Codex attempt stops after 120 seconds, and transient failures receive one retry.
-- The application data path can be changed only through an environment variable; there is no in-app relocation workflow. Report exports are not complete database backups.
-- Reports expose aggregate Theme memberships and deterministic metrics without per-review evidence.
-- Existing code still implements the prior Version 2 behavior until the approved redesign is planned and built.
+- The application data path can be changed only through an environment variable; there is no in-app relocation workflow.
+- Reports expose deterministic aggregate Theme metrics without per-review evidence.

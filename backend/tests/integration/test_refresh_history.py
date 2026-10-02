@@ -1,15 +1,11 @@
-"""Append-only refresh and immutable report-history integration tests."""
+"""Append-only refresh integration tests."""
 
 from collections.abc import Iterator
-import json
 from pathlib import Path
 import sqlite3
 
 from fastapi.testclient import TestClient
 
-from game_review_analyzer.application.refresh import build_refresh_analysis_request
-from game_review_analyzer.application.report_creation import create_manual_codex_report
-from game_review_analyzer.domain.reports import ReportVersion, ThemeMetricPolicy
 from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.infrastructure.job_runner import JobRunner
 from game_review_analyzer.infrastructure.persistence.jobs import (
@@ -18,19 +14,13 @@ from game_review_analyzer.infrastructure.persistence.jobs import (
     load_job_analysis_scope,
     retry_job,
 )
-from game_review_analyzer.infrastructure.persistence.report_versions import (
-    list_report_versions,
-    load_latest_report_version,
-    load_report_version,
-    save_report_version,
-)
 from game_review_analyzer.infrastructure.steam_reviews import (
     ReviewPage,
     SteamReviewsUnavailable,
 )
 from game_review_analyzer.interfaces.http.app import create_app
 from game_review_analyzer.shared.config import Settings
-from tests.integration.test_report_api import seed_report
+from tests.integration.aggregate_report_seed import seed_aggregate_report
 
 
 class RefreshPageSource:
@@ -60,7 +50,7 @@ def test_refresh_appends_only_new_and_edited_revisions_and_checkpoints_scope(
     tmp_path: Path,
 ) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
-    seed_report(database_path)
+    seed_aggregate_report(database_path)
     before: tuple[str, list[tuple[int, str]], str] = stored_history(database_path)
     job = create_refresh_job(database_path, app_id=1145350, target_count=3)
     page = ReviewPage(
@@ -87,70 +77,14 @@ def test_refresh_appends_only_new_and_edited_revisions_and_checkpoints_scope(
             )
         )
     assert load_job_analysis_scope(database_path, job.id) == latest_ids
-    request = build_refresh_analysis_request(database_path, job.id, "refresh-request")
-    assert [item.review_revision_id for item in request.reviews] == [
-        "review-1",
-        "review-2",
-        "review-3",
-    ]
-    assert request.reviews[1].text == "Fights feel much smoother now."
     assert stored_history(database_path) == before
-    result: dict[str, object] = {
-        "schema_version": "1.0",
-        "request_id": request.request_id,
-        "scope_sha256": request.scope_sha256,
-        "provider": "manual-codex",
-        "model": "refresh-fixture",
-        "completed_review_revision_ids": [
-            item.review_revision_id for item in request.reviews
-        ],
-        "opinion_points": [],
-        "themes": [],
-        "mechanic_classifications": [],
-    }
-    refreshed_report: ReportVersion = create_manual_codex_report(
-        database_path,
-        "report-2",
-        request,
-        json.dumps(result),
-        latest_ids,
-        ThemeMetricPolicy(
-            minimum_support_count=2,
-            minimum_support_percentage=1,
-            technical_minimum_support_count=2,
-            technical_minimum_support_percentage=1,
-        ),
-    )
-    assert load_latest_report_version(database_path, 1145350) == refreshed_report
-    assert stored_history(database_path)[0] == before[0]
-
-
-def test_report_history_returns_newest_without_mutating_older_snapshot(
-    tmp_path: Path,
-) -> None:
-    database_path: Path = tmp_path / "app.sqlite3"
-    seed_report(database_path)
-    original: ReportVersion | None = load_report_version(database_path, "report-1")
-    assert original is not None
-    original_json: str = stored_history(database_path)[0]
-    save_report_version(
-        database_path,
-        original.model_copy(update={"report_version_id": "report-2"}),
-    )
-
-    assert load_latest_report_version(database_path, 1145350).report_version_id == "report-2"
-    assert [entry.report_version_id for entry in list_report_versions(database_path, 1145350)] == [
-        "report-2",
-        "report-1",
-    ]
-    assert stored_history(database_path)[0] == original_json
 
 
 def test_refresh_retry_resumes_from_page_checkpoint_before_reanalysis(
     tmp_path: Path,
 ) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
-    seed_report(database_path)
+    seed_aggregate_report(database_path)
     job = create_refresh_job(database_path, app_id=1145350, target_count=2)
     first_page = ReviewPage(
         reviews=(review("review-1", "Combat is responsive.", 100, True, 120, 3),),
@@ -173,9 +107,9 @@ def test_refresh_retry_resumes_from_page_checkpoint_before_reanalysis(
     assert load_job_analysis_scope(database_path, job.id) is not None
 
 
-def test_refresh_and_report_history_http_contract(tmp_path: Path) -> None:
+def test_refresh_http_contract_does_not_restore_report_history(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
-    seed_report(database_path)
+    seed_aggregate_report(database_path)
     source = RefreshPageSource((ReviewPage(reviews=(), next_cursor="done"),))
 
     with TestClient(
@@ -189,10 +123,8 @@ def test_refresh_and_report_history_http_contract(tmp_path: Path) -> None:
 
     assert refresh_response.status_code == 202
     assert refresh_response.json()["scope"] == "refresh"
-    assert history_response.status_code == 200
-    assert history_response.json()[0]["report_version_id"] == "report-1"
-    assert recent_response.status_code == 200
-    assert recent_response.json()[0]["report_version_id"] == "report-1"
+    assert history_response.status_code == 404
+    assert recent_response.status_code == 404
 
 
 def stored_history(database_path: Path) -> tuple[str, list[tuple[int, str]], str]:

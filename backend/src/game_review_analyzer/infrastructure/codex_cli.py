@@ -10,19 +10,7 @@ from tempfile import TemporaryDirectory
 from time import monotonic
 from typing import Any
 
-from game_review_analyzer.application.manual_codex import (
-    CODEX_CONSOLIDATION_INSTRUCTIONS,
-    MANUAL_CODEX_EXTRACTION_INSTRUCTIONS,
-    MANUAL_CODEX_INSTRUCTIONS,
-    ManualCodexValidationError,
-    validate_analysis_result,
-    validate_consolidation_result,
-    validate_manual_codex_extraction_result,
-)
 from game_review_analyzer.domain.analysis import (
-    AnalysisRequest,
-    AnalysisResult,
-    OpinionExtractionResult,
     ThemeAnalysisOutput,
     ThemeAnalysisRequest,
     ThemeAnalysisResult,
@@ -36,8 +24,6 @@ from game_review_analyzer.domain.analysis import (
 from game_review_analyzer.application.provider import (
     AnalysisProviderError,
     CancellationSignal,
-    ExtractionProviderRun,
-    ProviderRun,
     ProviderUsage,
     ThemeProviderRun,
     ThemeMergeProviderRun,
@@ -49,7 +35,6 @@ from game_review_analyzer.shared.telemetry import log_event
 
 
 CodexCliUsage = ProviderUsage
-CodexCliRun = ProviderRun
 
 THEME_ANALYSIS_INSTRUCTIONS = (
     "Identify recurring positive and negative player opinions. "
@@ -127,21 +112,6 @@ class CodexCliProvider:
         self.reasoning_effort: str = reasoning_effort
         self.max_attempts: int = max_attempts
         self.timeout_seconds: float = timeout_seconds
-
-    def analyze(
-        self,
-        request: AnalysisRequest,
-        *,
-        cancel_event: CancellationSignal | None = None,
-    ) -> CodexCliRun:
-        """Run Codex and validate its final JSON against the exact review scope."""
-
-        return self._analyze(
-            request,
-            MANUAL_CODEX_INSTRUCTIONS,
-            cancel_event,
-            operation="analysis",
-        )
 
     def analyze_themes(
         self,
@@ -302,178 +272,10 @@ class CodexCliProvider:
             return ThemeMergeProviderRun(result=result, usage=self._usage(stdout))
         raise AssertionError("unreachable")
 
-    def consolidate(
-        self,
-        request: AnalysisRequest,
-        *,
-        cancel_event: CancellationSignal | None = None,
-    ) -> CodexCliRun:
-        """Consolidate cached Opinion Points into shared and cohort-specific Themes."""
-
-        return self._analyze(
-            request,
-            CODEX_CONSOLIDATION_INSTRUCTIONS,
-            cancel_event,
-            operation="consolidation",
-        )
-
-    def _analyze(
-        self,
-        request: AnalysisRequest,
-        instructions: str,
-        cancel_event: CancellationSignal | None,
-        *,
-        operation: str,
-    ) -> CodexCliRun:
-        """Run one complete-result contract with explicit task instructions."""
-
-        for attempt in range(self.max_attempts):
-            attempt_number: int = attempt + 1
-            attempt_started_at: float = monotonic()
-            if cancel_event is not None and cancel_event.is_set():
-                raise CodexCliError("cancelled", "Codex CLI analysis was cancelled")
-            try:
-                result_json, stdout = self._run_once(
-                    request,
-                    cancel_event,
-                    result_schema=AnalysisResult.model_json_schema(),
-                    instructions=instructions,
-                    operation=operation,
-                    attempt=attempt_number,
-                )
-                validator = (
-                    validate_consolidation_result
-                    if operation == "consolidation"
-                    else validate_analysis_result
-                )
-                result: AnalysisResult = validator(
-                    request, result_json, expected_provider="codex-cli"
-                )
-                if result.model != self.model:
-                    raise CodexCliError(
-                        "model_mismatch",
-                        "Codex CLI result model does not match the selected model",
-                    )
-                self._log_attempt(
-                    "provider.attempt_completed",
-                    request,
-                    operation,
-                    attempt_number,
-                    attempt_started_at,
-                )
-                return CodexCliRun(result=result, usage=self._usage(stdout))
-            except ManualCodexValidationError as error:
-                retrying: bool = attempt_number < self.max_attempts
-                self._log_attempt(
-                    "provider.attempt_failed",
-                    request,
-                    operation,
-                    attempt_number,
-                    attempt_started_at,
-                    stage="validation",
-                    error_code=error.code,
-                    retrying=retrying,
-                )
-                if attempt + 1 == self.max_attempts:
-                    raise CodexCliError(
-                        error.code,
-                        "Codex CLI returned invalid analysis output",
-                    ) from error
-            except CodexCliError as error:
-                retrying = error.code != "cancelled" and attempt_number < self.max_attempts
-                self._log_attempt(
-                    "provider.attempt_failed",
-                    request,
-                    operation,
-                    attempt_number,
-                    attempt_started_at,
-                    stage="process",
-                    error_code=error.code,
-                    retrying=retrying,
-                )
-                if error.code == "cancelled" or attempt + 1 == self.max_attempts:
-                    raise
-        raise AssertionError("unreachable")
-
-    def extract(
-        self,
-        request: AnalysisRequest,
-        *,
-        cancel_event: CancellationSignal | None = None,
-    ) -> ExtractionProviderRun:
-        """Extract and validate Opinion Points from one bounded review batch."""
-
-        for attempt in range(self.max_attempts):
-            attempt_number: int = attempt + 1
-            attempt_started_at: float = monotonic()
-            if cancel_event is not None and cancel_event.is_set():
-                raise CodexCliError("cancelled", "Codex CLI extraction was cancelled")
-            try:
-                result_json, stdout = self._run_once(
-                    request,
-                    cancel_event,
-                    result_schema=OpinionExtractionResult.model_json_schema(),
-                    instructions=MANUAL_CODEX_EXTRACTION_INSTRUCTIONS,
-                    operation="extraction",
-                    attempt=attempt_number,
-                )
-                result: OpinionExtractionResult = (
-                    validate_manual_codex_extraction_result(
-                        request,
-                        result_json,
-                        expected_provider="codex-cli",
-                    )
-                )
-                if result.provider != "codex-cli" or result.model != self.model:
-                    raise CodexCliError(
-                        "model_mismatch",
-                        "Codex CLI extraction provenance does not match selection",
-                    )
-                self._log_attempt(
-                    "provider.attempt_completed",
-                    request,
-                    "extraction",
-                    attempt_number,
-                    attempt_started_at,
-                )
-                return ExtractionProviderRun(result=result, usage=self._usage(stdout))
-            except ManualCodexValidationError as error:
-                retrying: bool = attempt_number < self.max_attempts
-                self._log_attempt(
-                    "provider.attempt_failed",
-                    request,
-                    "extraction",
-                    attempt_number,
-                    attempt_started_at,
-                    stage="validation",
-                    error_code=error.code,
-                    retrying=retrying,
-                )
-                if attempt + 1 == self.max_attempts:
-                    raise CodexCliError(
-                        error.code,
-                        "Codex CLI returned invalid extraction output",
-                    ) from error
-            except CodexCliError as error:
-                retrying = error.code != "cancelled" and attempt_number < self.max_attempts
-                self._log_attempt(
-                    "provider.attempt_failed",
-                    request,
-                    "extraction",
-                    attempt_number,
-                    attempt_started_at,
-                    stage="process",
-                    error_code=error.code,
-                    retrying=retrying,
-                )
-                if error.code == "cancelled" or attempt + 1 == self.max_attempts:
-                    raise
-        raise AssertionError("unreachable")
-
     def _log_attempt(
         self,
         event: str,
-        request: AnalysisRequest,
+        request: ThemeAnalysisRequest | ThemeMergeRequest,
         operation: str,
         attempt: int,
         started_at: float,
@@ -492,7 +294,7 @@ class CodexCliProvider:
 
     def _run_once(
         self,
-        request: AnalysisRequest | ThemeAnalysisRequest | ThemeMergeRequest,
+        request: ThemeAnalysisRequest | ThemeMergeRequest,
         cancel_event: CancellationSignal | None,
         *,
         result_schema: dict[str, Any],
@@ -638,7 +440,7 @@ class CodexCliProvider:
 
     def _prompt(
         self,
-        request: AnalysisRequest | ThemeAnalysisRequest | ThemeMergeRequest,
+        request: ThemeAnalysisRequest | ThemeMergeRequest,
         instructions: str,
     ) -> str:
         return (

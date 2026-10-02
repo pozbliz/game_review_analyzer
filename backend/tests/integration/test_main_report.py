@@ -546,7 +546,7 @@ def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
         retained_evidence = client.get(
             "/api/games/1145350/reports/main/themes/retained/evidence"
         )
-    assert visible_evidence.status_code == 200
+    assert visible_evidence.status_code == 404
     assert retained_evidence.status_code == 404
 
 
@@ -1250,6 +1250,8 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
     assert completed.json()["extracted_review_count"] == 100
     assert report.status_code == 200
     assert report.json()["kind"] == "main"
+    assert "provider" not in report.json()
+    assert "model" not in report.json()
     assert report.json()["scope"] == {
         "review_count": 100,
         "oldest_review_count": 50,

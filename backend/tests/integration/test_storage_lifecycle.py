@@ -19,15 +19,15 @@ from game_review_analyzer.infrastructure.persistence.jobs import (
     get_job,
     request_cancellation,
 )
-from game_review_analyzer.infrastructure.persistence.report_versions import load_report_version
+from game_review_analyzer.infrastructure.persistence.report_versions import load_aggregate_report_slot
 from game_review_analyzer.interfaces.http.app import create_app
 from game_review_analyzer.shared.config import Settings
-from tests.integration.test_report_api import seed_report
+from tests.integration.aggregate_report_seed import seed_aggregate_report
 
 
 def test_storage_diagnostics_and_individually_confirmed_deletions(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "data" / "app.sqlite3"
-    seed_report(database_path)
+    seed_aggregate_report(database_path)
     job = create_job(database_path, 1145350, 10)
 
     diagnostics = get_storage_diagnostics(database_path)
@@ -40,9 +40,9 @@ def test_storage_diagnostics_and_individually_confirmed_deletions(tmp_path: Path
 
     with pytest.raises(ValueError, match="confirmation"):
         delete_report_version(database_path, "report-1", "wrong")
-    assert load_report_version(database_path, "report-1") is not None
+    assert load_aggregate_report_slot(database_path, 1145350, "main") is not None
     delete_report_version(database_path, "report-1", "report-1")
-    assert load_report_version(database_path, "report-1") is None
+    assert load_aggregate_report_slot(database_path, 1145350, "main") is None
 
     with pytest.raises(ValueError, match="confirmation"):
         delete_incomplete_job(database_path, job.id, "wrong")
@@ -52,9 +52,9 @@ def test_storage_diagnostics_and_individually_confirmed_deletions(tmp_path: Path
     assert verify_database_integrity(database_path).orphan_count == 0
 
 
-def test_report_deletion_clears_completed_analysis_run_reference(tmp_path: Path) -> None:
+def test_report_deletion_removes_its_run_and_checkpoints(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
-    seed_report(database_path)
+    seed_aggregate_report(database_path)
     with sqlite3.connect(database_path) as connection:
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute(
@@ -64,20 +64,27 @@ def test_report_deletion_clears_completed_analysis_run_reference(tmp_path: Path)
             "VALUES ('run-1', 1145350, 'codex-cli', 'gpt-5.6-luna', "
             "'completed', '[]', '{}', 'report-1')"
         )
+        connection.execute(
+            "INSERT INTO analysis_theme_batches("
+            "run_id, batch_number, input_digest, provider, model, contract_version, result_json) "
+            "VALUES ('run-1', 1, 'digest', 'codex-cli', 'gpt-5.6-luna', '3.1', '{}')"
+        )
 
     delete_report_version(database_path, "report-1", "report-1")
 
     with sqlite3.connect(database_path) as connection:
-        reference: tuple[str | None] = connection.execute(
-            "SELECT report_version_id FROM analysis_runs WHERE id = 'run-1'"
-        ).fetchone()
-    assert reference == (None,)
-    assert load_report_version(database_path, "report-1") is None
+        assert connection.execute(
+            "SELECT COUNT(*) FROM analysis_runs WHERE id = 'run-1'"
+        ).fetchone()[0] == 0
+        assert connection.execute(
+            "SELECT COUNT(*) FROM analysis_theme_batches WHERE run_id = 'run-1'"
+        ).fetchone()[0] == 0
+    assert load_aggregate_report_slot(database_path, 1145350, "main") is None
 
 
 def test_confirmed_game_dataset_deletion_cascades_all_owned_state(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
-    seed_report(database_path)
+    seed_aggregate_report(database_path)
     job = create_job(database_path, 1145350, 10)
     request_cancellation(database_path, job.id)
 
@@ -102,7 +109,7 @@ def test_confirmed_game_dataset_deletion_cascades_all_owned_state(tmp_path: Path
 
 def test_storage_and_confirmed_deletion_http_contract(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
-    seed_report(database_path)
+    seed_aggregate_report(database_path)
 
     with TestClient(create_app(Settings(database_path=database_path))) as client:
         diagnostics = client.get("/api/storage")
@@ -127,7 +134,7 @@ def test_storage_and_confirmed_deletion_http_contract(tmp_path: Path) -> None:
 
 def test_game_dataset_deletion_rejects_an_active_job(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
-    seed_report(database_path)
+    seed_aggregate_report(database_path)
     job = create_job(database_path, 1145350, 10)
     with sqlite3.connect(database_path) as connection:
         connection.execute(
@@ -136,4 +143,4 @@ def test_game_dataset_deletion_rejects_an_active_job(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="active jobs"):
         delete_game_dataset(database_path, 1145350, "DELETE 1145350")
-    assert load_report_version(database_path, "report-1") is not None
+    assert load_aggregate_report_slot(database_path, 1145350, "main") is not None

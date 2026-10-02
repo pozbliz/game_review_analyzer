@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-10-02 - Version 2 report behavior removed
+
+**What changed:**
+
+- Removed Version 2 report routes, UI, contracts, repositories, analysis adapters, and tests.
+- Removed Ollama, manual analysis, report history, evidence, filters, categories, and mixed-reception paths.
+- Added schema migration 18 to delete legacy reports and runs, then drop the Opinion Point cache.
+- Made report deletion remove its completed run and provider checkpoints.
+
+**Why:**
+
+- The approved Version 3 design has one Main Report and one Test Report per game.
+- Retaining unreachable Version 2 behavior increased maintenance cost and allowed stale data paths.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-02 - Extend Report shows the bounded unseen count
 
 **What changed:**

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AggregateReportView from "../../src/features/report/AggregateReportView";
 
@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 describe("aggregate Test Report", () => {
-  it("expands helpful-first review evidence and closes it again", async () => {
+  it("shows aggregate Themes without review evidence controls", async () => {
     const report = {
       schema_version: "3.0",
       report_id: "test-report",
@@ -22,8 +22,6 @@ describe("aggregate Test Report", () => {
         newest_review_count: 25,
         oversized_review_count: 0,
       },
-      provider: "codex-cli",
-      model: "gpt-5.6-luna",
       unseen_review_count: 375,
       positive_themes: [{
         theme_id: "responsive-combat",
@@ -38,55 +36,18 @@ describe("aggregate Test Report", () => {
       }],
       negative_themes: [],
     };
-    const evidence = {
-      theme_id: "responsive-combat",
-      title: "Responsive combat",
-      reviews: [
-        { review_revision_id: 2, text: "Most helpful review", recommended: true, votes_helpful: 20 },
-        { review_revision_id: 1, text: "Less helpful review", recommended: true, votes_helpful: 3 },
-      ],
-    };
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      const payload: object = url.endsWith("/themes/responsive-combat/evidence")
-        ? evidence
-        : report;
-      return new Response(JSON.stringify(payload), { status: 200 });
-    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(report), { status: 200 }),
+    );
 
     render(<AggregateReportView appId={1145350} />);
 
     expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
     expect(screen.getByText("Test Report")).toBeVisible();
-    expect(screen.queryByText("gpt-5.6-luna")).not.toBeInTheDocument();
-    expect(screen.queryByText("codex-cli")).not.toBeInTheDocument();
-    expect(screen.queryByText("Provider")).not.toBeInTheDocument();
-    expect(screen.queryByText("Model")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Responsive combat" })).toBeVisible();
     expect(screen.getByText("4 reviews · 8% total")).toBeVisible();
     expect(screen.getByText("Oldest 4% · Newest 12% · +8 percentage points")).toBeVisible();
-    const toggle = screen.getByRole("button", { name: "Show review evidence for Responsive combat" });
-    expect(toggle.querySelector(".aggregate-theme-chevron")).toBeVisible();
-    fireEvent.click(toggle);
-
-    const evidenceList = await screen.findByRole("region", { name: "Review evidence for Responsive combat" });
-    const reviews = within(evidenceList).getAllByRole("article");
-    expect(reviews[0]).toHaveTextContent("Most helpful review");
-    expect(reviews[0]).toHaveTextContent("20 helpful votes");
-    expect(reviews[1]).toHaveTextContent("Less helpful review");
-    const firstReviewDetails: HTMLDetailsElement | null = reviews[0].querySelector("details");
-    const firstReviewSummary: HTMLElement | null = reviews[0].querySelector("summary");
-    expect(firstReviewDetails).toHaveAttribute("open");
-    expect(firstReviewSummary).not.toBeNull();
-    fireEvent.click(firstReviewSummary as HTMLElement);
-    expect(firstReviewDetails).not.toHaveAttribute("open");
-    expect(reviews[1].querySelector("details")).toHaveAttribute("open");
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/games/1145350/reports/test/themes/responsive-combat/evidence",
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Hide review evidence for Responsive combat" }));
-    expect(screen.queryByRole("region", { name: "Review evidence for Responsive combat" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /review evidence/i })).not.toBeInTheDocument();
   });
 
   it("starts a 1,000-review Main Report extension beside the review count", async () => {
@@ -111,7 +72,6 @@ describe("aggregate Test Report", () => {
         created_at: "2026-09-30 04:06:47", kind: "main",
         game: { app_id: 1145350, title: "Hades II" }, metadata: metadata(),
         scope: { review_count: 1_000, oldest_review_count: 500, newest_review_count: 500, oversized_review_count: 0 },
-        provider: "codex-cli", model: "gpt-5.6-luna",
         unseen_review_count: 375,
         positive_themes: [], negative_themes: [],
       }), { status: 200 });
@@ -144,7 +104,6 @@ describe("aggregate Test Report", () => {
         created_at: "2026-09-30 04:06:47", kind: "main",
         game: { app_id: 1145350, title: "Hades II" }, metadata: metadata(),
         scope: { review_count: 1_000, oldest_review_count: 500, newest_review_count: 500, oversized_review_count: 0 },
-        provider: "codex-cli", model: "gpt-5.6-luna",
         unseen_review_count: null,
         positive_themes: [], negative_themes: [],
       }), { status: 200 });
@@ -166,7 +125,6 @@ describe("aggregate Test Report", () => {
         created_at: "2026-09-30 04:06:47", kind: "main",
         game: { app_id: 1145350, title: "Hades II" }, metadata: metadata(),
         scope: { review_count: 1_000, oldest_review_count: 500, newest_review_count: 500, oversized_review_count: 0 },
-        provider: "codex-cli", model: "gpt-5.6-luna",
         unseen_review_count: null,
         positive_themes: [], negative_themes: [],
       }), { status: 200 });

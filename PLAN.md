@@ -314,7 +314,7 @@ This slice records superseded Version 2 behavior. Slices 16–22 replace its rep
 
 **Tradeoff:** Deleted Version 2 data and behavior cannot be restored through the application.
 
-**Status:** Approved; ready for implementation.
+**Status:** Complete. Version 2 routes, controls, contracts, repositories, adapters, tests, and stored records are removed.
 
 ## Slice 21 — Export aggregate Version 3 reports
 
@@ -328,7 +328,7 @@ This slice records superseded Version 2 behavior. Slices 16–22 replace its rep
 
 **Tradeoff:** JSON remains tied to a compatible local Game Dataset and is not a portable data backup.
 
-**Status:** Approved; blocked by Slices 19 and 20.
+**Status:** Approved; ready for implementation.
 
 ## Slice 22 — Verify the progressive workflow
 

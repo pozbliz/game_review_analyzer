@@ -6,9 +6,9 @@ The progressive report design was approved on 2026-09-29.
 
 The deterministic provider-boundary revision was approved on 2026-10-01.
 
-The current application still implements evidence-heavy immutable reports, Opinion Points, categories, filters, and Version 2 contracts.
+The current application implements the progressive aggregate report design through Slice 20.
 
-Those behaviors remain implemented until the new design is planned and built.
+Version 2 routes, schemas, storage, controls, and compatibility were removed on 2026-10-02.
 
 ## Purpose and scope
 

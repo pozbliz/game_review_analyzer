@@ -1,293 +1,96 @@
-"""Immutable Report Version persistence tests."""
+"""Version 3 aggregate report persistence tests."""
 
-import json
 from pathlib import Path
 import sqlite3
 
 import pytest
 
-from game_review_analyzer.domain.analysis import AnalysisResult
-from game_review_analyzer.domain.reports import (
-    AggregateReport,
-    AggregateThemeMetrics,
-    ReportVersion,
-    ThemeMetricPolicy,
-    ThemeMetrics,
-)
-from game_review_analyzer.domain.reviews import SteamReview
-from game_review_analyzer.domain.steam_metadata import SteamMetadata
+from game_review_analyzer.domain.reports import AggregateReport
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
-from game_review_analyzer.infrastructure.persistence.game_datasets import save_game_dataset
 from game_review_analyzer.infrastructure.persistence.report_versions import (
-    list_recent_report_versions,
-    list_report_versions,
     load_aggregate_report_slot,
-    load_latest_report_version,
-    load_report_version,
     save_aggregate_report,
-    save_report_version,
 )
-from game_review_analyzer.infrastructure.persistence.review_revisions import (
-    save_review_revisions,
-)
-
-
-def test_report_version_round_trips_and_cannot_be_overwritten(tmp_path: Path) -> None:
-    database_path: Path = initialized_dataset(tmp_path)
-    with sqlite3.connect(database_path) as connection:
-        revision_ids: tuple[int, ...] = tuple(
-            row[0]
-            for row in connection.execute(
-                "SELECT id FROM review_revisions ORDER BY id"
-            ).fetchall()
-        )
-    report: ReportVersion = report_version(revision_ids)
-
-    save_report_version(database_path, report)
-
-    assert load_report_version(database_path, report.report_version_id) == report
-    with pytest.raises(sqlite3.IntegrityError):
-        save_report_version(
-            database_path,
-            report.model_copy(update={"thresholds_calibrated": True}),
-        )
-    assert load_report_version(database_path, report.report_version_id) == report
-
-    mismatched_analysis: AnalysisResult = report.analysis_result.model_copy(
-        update={"completed_review_revision_ids": ("wrong-review", "review-2")}
-    )
-    with pytest.raises(ValueError, match="analysis scope"):
-        save_report_version(
-            database_path,
-            report.model_copy(
-                update={
-                    "report_version_id": "report-2",
-                    "analysis_result": mismatched_analysis,
-                }
-            ),
-        )
-
-
-def test_report_version_rejects_revisions_outside_its_game(tmp_path: Path) -> None:
-    database_path: Path = initialized_dataset(tmp_path)
-
-    with pytest.raises(ValueError, match="exactly one game"):
-        save_report_version(database_path, report_version((999,)))
-
-
-def test_migration_upgrades_existing_report_to_typed_metadata_snapshot(
-    tmp_path: Path,
-) -> None:
-    database_path: Path = initialized_dataset(tmp_path)
-    with sqlite3.connect(database_path) as connection:
-        revision_ids: tuple[int, ...] = tuple(
-            row[0] for row in connection.execute("SELECT id FROM review_revisions")
-        )
-    save_report_version(database_path, report_version(revision_ids))
-    with sqlite3.connect(database_path) as connection:
-        snapshot: dict[str, object] = json.loads(
-            connection.execute(
-                "SELECT snapshot_json FROM report_versions WHERE id = 'report-1'"
-            ).fetchone()[0]
-        )
-        snapshot.pop("metadata_snapshot")
-        snapshot["schema_version"] = "1.0"
-        connection.execute(
-            "UPDATE report_versions SET snapshot_json = ? WHERE id = 'report-1'",
-            (json.dumps(snapshot),),
-        )
-        connection.execute("DELETE FROM schema_migrations WHERE version = 5")
-
-    initialize_database(database_path)
-
-    migrated: ReportVersion | None = load_report_version(database_path, "report-1")
-    assert migrated is not None
-    assert migrated.schema_version == "2.0"
-    assert migrated.metadata_snapshot.title == "Hades II"
+from tests.integration.aggregate_report_seed import seed_aggregate_report
 
 
 def test_aggregate_report_slots_replace_independently(tmp_path: Path) -> None:
-    database_path: Path = initialized_dataset(tmp_path)
-    with sqlite3.connect(database_path) as connection:
-        revision_ids: tuple[int, ...] = tuple(
-            row[0] for row in connection.execute(
-                "SELECT id FROM review_revisions ORDER BY id"
-            )
-        )
-    main_report: AggregateReport = aggregate_report(
-        "main-report", "main", revision_ids
+    database_path: Path = tmp_path / "app.sqlite3"
+    seed_aggregate_report(database_path)
+    main_report: AggregateReport | None = load_aggregate_report_slot(
+        database_path, 1145350, "main"
     )
-    first_test_report: AggregateReport = aggregate_report(
-        "test-report-1", "test", revision_ids
+    assert main_report is not None
+    first_test: AggregateReport = main_report.model_copy(
+        update={"report_id": "test-1", "kind": "test"}
     )
-    second_test_report: AggregateReport = aggregate_report(
-        "test-report-2", "test", revision_ids
+    second_test: AggregateReport = first_test.model_copy(
+        update={"report_id": "test-2"}
     )
 
-    save_aggregate_report(database_path, main_report)
-    save_aggregate_report(database_path, first_test_report)
-    save_aggregate_report(database_path, second_test_report)
+    save_aggregate_report(database_path, first_test)
+    save_aggregate_report(database_path, second_test)
 
     assert load_aggregate_report_slot(database_path, 1145350, "main") == main_report
-    assert (
-        load_aggregate_report_slot(database_path, 1145350, "test")
-        == second_test_report
-    )
+    assert load_aggregate_report_slot(database_path, 1145350, "test") == second_test
     with sqlite3.connect(database_path) as connection:
         assert connection.execute(
-            "SELECT COUNT(*) FROM report_versions WHERE app_id = ?",
-            (1145350,),
+            "SELECT COUNT(*) FROM report_versions WHERE app_id = ?", (1145350,)
         ).fetchone()[0] == 2
 
 
-def test_aggregate_report_does_not_enter_version_2_history(tmp_path: Path) -> None:
-    database_path: Path = initialized_dataset(tmp_path)
-    with sqlite3.connect(database_path) as connection:
-        revision_ids: tuple[int, ...] = tuple(
-            row[0] for row in connection.execute(
-                "SELECT id FROM review_revisions ORDER BY id"
-            )
-        )
-    version_2: ReportVersion = report_version(revision_ids)
-    test_report: AggregateReport = aggregate_report(
-        "test-report", "test", revision_ids
-    )
-
-    save_report_version(database_path, version_2)
-    save_aggregate_report(database_path, test_report)
-
-    assert load_latest_report_version(database_path, 1145350) == version_2
-    assert tuple(entry.report_version_id for entry in list_report_versions(
-        database_path, 1145350
-    )) == (version_2.report_version_id,)
-    assert tuple(entry.report_version_id for entry in list_recent_report_versions(
-        database_path
-    )) == (version_2.report_version_id,)
-
-
-def initialized_dataset(tmp_path: Path) -> Path:
+def test_aggregate_report_rejects_revisions_outside_its_game(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
-    initialize_database(database_path)
-    save_game_dataset(
-        database_path,
-        SteamMetadata(
-            app_id=1145350,
-            title="Hades II",
-            developers=("Supergiant Games",),
-            capsule_image_url=None,
-            release_date=None,
-            release_status="unknown",
-            review_count=None,
-            source_status="partial",
-            missing_fields=frozenset(
-                {"capsule_image_url", "release_date", "release_status", "review_count"}
-            ),
-        ),
+    seed_aggregate_report(database_path)
+    report: AggregateReport | None = load_aggregate_report_slot(
+        database_path, 1145350, "main"
     )
-    reviews: tuple[SteamReview, ...] = tuple(
-        SteamReview(
-            review_id=f"review-{index}",
-            language="english",
-            text=text,
-            source_created_at=100,
-            source_updated_at=100,
-            recommended=True,
-            votes_helpful=0,
-            votes_funny=0,
-            weighted_vote_score=0,
-            steam_purchase=True,
-            received_for_free=False,
-            written_during_early_access=False,
-            playtime_forever_minutes=60,
-            playtime_at_review_minutes=60,
+    assert report is not None
+    invalid: AggregateReport = report.model_copy(
+        update={
+            "report_id": "invalid",
+            "review_revision_ids": (999,),
+            "oldest_review_revision_ids": (999,),
+            "newest_review_revision_ids": (),
+        }
+    )
+
+    with pytest.raises(ValueError, match="must exist and belong"):
+        save_aggregate_report(database_path, invalid)
+
+
+def test_version_3_migration_removes_legacy_reports_runs_and_extractions(
+    tmp_path: Path,
+) -> None:
+    database_path: Path = tmp_path / "app.sqlite3"
+    seed_aggregate_report(database_path)
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("DELETE FROM schema_migrations WHERE version = 18")
+        connection.execute(
+            "CREATE TABLE review_opinion_extractions (review_revision_id INTEGER)"
         )
-        for index, text in enumerate(("Great combat.", "Great movement."), start=1)
-    )
-    save_review_revisions(database_path, 1145350, reviews)
-    return database_path
+        connection.execute(
+            "INSERT INTO report_versions(id, app_id, snapshot_json) "
+            "VALUES ('legacy-report', 1145350, '{}')"
+        )
+        connection.execute(
+            "INSERT INTO analysis_runs("
+            "id, app_id, provider, model, state, review_revision_ids_json, "
+            "metric_policy_json, report_version_id) VALUES "
+            "('legacy-run', 1145350, 'ollama', 'old-model', 'completed', "
+            "'[]', '{}', 'legacy-report')"
+        )
 
+    initialize_database(database_path)
 
-def report_version(revision_ids: tuple[int, ...]) -> ReportVersion:
-    return ReportVersion(
-        schema_version="2.0",
-        report_version_id="report-1",
-        app_id=1145350,
-        metadata_snapshot=SteamMetadata(
-            app_id=1145350,
-            title="Hades II",
-            developers=("Supergiant Games",),
-            capsule_image_url=None,
-            release_date=None,
-            release_status="unknown",
-            review_count=None,
-            source_status="partial",
-            missing_fields=frozenset(
-                {"capsule_image_url", "release_date", "release_status", "review_count"}
-            ),
-        ),
-        review_revision_ids=revision_ids,
-        analysis_result=AnalysisResult(
-            schema_version="1.0",
-            request_id="request-1",
-            scope_sha256="a" * 64,
-            provider="manual-codex",
-            model="gpt-5.6-luna",
-            completed_review_revision_ids=("review-1", "review-2"),
-            opinion_points=(),
-            themes=(),
-            mechanic_classifications=(),
-        ),
-        metric_policy=ThemeMetricPolicy(
-            minimum_support_count=2,
-            minimum_support_percentage=1,
-            technical_minimum_support_count=3,
-            technical_minimum_support_percentage=2,
-        ),
-        theme_metrics=ThemeMetrics(
-            all_themes=(),
-            positive_headlines=(),
-            negative_headlines=(),
-            technical_themes=(),
-            mixed_reception=(),
-        ),
-        thresholds_calibrated=False,
-    )
-
-
-def aggregate_report(
-    report_id: str,
-    kind: str,
-    revision_ids: tuple[int, ...],
-) -> AggregateReport:
-    return AggregateReport(
-        schema_version="3.0",
-        report_id=report_id,
-        kind=kind,
-        app_id=1145350,
-        metadata_snapshot=SteamMetadata(
-            app_id=1145350,
-            title="Hades II",
-            developers=("Supergiant Games",),
-            capsule_image_url=None,
-            release_date=None,
-            release_status="unknown",
-            review_count=None,
-            source_status="partial",
-            missing_fields=frozenset(
-                {"capsule_image_url", "release_date", "release_status", "review_count"}
-            ),
-        ),
-        review_revision_ids=revision_ids,
-        oldest_review_revision_ids=(revision_ids[0],),
-        newest_review_revision_ids=(revision_ids[1],),
-        provider="codex-cli",
-        model="gpt-5.6-luna",
-        contract_version="3.0",
-        themes=(),
-        memberships=(),
-        theme_metrics=AggregateThemeMetrics(
-            all_themes=(),
-            positive_headlines=(),
-            negative_headlines=(),
-        ),
-    )
+    with sqlite3.connect(database_path) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM report_versions WHERE report_kind IS NULL"
+        ).fetchone()[0] == 0
+        assert connection.execute(
+            "SELECT COUNT(*) FROM analysis_runs WHERE report_kind IS NULL"
+        ).fetchone()[0] == 0
+        assert connection.execute(
+            "SELECT COUNT(*) FROM sqlite_master "
+            "WHERE type = 'table' AND name = 'review_opinion_extractions'"
+        ).fetchone()[0] == 0

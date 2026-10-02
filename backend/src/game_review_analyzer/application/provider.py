@@ -7,10 +7,8 @@ import json
 from typing import Any, Protocol
 
 from game_review_analyzer.domain.analysis import (
-    AnalysisResult,
     ANALYSIS_CONTRACT_VERSION,
     AnalysisSourceReview,
-    OpinionExtractionResult,
     ThemeAnalysisRequest,
     ThemeAnalysisResult,
     ThemeMergeCandidate,
@@ -57,22 +55,6 @@ class ProviderUsage:
     input_tokens: int | None
     cached_input_tokens: int | None
     output_tokens: int | None
-
-
-@dataclass(frozen=True)
-class ProviderRun:
-    """Return one validated provider result and its measured usage."""
-
-    result: AnalysisResult
-    usage: ProviderUsage
-
-
-@dataclass(frozen=True)
-class ExtractionProviderRun:
-    """Return one validated bounded extraction result and measured usage."""
-
-    result: OpinionExtractionResult
-    usage: ProviderUsage
 
 
 @dataclass(frozen=True)

@@ -4,7 +4,7 @@
 
 - Windows with Python 3.12, `uv`, and Node.js 20.19 or newer
 - Optional: a standard Steam Web API key for keyed catalog synchronization
-- Optional analysis path: authenticated Codex CLI or a separately installed Ollama runtime and model
+- Analysis path: authenticated Codex CLI
 
 The application never downloads an AI model and does not accept cloud-provider API keys yet.
 
@@ -74,7 +74,7 @@ $env:GAME_REVIEW_ANALYZER_STEAM_WEB_API_KEY = "your-key"
 
 Do not commit real keys. The public configuration API reveals only whether a Steam key is configured.
 
-## Analysis providers
+## Analysis
 
 ### Codex CLI
 
@@ -82,25 +82,17 @@ Install and authenticate Codex CLI outside the application. The app checks readi
 
 The backend console emits redacted JSON timing events for every Codex attempt and analysis stage. `provider.attempt_failed` includes the safe failure code and whether the app retries. These events include counts and byte sizes, but exclude prompts, review text, model output, credentials, and process stderr.
 
-### Ollama
-
-Install Ollama and a compatible model yourself. The app lists already-installed models and runs only the model selected by the user. It never pulls a model or silently falls back. Local Qwen 3.5 4B and 9B are available for explicit experimentation but are not presented as reliable full-analysis defaults on the evaluated CPU-only machine.
-
-### Manual Codex
-
-Export the privacy-minimized package, process it through Codex, then import the structured result. Imports are rejected unless identifiers, exact excerpts, scope, and schema match the local evidence.
-
 ## Local data and privacy
 
 - Steam metadata, review text, Review Revisions, jobs, and reports are stored in the configured SQLite database.
 - The app retrieves public Steam data and no private Steam-user data.
-- Reviewer identity is omitted from analysis packages and report exports.
-- Report pages, saved-report cards, and exports omit provider and model names.
-- Default JSON, CSV, and HTML exports omit full review text. Enabling full text produces a privacy-warned artifact.
-- Codex CLI and Manual Codex send selected review text to external cloud processing. Ollama keeps analysis on the local device.
-- Deleting a Report Version, inactive incomplete job, or complete Game Dataset requires exact typed confirmation. Game Dataset deletion also removes its owned local reviews, jobs, and reports.
+- Reviewer identity is omitted from analysis requests.
+- Report pages and saved-report cards omit analysis engine names.
+- Codex CLI sends selected review text to external cloud processing.
+- Deleting a report also deletes its completed run and checkpoints.
+- Deleting an inactive import job or complete Game Dataset requires exact typed confirmation. Game Dataset deletion removes all owned local data.
 
-Back up the SQLite database before destructive maintenance or updates. Report exports are not complete database backups.
+Back up the SQLite database before destructive maintenance or updates.
 
 ## Update and recovery
 
@@ -108,7 +100,9 @@ Back up the SQLite database before destructive maintenance or updates. Report ex
 2. Pull the desired source revision.
 3. Run `uv sync --locked --extra dev` in `backend/` and `npm ci` plus `npm run build` in `frontend/`.
 4. Run both test suites.
-5. Start FastAPI; migrations run automatically and preserve existing data.
+5. Start FastAPI; migrations run automatically.
+
+The Version 3-only migration deletes legacy Version 2 reports, runs, and Opinion Point caches. Back up the database before updating from a Version 2 build.
 
 Interrupted imports and analyses retain durable state. Extend and Replace resume their owned Steam refresh, exact reserved scope, and valid provider checkpoints. Starting Extend opens the analysis progress screen. Steam refresh shows progress toward its 5,000-review scan limit.
 

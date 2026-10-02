@@ -146,15 +146,15 @@
 
 ### Remove Version 2 Behavior
 
-- [ ] Add contract tests for one Main Report and one Test Report.
-- [ ] Remove history, Opinion Points, excerpts, and evidence routes.
-- [ ] Remove filters, categories, mixed reception, and direction labels.
-- [ ] Remove unsupported provider and model controls.
-- [ ] Remove unreachable Version 2 repositories and adapters.
-- [ ] Add clean Version 3 schema and integrity tests.
-- [ ] Update storage deletion for reports, runs, and checkpoints.
-- [ ] Remove obsolete frontend views and tests.
-- [ ] Run backend, frontend, type, and build checks.
+- [x] Add contract tests for one Main Report and one Test Report.
+- [x] Remove history, Opinion Points, excerpts, and evidence routes.
+- [x] Remove filters, categories, mixed reception, and direction labels.
+- [x] Remove unsupported provider and model controls.
+- [x] Remove unreachable Version 2 repositories and adapters.
+- [x] Add clean Version 3 schema and integrity tests.
+- [x] Update storage deletion for reports, runs, and checkpoints.
+- [x] Remove obsolete frontend views and tests.
+- [x] Run backend, frontend, type, and build checks.
 
 ### Version 3 Exports
 

@@ -71,7 +71,7 @@ def delete_report_version(
     require_confirmation(report_version_id, confirmation)
     with connect(database_path) as connection:
         connection.execute(
-            "UPDATE analysis_runs SET report_version_id = NULL "
+            "DELETE FROM analysis_runs "
             "WHERE report_version_id = ?",
             (report_version_id,),
         )
@@ -143,6 +143,14 @@ def verify_database_integrity(database_path: Path) -> DatabaseIntegrity:
         "ON analysis_jobs.id = job_analysis_scopes.job_id WHERE analysis_jobs.id IS NULL",
         "SELECT COUNT(*) FROM report_versions LEFT JOIN game_datasets "
         "ON game_datasets.app_id = report_versions.app_id WHERE game_datasets.app_id IS NULL",
+        "SELECT COUNT(*) FROM analysis_runs LEFT JOIN game_datasets "
+        "ON game_datasets.app_id = analysis_runs.app_id WHERE game_datasets.app_id IS NULL",
+        "SELECT COUNT(*) FROM analysis_theme_batches AS batches "
+        "LEFT JOIN analysis_runs ON analysis_runs.id = batches.run_id "
+        "WHERE analysis_runs.id IS NULL",
+        "SELECT COUNT(*) FROM analysis_theme_merge_batches AS batches "
+        "LEFT JOIN analysis_runs ON analysis_runs.id = batches.run_id "
+        "WHERE analysis_runs.id IS NULL",
         "SELECT COUNT(*) FROM report_version_review_revisions AS bindings "
         "LEFT JOIN report_versions ON report_versions.id = bindings.report_version_id "
         "LEFT JOIN review_revisions ON review_revisions.id = bindings.review_revision_id "

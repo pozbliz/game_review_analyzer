@@ -9,7 +9,6 @@ import {
   cancelAnalysisRun,
   CodexCliProviderStatus,
   getCodexCliProviderStatus,
-  getOllamaProviderStatus,
   getGamePreview,
   getGameWorkspace,
   getHealth,
@@ -17,19 +16,15 @@ import {
   getAnalysisRun,
   getPublicConfig,
   GameSearchResult,
-  OllamaProviderStatus,
   retryJob,
   retryAnalysisRun,
   searchGames,
   startFullImport,
-  startOllamaAnalysis,
   startMainReport,
   startTestReport,
   SteamMetadata,
 } from "../api/shell";
-import ReportView from "../features/report/ReportView";
 import AggregateReportView from "../features/report/AggregateReportView";
-import { getRecentReports, getReportHistory, ReportHistoryEntry } from "../api/reports";
 import { deleteIncompleteJob } from "../api/storage";
 import StorefrontOverview from "../features/game/StorefrontOverview";
 
@@ -44,13 +39,10 @@ export default function App(): JSX.Element {
   const mainReportMatch: RegExpMatchArray | null = window.location.pathname.match(
     /^\/main-reports\/(\d+)$/,
   );
-  const reportMatch: RegExpMatchArray | null = window.location.pathname.match(/^\/reports\/([^/]+)$/);
   return mainReportMatch
     ? <AggregateReportView appId={Number(mainReportMatch[1])} kind="main" />
     : testReportMatch
     ? <AggregateReportView appId={Number(testReportMatch[1])} />
-    : reportMatch
-    ? <ReportView reportId={decodeURIComponent(reportMatch[1])} />
     : <CatalogApp />;
 }
 
@@ -66,20 +58,12 @@ function CatalogApp(): JSX.Element {
   const [preview, setPreview] = useState<SteamMetadata | null>(null);
   const [previewError, setPreviewError] = useState<string>("");
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
-  const [reportHistory, setReportHistory] = useState<ReportHistoryEntry[]>([]);
-  const [recentReports, setRecentReports] = useState<ReportHistoryEntry[]>([]);
-  const [reportHistoryLoading, setReportHistoryLoading] = useState<boolean>(false);
-  const [reportHistoryError, setReportHistoryError] = useState<string>("");
   const [fullHistoryReady, setFullHistoryReady] = useState<boolean>(false);
   const [job, setJob] = useState<AnalysisJob | null>(null);
   const [jobError, setJobError] = useState<string>("");
   const [jobDeleteConfirmation, setJobDeleteConfirmation] = useState<string>("");
   const [jobDeleted, setJobDeleted] = useState<boolean>(false);
   const [codexStatus, setCodexStatus] = useState<CodexCliProviderStatus | null>(null);
-  const [ollamaStatus, setOllamaStatus] = useState<OllamaProviderStatus | null>(null);
-  const [providerSelection, setProviderSelection] = useState<string>(
-    () => window.localStorage.getItem("analysis-provider") ?? "codex-cli",
-  );
   const [codexCohortSize, setCodexCohortSize] = useState<number>(25);
   const [minimumSupportPercentage, setMinimumSupportPercentage] = useState<number>(5);
   const [maximumThemesPerPolarity, setMaximumThemesPerPolarity] = useState<number>(10);
@@ -102,23 +86,7 @@ function CatalogApp(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    let active: boolean = true;
-    getRecentReports()
-      .then((reports) => { if (active) setRecentReports(reports); })
-      .catch(() => { if (active) setRecentReports([]); });
-    return () => { active = false; };
-  }, []);
-
-  useEffect(() => {
     if (/^[1-9][0-9]*$/.test(requestedAppId)) loadPreview(requestedAppId);
-  }, []);
-
-  useEffect(() => {
-    let active: boolean = true;
-    getOllamaProviderStatus()
-      .then((status) => { if (active) setOllamaStatus(status); })
-      .catch(() => { if (active) setOllamaStatus(null); });
-    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -212,9 +180,6 @@ function CatalogApp(): JSX.Element {
     const requestId: number = ++previewRequestId.current;
     setPreviewLoading(true);
     setPreviewError("");
-    setReportHistory([]);
-    setReportHistoryLoading(true);
-    setReportHistoryError("");
     setFullHistoryReady(false);
     setAvailableReports([]);
     setJob(null);
@@ -226,18 +191,7 @@ function CatalogApp(): JSX.Element {
         if (requestId !== previewRequestId.current) return;
         setPreview(metadata);
         setShowGameSearch(false);
-        const historyRequest: Promise<void> = getReportHistory(metadata.app_id)
-          .then((items) => {
-            if (requestId === previewRequestId.current) setReportHistory(items);
-          })
-          .catch(() => {
-            if (requestId === previewRequestId.current) {
-              setReportHistoryError(
-                "Unable to load saved reports. Select this game again to retry.",
-              );
-            }
-          });
-        const workspaceRequest: Promise<void> = getGameWorkspace(metadata.app_id)
+        void getGameWorkspace(metadata.app_id)
           .then((workspace) => {
             if (requestId !== previewRequestId.current) return;
             setFullHistoryReady(workspace.full_history_ready);
@@ -249,10 +203,12 @@ function CatalogApp(): JSX.Element {
                 setAnalysisRun(latestRun);
               }
             }
+          })
+          .catch(() => {
+            if (requestId === previewRequestId.current) {
+              setAnalysisError("Unable to load this game's report workspace.");
+            }
           });
-        void Promise.allSettled([historyRequest, workspaceRequest]).then(() => {
-          if (requestId === previewRequestId.current) setReportHistoryLoading(false);
-        });
       })
       .catch(() => {
         if (requestId !== previewRequestId.current) return;
@@ -300,16 +256,11 @@ function CatalogApp(): JSX.Element {
     const selectedAppId = preview?.app_id ?? job?.app_id;
     if (!selectedAppId) return;
     setAnalysisError("");
-    const selectedModel = providerSelection.startsWith("ollama::")
-      ? providerSelection.slice("ollama::".length)
-      : null;
     const reportSettings: AggregateReportSettings = {
       minimum_support_percentage: minimumSupportPercentage,
       maximum_headlines_per_polarity: maximumThemesPerPolarity,
     };
-    const start = selectedModel
-      ? startOllamaAnalysis(selectedAppId, selectedModel)
-      : codexCohortSize === 500
+    const start = codexCohortSize === 500
       ? startMainReport(selectedAppId, reportSettings)
       : startTestReport(selectedAppId, reportSettings);
     start
@@ -320,7 +271,7 @@ function CatalogApp(): JSX.Element {
       .catch((error: unknown) => setAnalysisError(
         error instanceof Error
           ? analysisFailureMessage(error.message)
-          : "Unable to start the selected analysis provider.",
+          : "Unable to start report analysis.",
       ));
   }
 
@@ -339,7 +290,7 @@ function CatalogApp(): JSX.Element {
       .catch(() => setAnalysisError("Unable to retry analysis."));
   }
 
-  function chooseDifferentProvider(): void {
+  function returnToReportSetup(): void {
     window.localStorage.removeItem("active-analysis-run");
     setAnalysisRun(null);
   }
@@ -431,23 +382,9 @@ function CatalogApp(): JSX.Element {
         <aside className="catalog-preview" aria-live="polite">
           {showGameSearch ? (
             <section className="recent-reports" aria-labelledby="recent-reports-title">
-              <p className="eyebrow">CONTINUE YOUR RESEARCH</p>
-              <h2 id="recent-reports-title">Recent reports</h2>
-              {recentReports.length > 0 ? (
-                <ul>
-                  {recentReports.map((entry) => (
-                    <li key={entry.report_version_id}>
-                      <a href={`/reports/${encodeURIComponent(entry.report_version_id)}`}>
-                        <strong>{entry.game_title}</strong>
-                        <span>{entry.review_count.toLocaleString()} reviews</span>
-                        <small>{formatReportHistoryEntry(entry)}</small>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No saved reports yet. Select a game to create the first one.</p>
-              )}
+              <p className="eyebrow">REPORT WORKSPACE</p>
+              <h2 id="recent-reports-title">Select a game</h2>
+              <p>Choose a game to open its current Test Report and Main Report.</p>
             </section>
           ) : (
             <>
@@ -500,16 +437,12 @@ function CatalogApp(): JSX.Element {
                         type="button"
                         onClick={beginAnalysis}
                         disabled={
-                          providerSelection === "codex-cli"
-                            ? !codexStatus?.installed
-                              || !codexStatus.authenticated
-                              || !reportSettingsValid
-                            : !ollamaStatus?.models.some(
-                                (model) => providerSelection === `ollama::${model.name}`,
-                              )
+                          !codexStatus?.installed
+                          || !codexStatus.authenticated
+                          || !reportSettingsValid
                         }
                       >
-                        {providerSelection.startsWith("ollama::") ? "Run Ollama pilot" : "Create Report"}
+                        Create Report
                       </button>
                     </>
                   )}
@@ -517,13 +450,13 @@ function CatalogApp(): JSX.Element {
               )}
               {analysisRun && (
                 <div className="analysis-progress">
-                  <p className="eyebrow">{analysisRun.provider === "ollama" ? "OLLAMA ANALYSIS" : "CODEX ANALYSIS"}</p>
+                  <p className="eyebrow">REPORT ANALYSIS</p>
                   <h3 id="analysis-title">{
                     analysisRun.state === "completed" ? "Report complete" :
                     analysisRun.state === "failed" ? "Analysis failed" :
                     analysisRun.state === "cancelled" ? "Analysis cancelled" : "Analyzing reviews"
                   }</h3>
-                  <p>{analysisRun.review_count.toLocaleString()} reviews · {analysisRun.model}</p>
+                  <p>{analysisRun.review_count.toLocaleString()} reviews</p>
                   {analysisRun.state === "failed" && analysisRun.error_code && (
                     <p className="error">
                       {analysisFailureMessage(analysisRun.error_code)} Error code: <code>{analysisRun.error_code}</code>
@@ -568,7 +501,7 @@ function CatalogApp(): JSX.Element {
                     <>
                       {analysisRun.input_tokens !== null && analysisRun.output_tokens !== null && (
                         <p>
-                          Measured usage: {analysisRun.input_tokens.toLocaleString()} input and {analysisRun.output_tokens.toLocaleString()} output tokens.{analysisRun.provider === "codex-cli" ? " Remaining subscription quota is unavailable." : " Processing stayed on this device."}
+                          Measured usage: {analysisRun.input_tokens.toLocaleString()} input and {analysisRun.output_tokens.toLocaleString()} output tokens.
                         </p>
                       )}
                       <a href={
@@ -590,7 +523,7 @@ function CatalogApp(): JSX.Element {
                     && analysisRun.error_code !== "no_unseen_reviews" && (
                     <>
                       <button type="button" onClick={retryAnalysis}>Resume analysis</button>
-                      <button type="button" onClick={chooseDifferentProvider}>
+                      <button type="button" onClick={returnToReportSetup}>
                         Back
                       </button>
                     </>
@@ -624,119 +557,58 @@ function CatalogApp(): JSX.Element {
               {preview.storefront_source_status !== "unavailable" && (
                 <StorefrontOverview metadata={preview} />
               )}
-              {reportHistory.length > 0 && (
-                <section className="saved-reports" aria-labelledby="saved-reports-title">
-                  <h3 id="saved-reports-title">Saved reports</h3>
-                  <a
-                    className="open-latest-report"
-                    href={`/reports/${encodeURIComponent(reportHistory[0].report_version_id)}`}
-                  >
-                    Open latest report
-                  </a>
-                  <p>{formatReportHistoryEntry(reportHistory[0])}</p>
-                  {reportHistory.length > 1 && (
-                    <ul>
-                      {reportHistory.slice(1).map((entry) => (
-                        <li key={entry.report_version_id}>
-                          <a href={`/reports/${encodeURIComponent(entry.report_version_id)}`}>
-                            {formatReportHistoryEntry(entry)}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              )}
               <div className="analysis-setup">
-                <p><strong>{providerSelection.startsWith("ollama::") || codexCohortSize === 25 ? "Oldest versus newest pilot" : "Oldest versus newest"}</strong><br />{
-                  providerSelection.startsWith("ollama::") || codexCohortSize === 25
-                    ? "Scans the complete available English review history, then analyzes 25 oldest and 25 newest reviews. Pilot results are less complete than a full report."
+                <p><strong>{codexCohortSize === 25 ? "Oldest versus newest test" : "Oldest versus newest"}</strong><br />{
+                  codexCohortSize === 25
+                    ? "Scans the complete available English review history, then analyzes 25 oldest and 25 newest reviews."
                     : "Scans the complete available English review history, then analyzes up to the 500 oldest and 500 newest reviews."
                 }</p>
-                <label htmlFor="analysis-provider">Analysis provider</label>
+                <label htmlFor="analysis-scope">Analysis scope</label>
                 <select
-                  id="analysis-provider"
-                  value={providerSelection}
-                  onChange={(event) => {
-                    window.localStorage.setItem("analysis-provider", event.target.value);
-                    setProviderSelection(event.target.value);
-                  }}
+                  id="analysis-scope"
+                  value={codexCohortSize}
+                  onChange={(event) => setCodexCohortSize(Number(event.target.value))}
                 >
-                  <option value="codex-cli">Codex CLI · GPT-5.6 Luna</option>
-                  {ollamaStatus?.models.map((model) => (
-                    <option key={model.name} value={`ollama::${model.name}`}>
-                      Ollama · {model.name}
-                    </option>
-                  ))}
+                  <option value={25}>Test · 50 reviews</option>
+                  <option value={500}>Main · 1,000 reviews</option>
                 </select>
-                {providerSelection === "codex-cli" && (
-                  <>
-                    <label htmlFor="analysis-scope">Analysis scope</label>
-                    <select
-                      id="analysis-scope"
-                      value={codexCohortSize}
-                      onChange={(event) => setCodexCohortSize(Number(event.target.value))}
-                    >
-                      <option value={25}>Test · 50 reviews</option>
-                      <option value={500}>Main · 1,000 reviews</option>
-                    </select>
-                    <fieldset className="report-settings">
-                      <legend>Theme visibility</legend>
-                      <div>
-                        <label htmlFor="minimum-support-percentage">Minimum support percentage</label>
-                        <input
-                          id="minimum-support-percentage"
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={0.1}
-                          value={minimumSupportPercentage}
-                          onChange={(event) => setMinimumSupportPercentage(Number(event.target.value))}
-                        />
-                        <small>A Theme appears when it reaches this percentage in either cohort.</small>
-                      </div>
-                      <div>
-                        <label htmlFor="maximum-themes-per-polarity">Maximum Themes per list</label>
-                        <input
-                          id="maximum-themes-per-polarity"
-                          type="number"
-                          min={1}
-                          step={1}
-                          value={maximumThemesPerPolarity}
-                          onChange={(event) => setMaximumThemesPerPolarity(Number(event.target.value))}
-                        />
-                        <small>Positive and negative lists use this cap independently.</small>
-                      </div>
-                    </fieldset>
-                  </>
-                )}
-                {providerSelection === "codex-cli" && codexStatus && (
+                <fieldset className="report-settings">
+                  <legend>Theme visibility</legend>
+                  <div>
+                    <label htmlFor="minimum-support-percentage">Minimum support percentage</label>
+                    <input
+                      id="minimum-support-percentage"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.1}
+                      value={minimumSupportPercentage}
+                      onChange={(event) => setMinimumSupportPercentage(Number(event.target.value))}
+                    />
+                    <small>A Theme appears when it reaches this percentage in either cohort.</small>
+                  </div>
+                  <div>
+                    <label htmlFor="maximum-themes-per-polarity">Maximum Themes per list</label>
+                    <input
+                      id="maximum-themes-per-polarity"
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={maximumThemesPerPolarity}
+                      onChange={(event) => setMaximumThemesPerPolarity(Number(event.target.value))}
+                    />
+                    <small>Positive and negative lists use this cap independently.</small>
+                  </div>
+                </fieldset>
+                {codexStatus && (
                   <div className="provider-disclosure">
                     <strong>{
                       codexStatus.installed && codexStatus.authenticated
                         ? "Codex CLI ready"
                         : "Codex CLI unavailable"
                     }</strong>
-                    <span>GPT-5.6 Luna · {codexStatus.reasoning_effort} reasoning</span>
                     <p>External cloud processing: review text is sent to OpenAI only when you start analysis.</p>
                     <p>Remaining subscription quota and dollar cost are unavailable to this application.</p>
-                  </div>
-                )}
-                {providerSelection.startsWith("ollama::") && (
-                  <div className="provider-disclosure">
-                    <strong>Ollama local model ready</strong>
-                    <span>{providerSelection.slice("ollama::".length)}</span>
-                    <p>Local processing: review text stays on this device.</p>
-                    <p>The application only uses models already installed in Ollama and never downloads one.</p>
-                  </div>
-                )}
-                {ollamaStatus && ollamaStatus.models.length === 0 && (
-                  <div className="provider-disclosure">
-                    <strong>Ollama has no installed models</strong>
-                    <p>After installing Ollama, copy and run one command outside this application:</p>
-                    <code>ollama pull qwen3.5:4b</code>
-                    <code>ollama pull qwen3.5:9b</code>
-                    <p>Restart the app after the model download completes.</p>
                   </div>
                 )}
                 {availableReports.length > 0 && (
@@ -754,26 +626,20 @@ function CatalogApp(): JSX.Element {
                   </section>
                 )}
                 <button
-                  className={`create-report${reportHistory.length > 0 ? " create-report-secondary" : ""}`}
+                  className="create-report"
                   type="button"
                   disabled={
-                    reportHistoryLoading
-                    || Boolean(reportHistoryError)
-                    || (
-                      (reportHistory.length > 0 || fullHistoryReady)
-                      && providerSelection === "codex-cli"
-                      && (!codexStatus?.installed || !codexStatus.authenticated)
-                    )
-                    || (providerSelection === "codex-cli" && !reportSettingsValid)
+                    (fullHistoryReady
+                      && (!codexStatus?.installed || !codexStatus.authenticated))
+                    || !reportSettingsValid
                   }
-                  onClick={reportHistory.length > 0 || fullHistoryReady ? beginAnalysis : beginImport}
+                  onClick={fullHistoryReady ? beginAnalysis : beginImport}
                 >
                   Create Report
                 </button>
               </div>
             </>
           )}
-          {reportHistoryError && <p className="error" role="alert">{reportHistoryError}</p>}
           {jobError && <p className="error" role="alert">{jobError}</p>}
           {analysisError && <p className="error" role="alert">{analysisError}</p>}
             </>
@@ -782,11 +648,6 @@ function CatalogApp(): JSX.Element {
       </div>
     </main>
   );
-}
-
-function formatReportHistoryEntry(entry: ReportHistoryEntry): string {
-  const date: Date = new Date(`${entry.created_at.replace(" ", "T")}Z`);
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
 }
 
 function formatReportDate(createdAt: string): string {

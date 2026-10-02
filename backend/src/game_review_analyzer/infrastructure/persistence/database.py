@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 17
+CURRENT_SCHEMA_VERSION = 18
 
 
 def initialize_database(database_path: Path) -> None:
@@ -266,6 +266,15 @@ def initialize_database(database_path: Path) -> None:
                 "PRIMARY KEY(run_id, polarity, batch_number))"
             )
             connection.execute("INSERT INTO schema_migrations(version) VALUES (17)")
+        if 18 not in applied_versions:
+            connection.execute(
+                "DELETE FROM analysis_runs WHERE report_kind IS NULL"
+            )
+            connection.execute(
+                "DELETE FROM report_versions WHERE report_kind IS NULL"
+            )
+            connection.execute("DROP TABLE IF EXISTS review_opinion_extractions")
+            connection.execute("INSERT INTO schema_migrations(version) VALUES (18)")
 
 
 def schema_version(database_path: Path) -> int:

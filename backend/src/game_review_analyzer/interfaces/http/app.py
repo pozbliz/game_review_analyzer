@@ -5,9 +5,9 @@ from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Awaitable, Callable
 from pathlib import Path, PurePosixPath
 import shutil
-from typing import Annotated, AsyncIterator, Literal
+from typing import AsyncIterator, Literal
 
-from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -24,12 +24,6 @@ from game_review_analyzer.application.game_catalog import (
     search_games,
     synchronize_catalog,
 )
-from game_review_analyzer.application.report_exports import (
-    export_report_csv,
-    export_report_html,
-    export_report_json,
-    import_report_json,
-)
 from game_review_analyzer.application.storage_lifecycle import (
     DatabaseIntegrity,
     StorageDiagnostics,
@@ -39,7 +33,7 @@ from game_review_analyzer.application.storage_lifecycle import (
     get_storage_diagnostics,
     verify_database_integrity,
 )
-from game_review_analyzer.domain.reports import ReportVersion, ThemeMetricPolicy
+from game_review_analyzer.domain.reports import ThemeMetricPolicy
 from game_review_analyzer.domain.game_catalog import CatalogSyncResult, GameSearchResult
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
@@ -50,14 +44,8 @@ from game_review_analyzer.infrastructure.codex_cli import (
     codex_cli_status,
 )
 from game_review_analyzer.infrastructure.analysis_runner import (
-    AnalysisProvider,
     AnalysisRunner,
     ThemeAnalysisProvider,
-)
-from game_review_analyzer.infrastructure.ollama import (
-    OllamaProvider,
-    OllamaStatus,
-    ollama_status,
 )
 from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     AnalysisRun,
@@ -94,10 +82,6 @@ from game_review_analyzer.infrastructure.persistence.jobs import (
     retry_job,
 )
 from game_review_analyzer.infrastructure.persistence.report_versions import (
-    ReportHistoryEntry,
-    list_recent_report_versions,
-    list_report_versions,
-    load_report_version,
     load_aggregate_report_slot,
     load_aggregate_report_created_at,
 )
@@ -117,14 +101,7 @@ from game_review_analyzer.shared.config import Settings
 from game_review_analyzer.shared.telemetry import configure_telemetry, log_event
 from game_review_analyzer.interfaces.http.reports import (
     AggregateReportResponse,
-    AggregateThemeEvidenceResponse,
-    EvidenceFilterQuery,
-    ReportResponse,
-    ThemeEvidenceResponse,
-    build_report_response,
     build_aggregate_report_response,
-    build_aggregate_theme_evidence_response,
-    build_theme_evidence_response,
 )
 
 API_PREFIX = "/api"
@@ -172,37 +149,6 @@ class CodexCliProviderResponse(BaseModel):
     reasoning_effort: str
     processing_location: Literal["external_cloud"]
     cost_basis: Literal["subscription_quota_unknown"]
-
-
-class OllamaModelResponse(BaseModel):
-    """Expose non-secret metadata for one already-installed local model."""
-
-    name: str
-    size: int | None
-    parameter_size: str | None
-    quantization_level: str | None
-
-
-class OllamaProviderResponse(BaseModel):
-    """Expose local Ollama readiness without installation controls."""
-
-    available: bool
-    version: str | None
-    processing_location: Literal["local_device"]
-    models: tuple[OllamaModelResponse, ...]
-
-
-class OllamaAnalysisRequest(ThemeMetricPolicy):
-    """Select one installed local model and explicit provisional thresholds."""
-
-    model: str = Field(min_length=1)
-    cohort_size: int = Field(default=2_500, ge=1, le=2_500)
-
-
-class CodexAnalysisRequest(ThemeMetricPolicy):
-    """Select an explicit Codex cohort size and provisional thresholds."""
-
-    cohort_size: int = Field(default=25, ge=1, le=2_500)
 
 
 class AggregateReportSettings(BaseModel):
@@ -269,8 +215,7 @@ def create_app(
     catalog_source: CatalogSource | None = None,
     fallback_search_source: FallbackSearchSource | None = None,
     codex_status_source: Callable[[], CodexCliStatus] | None = None,
-    ollama_status_source: Callable[[], OllamaStatus] | None = None,
-    analysis_provider: AnalysisProvider | ThemeAnalysisProvider | None = None,
+    analysis_provider: ThemeAnalysisProvider | None = None,
 ) -> FastAPI:
     """Create an application instance, optionally using test-specific settings."""
 
@@ -281,7 +226,6 @@ def create_app(
     resolved_catalog_source = catalog_source or SteamCatalogAdapter()
     resolved_fallback_source = fallback_search_source or SteamStoreSearchAdapter()
     resolved_codex_status_source = codex_status_source or codex_cli_status
-    resolved_ollama_status_source = ollama_status_source or ollama_status
     runner = JobRunner(
         resolved_settings.database_path,
         review_source or SteamReviewIngestionAdapter(),
@@ -291,13 +235,11 @@ def create_app(
         provider_ready: bool = False
         try:
             run = get_analysis_run(resolved_settings.database_path, run_id)
-            provider: AnalysisProvider | ThemeAnalysisProvider
+            provider: ThemeAnalysisProvider
             if analysis_provider is not None:
                 provider = analysis_provider
             elif run.provider == "codex-cli":
                 provider = CodexCliProvider(executable=shutil.which("codex") or "codex")
-            elif run.provider == "ollama":
-                provider = OllamaProvider(model=run.model)
             else:
                 raise ValueError(f"Unsupported analysis provider: {run.provider}")
             provider_ready = True
@@ -421,58 +363,6 @@ def create_app(
             processing_location="external_cloud",
             cost_basis="subscription_quota_unknown",
         )
-
-    @app.get(
-        f"{API_PREFIX}/providers/ollama",
-        response_model=OllamaProviderResponse,
-    )
-    def local_ollama_status() -> OllamaProviderResponse:
-        status: OllamaStatus = resolved_ollama_status_source()
-        return OllamaProviderResponse(
-            available=status.available,
-            version=status.version,
-            processing_location="local_device",
-            models=tuple(
-                OllamaModelResponse(**model.__dict__) for model in status.models
-            ),
-        )
-
-    @app.post(
-        f"{API_PREFIX}/games/{{app_id}}/analyses/codex-cli",
-        response_model=AnalysisRun,
-        status_code=202,
-    )
-    def start_codex_analysis(
-        app_id: int, request: CodexAnalysisRequest
-    ) -> AnalysisRun:
-        status = resolved_codex_status_source()
-        if not status.installed or not status.authenticated:
-            raise HTTPException(
-                status_code=409, detail={"code": "codex_cli_not_ready"}
-            )
-        if load_game_dataset(resolved_settings.database_path, app_id) is None:
-            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
-        try:
-            run = create_analysis_run(
-                resolved_settings.database_path,
-                app_id=app_id,
-                provider="codex-cli",
-                model=status.model,
-                metric_policy=ThemeMetricPolicy.model_validate(
-                    request.model_dump(exclude={"cohort_size"})
-                ),
-                cohort_size=request.cohort_size,
-            )
-        except FullHistoryRequired as error:
-            raise HTTPException(
-                status_code=409, detail={"code": "analysis_requires_full_history"}
-            ) from error
-        except ValueError as error:
-            raise HTTPException(
-                status_code=409, detail={"code": "analysis_requires_reviews"}
-            ) from error
-        submit_analysis(run)
-        return run
 
     @app.post(
         f"{API_PREFIX}/games/{{app_id}}/reports/test",
@@ -654,88 +544,6 @@ def create_app(
         if created_at is None:
             raise HTTPException(status_code=404, detail={"code": "report_not_found"})
         return build_aggregate_report_response(report, created_at)
-
-    @app.get(
-        f"{API_PREFIX}/games/{{app_id}}/reports/test/themes/{{theme_id}}/evidence",
-        response_model=AggregateThemeEvidenceResponse,
-    )
-    def test_report_theme_evidence(
-        app_id: int,
-        theme_id: str,
-    ) -> AggregateThemeEvidenceResponse:
-        report = load_aggregate_report_slot(
-            resolved_settings.database_path, app_id, "test"
-        )
-        if report is None:
-            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
-        evidence = build_aggregate_theme_evidence_response(
-            resolved_settings.database_path,
-            report,
-            theme_id,
-        )
-        if evidence is None:
-            raise HTTPException(status_code=404, detail={"code": "theme_not_found"})
-        return evidence
-
-    @app.get(
-        f"{API_PREFIX}/games/{{app_id}}/reports/main/themes/{{theme_id}}/evidence",
-        response_model=AggregateThemeEvidenceResponse,
-    )
-    def main_report_theme_evidence(
-        app_id: int,
-        theme_id: str,
-    ) -> AggregateThemeEvidenceResponse:
-        report = load_aggregate_report_slot(
-            resolved_settings.database_path, app_id, "main"
-        )
-        if report is None:
-            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
-        evidence = build_aggregate_theme_evidence_response(
-            resolved_settings.database_path,
-            report,
-            theme_id,
-        )
-        if evidence is None:
-            raise HTTPException(status_code=404, detail={"code": "theme_not_found"})
-        return evidence
-
-    @app.post(
-        f"{API_PREFIX}/games/{{app_id}}/analyses/ollama",
-        response_model=AnalysisRun,
-        status_code=202,
-    )
-    def start_ollama_analysis(
-        app_id: int, request: OllamaAnalysisRequest
-    ) -> AnalysisRun:
-        status: OllamaStatus = resolved_ollama_status_source()
-        installed_names: set[str] = {model.name for model in status.models}
-        if not status.available or request.model not in installed_names:
-            raise HTTPException(
-                status_code=409, detail={"code": "ollama_model_not_installed"}
-            )
-        if load_game_dataset(resolved_settings.database_path, app_id) is None:
-            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
-        try:
-            run = create_analysis_run(
-                resolved_settings.database_path,
-                app_id=app_id,
-                provider="ollama",
-                model=request.model,
-                metric_policy=ThemeMetricPolicy.model_validate(
-                    request.model_dump(exclude={"model", "cohort_size"})
-                ),
-                cohort_size=request.cohort_size,
-            )
-        except FullHistoryRequired as error:
-            raise HTTPException(
-                status_code=409, detail={"code": "analysis_requires_full_history"}
-            ) from error
-        except ValueError as error:
-            raise HTTPException(
-                status_code=409, detail={"code": "analysis_requires_reviews"}
-            ) from error
-        submit_analysis(run)
-        return run
 
     def existing_analysis_run(run_id: str) -> AnalysisRun:
         try:
@@ -924,22 +732,6 @@ def create_app(
         return job
 
     @app.get(
-        f"{API_PREFIX}/games/{{app_id}}/reports",
-        response_model=tuple[ReportHistoryEntry, ...],
-    )
-    def report_history(app_id: int) -> tuple[ReportHistoryEntry, ...]:
-        if load_game_dataset(resolved_settings.database_path, app_id) is None:
-            raise HTTPException(status_code=404, detail={"code": "game_not_found"})
-        return list_report_versions(resolved_settings.database_path, app_id)
-
-    @app.get(
-        f"{API_PREFIX}/reports/recent",
-        response_model=tuple[ReportHistoryEntry, ...],
-    )
-    def recent_reports() -> tuple[ReportHistoryEntry, ...]:
-        return list_recent_report_versions(resolved_settings.database_path)
-
-    @app.get(
         f"{API_PREFIX}/games/{{app_id}}/workspace",
         response_model=GameWorkspaceResponse,
     )
@@ -976,100 +768,6 @@ def create_app(
             main_report_available=main_report is not None,
             available_reports=tuple(available_reports),
         )
-
-    @app.get(
-        f"{API_PREFIX}/reports/{{report_version_id}}",
-        response_model=ReportResponse,
-    )
-    def report_summary(
-        report_version_id: str,
-        query: Annotated[EvidenceFilterQuery, Query()],
-    ) -> ReportResponse:
-        report = load_report_version(resolved_settings.database_path, report_version_id)
-        if report is None:
-            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
-        return build_report_response(resolved_settings.database_path, report, query)
-
-    @app.get(
-        f"{API_PREFIX}/reports/{{report_version_id}}/themes/{{theme_id}}/evidence",
-        response_model=ThemeEvidenceResponse,
-    )
-    def theme_evidence(
-        report_version_id: str,
-        theme_id: str,
-        query: Annotated[EvidenceFilterQuery, Query()],
-    ) -> ThemeEvidenceResponse:
-        report = load_report_version(resolved_settings.database_path, report_version_id)
-        if report is None:
-            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
-        response: ThemeEvidenceResponse | None = build_theme_evidence_response(
-            resolved_settings.database_path, report, theme_id, query
-        )
-        if response is None:
-            raise HTTPException(status_code=404, detail={"code": "theme_not_found"})
-        return response
-
-    @app.get(f"{API_PREFIX}/reports/{{report_version_id}}/export")
-    def download_report(
-        report_version_id: str,
-        format: Literal["html", "json", "csv"],
-        include_full_review_text: bool = False,
-    ) -> Response:
-        exporters = {
-            "html": (export_report_html, "text/html", "html"),
-            "json": (export_report_json, "application/json", "json"),
-            "csv": (export_report_csv, "text/csv", "csv"),
-        }
-        exporter, media_type, extension = exporters[format]
-        try:
-            if format == "html":
-                content: str = exporter(
-                    resolved_settings.database_path, report_version_id
-                )
-            else:
-                content = exporter(
-                    resolved_settings.database_path,
-                    report_version_id,
-                    include_full_review_text=include_full_review_text,
-                )
-        except ValueError as error:
-            raise HTTPException(
-                status_code=404, detail={"code": "report_not_found"}
-            ) from error
-        return Response(
-            content=content,
-            media_type=media_type,
-            headers={
-                "Content-Disposition": f'attachment; filename="report-export.{extension}"'
-            },
-        )
-
-    @app.post(
-        f"{API_PREFIX}/reports/import",
-        response_model=ReportResponse,
-        status_code=201,
-    )
-    async def import_report(request: Request) -> ReportResponse:
-        try:
-            payload: str = (await request.body()).decode("utf-8")
-            report: ReportVersion = import_report_json(
-                resolved_settings.database_path, payload
-            )
-        except UnicodeDecodeError as error:
-            raise HTTPException(
-                status_code=422, detail={"code": "invalid_report_export"}
-            ) from error
-        except ValueError as error:
-            code: str = (
-                "invalid_report_export"
-                if str(error) == "Invalid report export"
-                else "report_import_conflict"
-            )
-            raise HTTPException(
-                status_code=422 if code == "invalid_report_export" else 409,
-                detail={"code": code, "message": str(error)},
-            ) from error
-        return build_report_response(resolved_settings.database_path, report)
 
     @app.get(f"{API_PREFIX}/storage", response_model=StorageDiagnostics)
     def storage_diagnostics() -> StorageDiagnostics:

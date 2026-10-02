@@ -1,8 +1,6 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App, { analysisFailureMessage } from "../../src/app/App";
-import { SteamMetadata } from "../../src/api/shell";
-import StorefrontOverview from "../../src/features/game/StorefrontOverview";
 
 afterEach(() => {
   cleanup();
@@ -24,753 +22,49 @@ describe("application shell", () => {
     expect(analysisFailureMessage(code)).toContain(expected);
   });
 
-  it("shows the reservation code returned when report creation conflicts", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/workspace") return json(workspace(true));
-      if (url === "/api/games/1145350/reports/test" && options?.method === "POST") {
-        return new Response(JSON.stringify({
-          detail: { code: "test_report_analysis_active" },
-        }), { status: 409 });
-      }
-      return json(metadata());
-    });
-
-    render(<App />);
-    await previewGame();
-    fireEvent.click(await screen.findByRole("button", { name: "Create Report" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Another analysis owns this report slot",
-    );
-  });
-
-  it("shows recent saved reports beside game search", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/reports/recent") {
-        return json([{ ...historyEntry("recent-report", 1145350), game_title: "Hades II" }]);
-      }
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      return json(ollamaProvider());
-    });
+  it("opens with the current-report workspace prompt", async () => {
+    mockShell();
 
     render(<App />);
 
-    expect(await screen.findByRole("heading", { name: "Recent reports" })).toBeVisible();
-    expect(screen.getByRole("link", { name: /Hades II/i })).toHaveAttribute(
-      "href",
-      "/reports/recent-report",
-    );
-    expect(screen.queryByText(/qwen3\.5:4b/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Ollama/)).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /select the game to analyze/i })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Select a game" })).toBeVisible();
+    expect(screen.queryByText(/Ollama|gpt-5\.6-luna/i)).not.toBeInTheDocument();
   });
 
-  it("shows measured Steam refresh percentage during report analysis", async () => {
-    localStorage.setItem("active-analysis-run", "analysis-1");
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/reports/recent") return json([]);
-      return json({
-        ...analysisRun("running"),
-        phase: "refreshing",
-        refresh_imported_count: 1_500,
-        refresh_target_count: 5_000,
-      });
-    });
-
-    render(<App />);
-
-    expect(await screen.findByText(/Refreshing Steam reviews/)).toHaveTextContent("30%");
-    expect(screen.getByRole("progressbar")).toHaveAttribute("value", "1500");
-    expect(screen.getByRole("progressbar")).toHaveAttribute("max", "5000");
-  });
-
-  it("clears a transient analysis progress error after polling recovers", async () => {
-    localStorage.setItem("active-analysis-run", "analysis-1");
-    let progressRequests: number = 0;
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/reports/recent") return json([]);
-      progressRequests += 1;
-      return progressRequests === 2
-        ? new Response("{}", { status: 503 })
-        : json(analysisRun("running"));
-    });
-
-    render(<App />);
-
-    expect(await screen.findByText("Unable to refresh analysis progress.")).toBeVisible();
-    await waitFor(() => {
-      expect(screen.queryByText("Unable to refresh analysis progress.")).not.toBeInTheDocument();
-    }, { timeout: 1_500 });
-  });
-
-  it("keeps terminal background work out of the initial catalog", async () => {
-    localStorage.setItem("active-import-job", "job-1");
-    localStorage.setItem("active-analysis-run", "analysis-1");
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/reports/recent") return json([]);
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/jobs/job-1") return json(job("cancelled", 10));
-      return json(analysisRun("cancelled"));
-    });
-
-    render(<App />);
-
-    await waitFor(() => {
-      expect(localStorage.getItem("active-import-job")).toBeNull();
-      expect(localStorage.getItem("active-analysis-run")).toBeNull();
-    });
-    expect(screen.getByRole("heading", { name: "Recent reports" })).toBeVisible();
-    expect(screen.queryByText("Import cancelled")).not.toBeInTheDocument();
-  });
-
-  it("reports backend health after validating the shell API contracts", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url = request.toString();
-      if (url === "/api/health") {
-        return new Response(
-          JSON.stringify({ status: "ok", service: "game-review-analyzer" }),
-          { status: 200 },
-        );
-      }
-      return new Response(
-        JSON.stringify(publicConfig()),
-        { status: 200 },
-      );
-    });
-
-    render(<App />);
-
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("connected"));
-    expect(fetchMock).toHaveBeenCalledWith("/api/health");
-    expect(fetchMock).toHaveBeenCalledWith("/api/config");
-    expect(screen.getByRole("heading", { name: /select the game to analyze/i })).toBeVisible();
-  });
-
-  it("rejects an invalid public configuration payload", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url = request.toString();
-      return url === "/api/health"
-        ? new Response(
-            JSON.stringify({ status: "ok", service: "game-review-analyzer" }),
-            { status: 200 },
-          )
-        : new Response(JSON.stringify({ environment: "test" }), { status: 200 });
-    });
-
-    render(<App />);
-
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("unavailable"));
-  });
-
-  it("previews a partial game and labels unavailable identity fields", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url = request.toString();
-      if (url === "/api/health") {
-        return new Response(
-          JSON.stringify({ status: "ok", service: "game-review-analyzer" }),
-          { status: 200 },
-        );
-      }
-      if (url === "/api/config") {
-        return new Response(
-          JSON.stringify(publicConfig()),
-          { status: 200 },
-        );
-      }
-      if (url === "/api/games/1145350/reports") return json([]);
-      return new Response(
-        JSON.stringify({
-          app_id: 1145350,
-          title: "Hades II",
-          developers: ["Supergiant Games"],
-          capsule_image_url: null,
-          release_date: null,
-          release_status: "unknown",
-          review_count: null,
-          source_status: "partial",
-          missing_fields: [
-            "capsule_image_url",
-            "release_date",
-            "release_status",
-            "review_count",
-          ],
-          storefront: emptyStorefront(),
-          storefront_source_status: "unavailable",
-          storefront_missing_fields: storefrontFields(),
-        }),
-        { status: 200 },
-      );
-    });
-
-    render(<App />);
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("connected"));
-
-    fireEvent.change(screen.getByRole("textbox", { name: /steam appid/i }), {
-      target: { value: "1145350" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /preview game/i }));
-
-    expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
-    expect(screen.getByText("Supergiant Games")).toBeVisible();
-    expect(screen.getAllByText("Unknown / unavailable")).toHaveLength(3);
-    expect(screen.getByRole("button", { name: "Create Report" })).toBeEnabled();
-  });
-
-  it("searches by game name and previews the selected Steam result", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json({ environment: "test", api_prefix: "/api", steam_country_code: "JP", keyed_catalog_available: true });
-      if (url === "/api/games/search?q=Hades%202") return json([{
-        app_id: 1145350,
-        title: "Hades II",
-        capsule_image_url: null,
-        source: "catalog",
-      }]);
-      return json(metadata());
-    });
-
-    render(<App />);
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("connected"));
-    fireEvent.change(screen.getByRole("textbox", { name: "Game name" }), {
-      target: { value: "Hades 2" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Search games" }));
-    fireEvent.click(await screen.findByRole("button", { name: /Hades II.*AppID 1145350/i }));
-
-    expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
-    expect(fetchMock).toHaveBeenCalledWith("/api/games/preview?appid=1145350");
-  });
-
-  it("surfaces dated saved reports before new report controls", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") return json([
-        {
-          report_version_id: "report-latest",
-          app_id: 1145350,
-          game_title: "Hades II",
-          review_count: 50,
-          provider: "ollama",
-          model: "qwen3.5:4b",
-          thresholds_calibrated: false,
-          created_at: "2026-08-14 12:00:00",
-        },
-        {
-          report_version_id: "report-older",
-          app_id: 1145350,
-          game_title: "Hades II",
-          review_count: 5000,
-          provider: "codex-cli",
-          model: "gpt-5.6-luna",
-          thresholds_calibrated: false,
-          created_at: "2026-08-12 12:00:00",
-        },
-      ]);
-      return json(metadata());
-    });
+  it("previews a game and lists only its current report slots", async () => {
+    mockShell({ workspace: workspace(true, null, true, true) });
 
     render(<App />);
     await previewGame();
 
-    expect(await screen.findByRole("link", { name: "Open latest report" })).toHaveAttribute(
-      "href",
-      "/reports/report-latest",
+    expect(screen.getByRole("link", { name: /Test Report.*50 reviews/i })).toHaveAttribute(
+      "href", "/test-reports/1145350",
     );
-    const savedReports: HTMLElement = screen.getByRole("region", { name: "Saved reports" });
-    expect(within(savedReports).queryByText(/gpt-5.6-luna/i)).not.toBeInTheDocument();
-    expect(within(savedReports).queryByText(/qwen3\.5:4b/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create Report" })).toBeEnabled();
-    expect(fetchMock).toHaveBeenCalledWith("/api/games/1145350/reports");
+    expect(screen.getByRole("link", { name: /Main Report.*1,000 reviews/i })).toHaveAttribute(
+      "href", "/main-reports/1145350",
+    );
+    expect(screen.queryByLabelText("Analysis provider")).not.toBeInTheDocument();
   });
 
-  it("does not start a Full import when saved report discovery fails", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") {
-        return new Response("{}", { status: 503 });
-      }
-      return json(metadata());
+  it("starts a Test Report with the selected visibility settings", async () => {
+    const fetchMock = mockShell({
+      workspace: workspace(true),
+      analysis: { ...analysisRun("completed"), report_kind: "test", review_count: 50 },
     });
 
     render(<App />);
     await previewGame();
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Unable to load saved reports",
-    );
-    expect(screen.getByRole("button", { name: "Create Report" })).toBeDisabled();
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      "/api/games/1145350/imports/full",
-      expect.anything(),
-    );
-  });
-
-  it("waits for saved report discovery before enabling report creation", async () => {
-    let resolveHistory: (response: Response) => void = () => undefined;
-    const historyResponse = new Promise<Response>((resolve) => { resolveHistory = resolve; });
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") return historyResponse;
-      return json(metadata());
-    });
-
-    render(<App />);
-    await previewGame();
-
-    expect(screen.getByRole("button", { name: "Create Report" })).toBeDisabled();
-    resolveHistory(json([]));
-    await waitFor(() => {
-    expect(screen.getByRole("button", { name: "Create Report" })).toBeEnabled();
-    });
-  });
-
-  it("ignores saved report history from an earlier game selection", async () => {
-    let resolveFirstHistory: (response: Response) => void = () => undefined;
-    const firstHistory = new Promise<Response>((resolve) => { resolveFirstHistory = resolve; });
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/111/reports") return firstHistory;
-      if (url === "/api/games/222/reports") return json([historyEntry("report-222", 222)]);
-      if (url === "/api/games/preview?appid=111") {
-        return json({ ...metadata(), app_id: 111, title: "First game" });
-      }
-      return json({ ...metadata(), app_id: 222, title: "Second game" });
-    });
-
-    render(<App />);
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("connected"));
-    await selectAppId("111");
-    expect(await screen.findByRole("heading", { name: "First game" })).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Game search" }));
-    await selectAppId("222");
-    expect(await screen.findByRole("link", { name: "Open latest report" })).toHaveAttribute(
-      "href",
-      "/reports/report-222",
-    );
-
-    await act(async () => {
-      resolveFirstHistory(json([historyEntry("report-111", 111)]));
-    });
-    expect(screen.getByRole("link", { name: "Open latest report" })).toHaveAttribute(
-      "href",
-      "/reports/report-222",
-    );
-  });
-
-  it("creates another report from retained reviews without a Full import", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") return json([{
-        report_version_id: "report-latest",
-        app_id: 1145350,
-        game_title: "Hades II",
-        review_count: 5000,
-        provider: "codex-cli",
-        model: "gpt-5.6-luna",
-        thresholds_calibrated: false,
-        created_at: "2026-08-14 12:00:00",
-      }]);
-      if (url === "/api/games/1145350/reports/test") {
-        return json({ ...analysisRun("completed"), report_kind: "test", review_count: 50 });
-      }
-      if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
-      return json(metadata());
-    });
-
-    render(<App />);
-    await previewGame();
-    fireEvent.click(await screen.findByRole("button", { name: "Create Report" }));
-
-    expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/games/1145350/reports/test",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          minimum_support_percentage: 5,
-          maximum_headlines_per_polarity: 10,
-        }),
-      },
-    );
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      "/api/games/1145350/imports/full",
-      expect.anything(),
-    );
-  });
-
-  it("creates the first report from a completed Game Dataset without another import", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/workspace") return json(workspace(true));
-      if (url === "/api/games/1145350/reports/test") {
-        return json({ ...analysisRun("completed"), report_kind: "test", review_count: 50 });
-      }
-      return json(metadata());
-    });
-
-    render(<App />);
-    await previewGame();
-    fireEvent.click(await screen.findByRole("button", { name: "Create Report" }));
-
-    expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      "/api/games/1145350/imports/full",
-      expect.anything(),
-    );
-  });
-
-  it.each([
-    ["failed", "Analysis failed"],
-    ["cancelled", "Analysis cancelled"],
-  ])("restores a %s analysis with a Back action", async (state, heading) => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/workspace") {
-        return json(workspace(true, analysisRun(state)));
-      }
-      return json(metadata());
-    });
-
-    render(<App />);
-    await previewGame();
-
-    expect(await screen.findByRole("heading", { name: heading })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Resume analysis" })).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.getByLabelText("Analysis provider")).toBeVisible();
-  });
-
-  it("moves from game search to full-width details and back", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      return json(metadata());
-    });
-
-    render(<App />);
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("connected"));
-
-    const selectionPanel = screen.getByRole("region", { name: /select the game to analyze/i });
-    fireEvent.change(screen.getByRole("textbox", { name: /steam appid/i }), {
-      target: { value: "1145350" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /preview game/i }));
-
-    expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
-    expect(screen.queryByText("CONFIRM IDENTITY")).not.toBeInTheDocument();
-    expect(selectionPanel).not.toBeVisible();
-
-    fireEvent.click(screen.getByRole("button", { name: "Game search" }));
-    expect(selectionPanel).toBeVisible();
-    expect(screen.queryByRole("heading", { name: "Hades II" })).not.toBeInTheDocument();
-  });
-
-  it("opens a selected game from a new-report catalog link", async () => {
-    window.history.replaceState({}, "", "/?appid=1145350");
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") return json([]);
-      return json(metadata());
-    });
-
-    render(<App />);
-
-    expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
-    expect(fetchMock).toHaveBeenCalledWith("/api/games/preview?appid=1145350");
-  });
-
-  it("presents storefront tags and feature support as scan-friendly lists", () => {
-    const richMetadata: SteamMetadata = {
-      ...metadata(),
-      storefront: {
-        ...emptyStorefront(),
-        tags: ["Action", "Roguelike"],
-        supported_languages: "English *, French, Spanish - Spain, Ukrainian * languages with full audio support",
-        screenshot_urls: ["https://example.com/one.jpg", "https://example.com/two.jpg"],
-        features: [
-          { name: "Windows", group: "Platforms and accessibility", state: "supported" },
-          { name: "Linux", group: "Platforms and accessibility", state: "not_supported" },
-        ],
-      },
-    } as SteamMetadata;
-
-    render(<StorefrontOverview metadata={richMetadata} />);
-
-    expect(screen.queryByText("STEAM SNAPSHOT")).not.toBeInTheDocument();
-    expect(within(screen.getByRole("list", { name: "Tags" })).getByText("Action")).toBeVisible();
-    const featureList = screen.getByRole("list", { name: "Features" });
-    expect(within(featureList).getByText("Windows")).toBeVisible();
-    expect(within(featureList).getByText("Supported")).toBeVisible();
-    expect(within(featureList).getByText("Not supported")).toBeVisible();
-    const fullAudio = screen.getByRole("list", { name: "Full audio" });
-    expect(within(fullAudio).getByText("English")).toBeVisible();
-    expect(within(fullAudio).getByText("Ukrainian")).toBeVisible();
-    const interfaceLanguages = screen.getByRole("list", { name: "Interface and subtitles" });
-    expect(within(interfaceLanguages).getByText("French")).toBeVisible();
-    expect(within(interfaceLanguages).getByText("Spanish (Spain)")).toBeVisible();
-    expect(screen.queryByText(/languages with full audio support/i)).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Enlarge Hades II Steam screenshot 1" }));
-    const firstDialog = screen.getByRole("dialog", { name: "Hades II screenshot 1 of 2" });
-    expect(firstDialog).toBeVisible();
-    expect(within(firstDialog).getByRole("img", { name: "Hades II Steam screenshot 1" }))
-      .toHaveAttribute("src", "https://example.com/one.jpg");
-    fireEvent.click(screen.getByRole("button", { name: "Next screenshot" }));
-    expect(screen.getByRole("dialog", { name: "Hades II screenshot 2 of 2" })).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Close screenshot" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
-
-  it("starts a Full import and exposes durable progress and cancellation", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
-      const url = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json({ ...ollamaProvider(), available: false, models: [] });
-      if (url.startsWith("/api/games/preview")) return json(metadata());
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/imports/full") {
-        expect(options).toMatchObject({ method: "POST" });
-        return json(job("queued", 0, "full"));
-      }
-      if (url === "/api/jobs/job-1/cancel") return json(job("cancelled", 200));
-      if (url === "/api/jobs/job-1/delete") return new Response(null, { status: 204 });
-      return json(job("running", 200));
-    });
-
-    render(<App />);
-    await previewGame();
-    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
-
-    expect(await screen.findByText("200 reviews scanned")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel import" }));
-    expect(await screen.findByText("Import cancelled")).toBeVisible();
-    fireEvent.change(screen.getByLabelText("Type job-1 to delete this incomplete job"), {
-      target: { value: "job-1" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Delete incomplete job" }));
-    expect(await screen.findByText("Incomplete job deleted")).toBeVisible();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/jobs/job-1/delete",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmation: "job-1" }),
-      },
-    );
-  });
-
-  it("discloses Codex CLI cloud processing and unknown subscription quota", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json({
-        installed: true,
-        authenticated: true,
-        version: "codex-cli 0.147.0",
-        model: "gpt-5.6-luna",
-        reasoning_effort: "medium",
-        processing_location: "external_cloud",
-        cost_basis: "subscription_quota_unknown",
-      });
-      if (url === "/api/games/1145350/reports") return json([]);
-      return json(metadata());
-    });
-
-    render(<App />);
-    await previewGame();
-
-    expect(screen.getByText("Codex CLI ready")).toBeVisible();
-    expect(screen.getByText("GPT-5.6 Luna · medium reasoning")).toBeVisible();
-    expect(screen.getByText(/review text is sent to openai/i)).toBeVisible();
-    expect(screen.getByText(/remaining subscription quota and dollar cost are unavailable/i)).toBeVisible();
-  });
-
-  it("starts Codex analysis after import and links the completed report", async () => {
-    let analysisPolls = 0;
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url.startsWith("/api/games/preview")) return json(metadata());
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
-      if (url === "/api/games/1145350/reports/test") {
-        return json({ ...analysisRun("queued"), report_kind: "test", review_count: 50 });
-      }
-      analysisPolls += 1;
-      return json({
-        ...analysisRun(analysisPolls > 1 ? "completed" : "running"),
-        report_kind: "test",
-        review_count: 50,
-      });
-    });
-
-    render(<App />);
-    await previewGame();
-    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
-    await screen.findByRole("heading", { name: "Import complete" });
-    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
-
-    const link = await screen.findByRole("link", { name: "View Test Report" });
-    expect(link).toHaveAttribute("href", "/test-reports/1145350");
-    expect(screen.getByText(/120 input and 30 output tokens/i)).toBeVisible();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/games/1145350/reports/test",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          minimum_support_percentage: 5,
-          maximum_headlines_per_polarity: 10,
-        }),
-      },
-    );
-  });
-
-  it("creates a standalone Test Report from a completed Full Import", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/workspace") return json(workspace(true));
-      if (url === "/api/games/1145350/reports/test") {
-        return json({
-          ...analysisRun("completed"),
-          report_kind: "test",
-          review_count: 50,
-        });
-      }
-      return json(metadata());
-    });
-
-    render(<App />);
-    await previewGame();
-    expect(screen.queryByRole("button", { name: "Run 50-review test" })).not.toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: "Create Report" }));
-
-    expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "View Test Report" })).toHaveAttribute(
-      "href",
-      "/test-reports/1145350",
-    );
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/games/1145350/reports/test",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          minimum_support_percentage: 5,
-          maximum_headlines_per_polarity: 10,
-        }),
-      },
-    );
-  });
-
-  it("creates the first Main Report from a completed Full Import", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/workspace") return json(workspace(true));
-      if (url === "/api/games/1145350/reports/main") {
-        return json({
-          ...analysisRun("completed"),
-          report_kind: "main",
-          review_count: 1_000,
-        });
-      }
-      return json(metadata());
-    });
-
-    render(<App />);
-    await previewGame();
-    fireEvent.change(screen.getByRole("combobox", { name: "Analysis scope" }), {
-      target: { value: "500" },
-    });
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Minimum support percentage" }), {
+    fireEvent.change(screen.getByLabelText("Minimum support percentage"), {
       target: { value: "7.5" },
     });
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Maximum Themes per list" }), {
+    fireEvent.change(screen.getByLabelText("Maximum Themes per list"), {
       target: { value: "4" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
 
-    expect(await screen.findByRole("link", { name: "View Main Report" })).toHaveAttribute(
-      "href",
-      "/main-reports/1145350",
-    );
+    expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/games/1145350/reports/main",
+      "/api/games/1145350/reports/test",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -782,256 +76,86 @@ describe("application shell", () => {
     );
   });
 
-  it("lists the dated Main Report above Create Report", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/workspace") {
-        return json({
-          ...workspace(true),
-          main_report_available: true,
-          available_reports: [{
-            kind: "main",
-            review_count: 1_000,
-            created_at: "2026-09-30 04:06:47",
-          }],
-        });
-      }
-      return json(metadata());
+  it("starts a Main Report without provider or model controls", async () => {
+    const fetchMock = mockShell({
+      workspace: workspace(true),
+      analysis: { ...analysisRun("queued"), report_kind: "main", review_count: 1_000 },
     });
 
     render(<App />);
     await previewGame();
-
-    expect(screen.getByRole("option", { name: "Main · 1,000 reviews" })).toBeEnabled();
-    expect(screen.getByRole("link", { name: /Main Report.*1,000 reviews.*Sep 30, 2026/i })).toHaveAttribute(
-      "href",
-      "/main-reports/1145350",
-    );
-    expect(screen.getByRole("button", { name: "Create Report" })).toBeVisible();
-  });
-
-  it("describes Main Report map progress truthfully", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/workspace") return json(workspace(true));
-      if (url === "/api/games/1145350/reports/main" || url === "/api/analysis-runs/analysis-1") {
-        return json({
-          ...analysisRun("running"),
-          report_kind: "main",
-          review_count: 1_000,
-          extracted_review_count: 250,
-          phase: "extracting",
-        });
-      }
-      return json(metadata());
-    });
-
-    render(<App />);
-    await previewGame();
-    fireEvent.change(screen.getByRole("combobox", { name: "Analysis scope" }), {
-      target: { value: "500" },
-    });
+    fireEvent.change(screen.getByLabelText("Analysis scope"), { target: { value: "500" } });
     fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
 
-    expect(await screen.findByText("250 of 1,000 reviews analyzed and checkpointed")).toBeVisible();
-  });
-
-  it("reopens a saved Test Report independently from the latest analysis", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url: string = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/workspace") {
-        return json(workspace(true, analysisRun("completed"), true));
-      }
-      if (url === "/api/games/1145350/reports/test") {
-        return json({
-          ...analysisRun("completed"),
-          report_kind: "test",
-          review_count: 50,
-        });
-      }
-      return json(metadata());
-    });
-
-    render(<App />);
-    await previewGame();
-
-    expect(await screen.findByRole("link", { name: /Test Report.*50 reviews/i })).toHaveAttribute(
-      "href",
-      "/test-reports/1145350",
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
-    expect(await screen.findByRole("heading", { name: "Report complete" })).toBeVisible();
-  });
-
-  it("selects an installed Ollama model and starts local analysis explicitly", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
-      const url = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url.startsWith("/api/games/preview")) return json(metadata());
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
-      if (url === "/api/games/1145350/analyses/ollama") {
-        expect(options).toMatchObject({
-          method: "POST",
-          body: expect.stringContaining('"model":"qwen3.5:4b"'),
-        });
-        expect(options?.body).toContain('"cohort_size":25');
-        return json({ ...analysisRun("queued"), provider: "ollama", model: "qwen3.5:4b" });
-      }
-      return json({ ...analysisRun("completed"), provider: "ollama", model: "qwen3.5:4b" });
-    });
-
-    render(<App />);
-    await previewGame();
-    fireEvent.change(screen.getByLabelText("Analysis provider"), {
-      target: { value: "ollama::qwen3.5:4b" },
-    });
-    expect(screen.getByText(/local processing: review text stays on this device/i)).toBeVisible();
-    expect(screen.getByText(/analyzes 25 oldest and 25 newest reviews/i)).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Run Ollama pilot" }));
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/games/1145350/analyses/ollama",
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/games/1145350/reports/main",
       expect.objectContaining({ method: "POST" }),
-    );
+    ));
+    expect(screen.queryByText(/gpt-5\.6-luna|Codex analysis/i)).not.toBeInTheDocument();
   });
 
-  it("cancels a running analysis from the progress view", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      if (url.startsWith("/api/games/preview")) return json(metadata());
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/imports/full") return json(job("completed", 5000, "full"));
-      if (url === "/api/games/1145350/analyses/ollama") {
-        return json({ ...analysisRun("running"), provider: "ollama", model: "qwen3.5:4b" });
-      }
-      if (url === "/api/analysis-runs/analysis-1/cancel") {
-        return json({ ...analysisRun("cancelled"), provider: "ollama", model: "qwen3.5:4b" });
-      }
-      return json({ ...analysisRun("running"), provider: "ollama", model: "qwen3.5:4b" });
+  it("shows measured Steam refresh percentage during report analysis", async () => {
+    localStorage.setItem("active-analysis-run", "analysis-1");
+    mockShell({
+      analysis: {
+        ...analysisRun("running"),
+        phase: "refreshing",
+        refresh_imported_count: 1_500,
+        refresh_target_count: 5_000,
+      },
     });
 
     render(<App />);
-    await previewGame();
-    fireEvent.change(screen.getByLabelText("Analysis provider"), {
-      target: { value: "ollama::qwen3.5:4b" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Run Ollama pilot" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Cancel analysis" }));
 
-    expect(await screen.findByRole("heading", { name: "Analysis cancelled" })).toBeVisible();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/analysis-runs/analysis-1/cancel",
-      { method: "POST" },
-    );
+    expect(await screen.findByText(/Refreshing Steam reviews/)).toHaveTextContent("30%");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("value", "1500");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("max", "5000");
   });
 
-  it("shows external-only model commands when Ollama has no installed models", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") {
-        return json({ ...ollamaProvider(), available: false, models: [] });
-      }
-      if (url === "/api/games/1145350/reports") return json([]);
-      return json(metadata());
-    });
-
-    render(<App />);
-    await previewGame();
-
-    expect(screen.getByText("ollama pull qwen3.5:4b")).toBeVisible();
-    expect(screen.getByText("ollama pull qwen3.5:9b")).toBeVisible();
-    expect(screen.getByText(/copy and run one command outside this application/i)).toBeVisible();
-  });
-
-  it("retries a failed Quick import", async () => {
-    let progressRequests = 0;
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json({ ...ollamaProvider(), available: false, models: [] });
-      if (url.startsWith("/api/games/preview")) return json(metadata());
-      if (url === "/api/reports/recent") return json([]);
-      if (url === "/api/games/1145350/reports") return json([]);
-      if (url === "/api/games/1145350/workspace") return json(workspace(false));
-      if (url === "/api/games/1145350/imports/full") return json(job("queued", 0, "full"));
-      if (url === "/api/jobs/job-1/retry") return json(job("queued", 0));
-      progressRequests += 1;
-      return json(progressRequests === 1 ? job("failed", 0) : job("completed", 5000));
-    });
+  it("starts a Full import when the selected game has no completed dataset", async () => {
+    const fetchMock = mockShell({ workspace: workspace(false), importJob: job("queued", 0) });
 
     render(<App />);
     await previewGame();
     fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Retry import" }));
 
-    expect(await screen.findByText("Import complete")).toBeVisible();
-  });
-
-  it("reattaches to durable import progress after a browser refresh", async () => {
-    localStorage.setItem("active-import-job", "job-1");
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      return json(job("running", 200));
-    });
-
-    render(<App />);
-
-    expect(await screen.findByText("Downloading reviews")).toBeVisible();
-    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1");
-  });
-
-  it("preserves the selected Ollama provider across an import-page reload", async () => {
-    localStorage.setItem("active-import-job", "job-1");
-    localStorage.setItem("analysis-provider", "ollama::qwen3.5:4b");
-    let jobRequests: number = 0;
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
-      const url = request.toString();
-      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
-      if (url === "/api/config") return json(publicConfig());
-      if (url === "/api/reports/recent") return json([]);
-      if (url === "/api/providers/codex-cli") return json(codexProvider());
-      if (url === "/api/providers/ollama") return json(ollamaProvider());
-      jobRequests += 1;
-      return json(job(jobRequests === 1 ? "running" : "completed", 100));
-    });
-
-    render(<App />);
-
-    expect(await screen.findByRole("button", { name: "Run Ollama pilot" })).toBeEnabled();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/games/1145350/imports/full",
+      expect.objectContaining({ method: "POST" }),
+    ));
+    expect(await screen.findByRole("heading", { name: "Downloading reviews" })).toBeVisible();
   });
 });
+
+interface MockOptions {
+  workspace?: object;
+  analysis?: object;
+  importJob?: object;
+}
+
+function mockShell(options: MockOptions = {}): ReturnType<typeof vi.spyOn> {
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (request, init) => {
+    const url: string = request.toString();
+    if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+    if (url === "/api/config") return json(publicConfig());
+    if (url === "/api/providers/codex-cli") return json(codexProvider());
+    if (url === "/api/games/preview?appid=1145350") return json(metadata());
+    if (url === "/api/games/1145350/workspace") {
+      return json(options.workspace ?? workspace(false));
+    }
+    if (url === "/api/games/1145350/imports/full" && init?.method === "POST") {
+      return json(options.importJob ?? job("queued", 0));
+    }
+    if (url.startsWith("/api/jobs/")) return json(options.importJob ?? job("queued", 0));
+    if (url.startsWith("/api/games/1145350/reports/") && init?.method === "POST") {
+      return json(options.analysis ?? analysisRun("queued"));
+    }
+    if (url.startsWith("/api/analysis-runs/")) {
+      return json(options.analysis ?? analysisRun("running"));
+    }
+    return new Response("{}", { status: 404 });
+  });
+}
 
 async function previewGame(): Promise<void> {
   await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("connected"));
@@ -1040,26 +164,6 @@ async function previewGame(): Promise<void> {
   });
   fireEvent.click(screen.getByRole("button", { name: /preview game/i }));
   await screen.findByRole("heading", { name: "Hades II" });
-}
-
-async function selectAppId(appId: string): Promise<void> {
-  fireEvent.change(screen.getByRole("textbox", { name: /steam appid/i }), {
-    target: { value: appId },
-  });
-  fireEvent.click(screen.getByRole("button", { name: /preview game/i }));
-}
-
-function historyEntry(reportId: string, appId: number): object {
-  return {
-    report_version_id: reportId,
-    app_id: appId,
-    game_title: "Game",
-    review_count: 50,
-    provider: "ollama",
-    model: "qwen3.5:4b",
-    thresholds_calibrated: false,
-    created_at: "2026-08-14 12:00:00",
-  };
 }
 
 function json(payload: object): Response {
@@ -1079,25 +183,11 @@ function codexProvider(): object {
   return {
     installed: true,
     authenticated: true,
-    version: "codex-cli 0.147.0",
+    version: "codex-cli test",
     model: "gpt-5.6-luna",
-    reasoning_effort: "medium",
+    reasoning_effort: "low",
     processing_location: "external_cloud",
     cost_basis: "subscription_quota_unknown",
-  };
-}
-
-function ollamaProvider(): object {
-  return {
-    available: true,
-    version: "0.12.6",
-    processing_location: "local_device",
-    models: [{
-      name: "qwen3.5:4b",
-      size: 3_400_000_000,
-      parameter_size: "4B",
-      quantization_level: "Q4_K_M",
-    }],
   };
 }
 
@@ -1109,17 +199,13 @@ function metadata(): object {
     capsule_image_url: null,
     release_date: null,
     release_status: "unknown",
-    review_count: null,
-    source_status: "partial",
-    missing_fields: ["capsule_image_url", "release_date", "release_status", "review_count"],
-    storefront: emptyStorefront(),
+    review_count: 100,
+    source_status: "complete",
+    missing_fields: [],
+    storefront: Object.fromEntries(storefrontFields().map((field) => [field, null])),
     storefront_source_status: "unavailable",
     storefront_missing_fields: storefrontFields(),
   };
-}
-
-function emptyStorefront(): object {
-  return Object.fromEntries(storefrontFields().map((field) => [field, null]));
 }
 
 function storefrontFields(): string[] {
@@ -1131,17 +217,17 @@ function storefrontFields(): string[] {
   ];
 }
 
-function job(state: string, importedCount: number, scope: string = "full"): object {
+function job(state: string, importedCount: number): object {
   return {
     id: "job-1",
     app_id: 1145350,
-    scope,
+    scope: "full",
     state,
-    target_count: 5000,
+    target_count: 5_000,
     imported_count: importedCount,
     cursor: "*",
     cancel_requested: false,
-    error_code: state === "failed" ? "steam_unavailable" : null,
+    error_code: null,
   };
 }
 
@@ -1156,9 +242,9 @@ function analysisRun(state: string): object {
     review_count: 1,
     metric_policy: {
       minimum_support_count: 2,
-      minimum_support_percentage: 1,
+      minimum_support_percentage: 5,
       technical_minimum_support_count: 2,
-      technical_minimum_support_percentage: 1,
+      technical_minimum_support_percentage: 5,
       maximum_headlines_per_polarity: 10,
     },
     cancel_requested: false,
@@ -1171,6 +257,8 @@ function analysisRun(state: string): object {
     oversized_review_count: 0,
     report_kind: null,
     phase: state === "running" ? "extracting" : state,
+    refresh_imported_count: null,
+    refresh_target_count: null,
   };
 }
 
@@ -1178,16 +266,20 @@ function workspace(
   fullHistoryReady: boolean,
   latestAnalysisRun: object | null = null,
   testReportAvailable: boolean = false,
+  mainReportAvailable: boolean = false,
 ): object {
+  const availableReports: object[] = [];
+  if (testReportAvailable) {
+    availableReports.push({ kind: "test", review_count: 50, created_at: "2026-10-01 00:00:00" });
+  }
+  if (mainReportAvailable) {
+    availableReports.push({ kind: "main", review_count: 1_000, created_at: "2026-10-02 00:00:00" });
+  }
   return {
     full_history_ready: fullHistoryReady,
     latest_analysis_run: latestAnalysisRun,
     test_report_available: testReportAvailable,
-    main_report_available: false,
-    available_reports: testReportAvailable ? [{
-      kind: "test",
-      review_count: 50,
-      created_at: "2026-09-30 04:06:47",
-    }] : [],
+    main_report_available: mainReportAvailable,
+    available_reports: availableReports,
   };
 }

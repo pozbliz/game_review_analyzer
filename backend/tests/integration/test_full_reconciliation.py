@@ -29,7 +29,7 @@ from game_review_analyzer.infrastructure.steam_reviews import (
 )
 from game_review_analyzer.interfaces.http.app import create_app
 from game_review_analyzer.shared.config import Settings
-from tests.integration.test_report_api import seed_report
+from tests.integration.aggregate_report_seed import seed_aggregate_report
 
 
 class Pages:
@@ -99,7 +99,7 @@ def test_reconciliation_records_missing_reviews_without_mutating_evidence(
     tmp_path: Path,
 ) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
-    seed_report(database_path)
+    seed_aggregate_report(database_path)
     with sqlite3.connect(database_path) as connection:
         before_revisions: list[tuple[int, str]] = connection.execute(
             "SELECT id, content_json FROM review_revisions ORDER BY id"
@@ -139,7 +139,7 @@ def test_reconciliation_records_missing_reviews_without_mutating_evidence(
 
 def test_full_and_reconciliation_http_contract(tmp_path: Path) -> None:
     database_path: Path = tmp_path / "app.sqlite3"
-    seed_report(database_path)
+    seed_aggregate_report(database_path)
     source = Pages((ReviewPage(reviews=(), next_cursor="done"),))
 
     with TestClient(
