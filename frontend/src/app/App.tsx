@@ -572,16 +572,18 @@ function CatalogApp(): JSX.Element {
                   <dt>Review availability</dt>
                   <dd>{preview.review_count === null ? unknown : (
                     <>
+                      <span>{preview.review_count.toLocaleString()} reviews</span>
                       <button
                         type="button"
                         className="review-language-toggle"
                         aria-expanded={reviewLanguagesOpen}
+                        aria-label={`${reviewLanguagesOpen ? "Hide" : "Show"} review totals by language`}
                         onClick={toggleReviewLanguages}
                       >
-                        {preview.review_count.toLocaleString()} reviews
+                        <span aria-hidden="true">{reviewLanguagesOpen ? "▴" : "▾"}</span>
                       </button>
                       {reviewLanguagesOpen && (
-                        <div className="review-language-details">
+                        <section className="review-language-details">
                           {reviewLanguages === null && !reviewLanguagesError && (
                             <span role="status">Loading languages...</span>
                           )}
@@ -596,7 +598,7 @@ function CatalogApp(): JSX.Element {
                               ))}
                             </ul>
                           )}
-                        </div>
+                        </section>
                       )}
                     </>
                   )}</dd>

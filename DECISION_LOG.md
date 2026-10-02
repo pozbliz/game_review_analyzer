@@ -6,7 +6,7 @@
 
 - Renamed the report scope label to `English Reviews`.
 - Kept Steam's overall review count on the game page.
-- Added an on-demand disclosure for nonzero review totals by Steam API language.
+- Added an adjacent arrow-only disclosure for nonzero review totals by Steam API language.
 
 **Why:**
 

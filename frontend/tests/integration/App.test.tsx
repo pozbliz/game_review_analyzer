@@ -53,12 +53,14 @@ describe("application shell", () => {
     await previewGame();
     expect(fetchMock).not.toHaveBeenCalledWith("/api/games/1145350/review-languages");
 
-    fireEvent.click(screen.getByRole("button", { name: "100 reviews" }));
+    expect(screen.getByText("100 reviews")).not.toHaveRole("button");
+    fireEvent.click(screen.getByRole("button", { name: "Show review totals by language" }));
 
     expect(await screen.findByText("English")).toBeVisible();
     expect(screen.getByText("60 reviews")).toBeVisible();
     expect(screen.getByText("German")).toBeVisible();
     expect(screen.getByText("40 reviews")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Hide review totals by language" })).toBeVisible();
   });
 
   it("starts a Test Report with the selected visibility settings", async () => {

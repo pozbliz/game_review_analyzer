@@ -64,9 +64,9 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .identity-grid div { padding: 1rem; border: 1px solid var(--line); border-radius: 10px; background: rgb(255 255 255 / 58%); }
 .identity-grid dt { color: var(--muted); font-size: .78rem; }
 .identity-grid dd { margin: .35rem 0 0; font-weight: 750; }
-.review-language-toggle { padding: 0; border: 0; color: var(--forest); background: transparent; font: inherit; text-align: left; text-decoration: underline; text-underline-offset: .2rem; }
-.review-language-toggle::after { content: " ▾"; }
-.review-language-toggle[aria-expanded="true"]::after { content: " ▴"; }
+.review-language-toggle { display: inline-grid; width: 2rem; height: 2rem; margin-left: .5rem; padding: 0; place-items: center; border: 1px solid #b9cbbd; border-radius: 7px; color: var(--forest-dark); background: #eef3e9; font: inherit; }
+.review-language-toggle[aria-expanded="true"] { border-color: #84a990; background: var(--sage); }
+.review-language-toggle:active { transform: scale(.96); }
 .review-language-details { margin-top: .75rem; color: var(--ink); font-size: .85rem; font-weight: 500; }
 .review-language-details ul { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
 .review-language-details li { display: flex; justify-content: space-between; gap: 1rem; }

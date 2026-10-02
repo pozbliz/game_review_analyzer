@@ -2,11 +2,19 @@
 
 ## 2026-10-02
 
+### Report review evidence restoration
+
+- [ ] Restore the current report evidence endpoint from Theme memberships and stored reviews.
+- [ ] Add an arrow-only disclosure to each Theme for its actual supporting reviews.
+- [ ] Order supporting reviews by helpful upvotes descending.
+- [ ] Add backend and frontend regression coverage and update current documentation.
+
 ### Review count clarity
 
 - [x] Label report scope counts as English Reviews.
 - [x] Keep the game page's overall Steam review count.
 - [x] Load and disclose Steam review totals by language only when requested.
+- [x] Keep the overall count as plain text and use only the adjacent arrow as the disclosure control.
 - [x] Add backend and frontend regression coverage.
 
 ### Report output and extension progress
