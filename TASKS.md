@@ -175,13 +175,13 @@
 - [ ] Record elapsed time and measured token use. The 1,000-review run used 439,101 input and 28,581 output tokens; its recovered merge took 73 seconds.
 - [ ] Verify Test Report isolation, extension, and replacement in the browser.
 - [ ] Verify keyboard, narrow-screen, reduced-motion, and non-color behavior.
-- [ ] Update operating documentation for the new workflow.
+- [x] Update operating documentation for the new workflow.
 - [ ] [HUMAN] Review live Theme usefulness before release work resumes.
 
 ## Simplify saved-report workflow
 
 - [x] After game selection, load its saved report history and make **Open latest report** the primary action when history exists.
-- [x] Show older reports with their creation date and provider/model; keep **Create new report** visually separate and secondary.
+- [x] Show older reports with their creation date and provider/model; keep **Create new report** visually separate and secondary. Superseded: current report outputs show dates without provider or model names.
 - [x] Create another report from the retained local Game Dataset without automatically repeating a Full review download.
 - [x] Replace report-view **Dataset maintenance** controls with an explicit new-report flow outside the immutable report; keep low-level maintenance only where required for recovery or storage management.
 - [x] Remove **Scope digest** from the visible report summary while retaining it in stored/exported provenance.

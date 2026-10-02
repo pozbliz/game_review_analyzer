@@ -114,27 +114,27 @@ npm run build
 
 ### Start the app
 
-Start the backend in one PowerShell terminal:
-
-```powershell
-cd backend
-uv run uvicorn game_review_analyzer.interfaces.http.app:app --reload
-```
-
-Start the frontend in a second PowerShell terminal:
+Build the frontend after each frontend change:
 
 ```powershell
 cd frontend
-npm run dev
+npm run build
 ```
 
-Open <http://localhost:5173> in a browser. This is the development frontend.
+Run the application from `backend/`:
 
-Vite proxies `/api` requests to the backend at <http://127.0.0.1:8000>.
+```powershell
+cd ../backend
+uv run uvicorn game_review_analyzer.interfaces.http.app:app
+```
 
-For production, build the frontend and run only the backend. Open <http://127.0.0.1:8000>; port `5173` is not used.
+Open <http://127.0.0.1:8000>. FastAPI serves the compiled frontend and API on this port.
 
-FastAPI serves `frontend/dist/` with the API.
+Port `5173` is not used for normal operation.
+
+### Frontend development
+
+When editing the frontend, run the backend with `--reload` and run `npm run dev` from `frontend/`. Open <http://localhost:5173>; Vite proxies `/api` requests to <http://127.0.0.1:8000>.
 
 Analysis runs emit redacted JSON timing events through the `game_review_analyzer` logger.
 

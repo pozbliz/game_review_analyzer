@@ -9,6 +9,7 @@
 - Returned successful Main Report extensions to the selected game's analysis progress screen.
 - Exposed the linked refresh job counts and displayed measured percentage progress during Steam refresh.
 - Cleared transient analysis progress errors after the next successful poll.
+- Made the one-server `127.0.0.1:8000` path the documented normal operation and kept Vite as a development-only path.
 
 **Why:**
 

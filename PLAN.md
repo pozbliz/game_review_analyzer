@@ -300,7 +300,7 @@ This slice records superseded Version 2 behavior. Slices 16–22 replace its rep
 
 **Tradeoff:** Theme definitions stay fixed during extension. A poor taxonomy requires replacement.
 
-**Status:** Approved; blocked by Slice 18.
+**Status:** Complete.
 
 ## Slice 20 — Remove superseded report behavior
 
@@ -324,7 +324,7 @@ This slice records superseded Version 2 behavior. Slices 16–22 replace its rep
 
 **Scope:** Version 3 HTML, CSV, and JSON contracts, local JSON re-import, report-slot rules, sanitization, and download controls.
 
-**Acceptance:** HTML and CSV contain aggregate Themes and cohort metrics. Default exports contain no review text, excerpt, or reviewer identity. JSON retains internal revision memberships for local validation and rejects import when required local revisions are absent. Import cannot create report history beyond the Main and Test slots.
+**Acceptance:** HTML and CSV contain aggregate Themes and cohort metrics. Default exports contain no review text, excerpt, reviewer identity, provider name, or model name. JSON retains internal revision memberships for local validation and rejects import when required local revisions are absent. Import cannot create report history beyond the Main and Test slots.
 
 **Tradeoff:** JSON remains tied to a compatible local Game Dataset and is not a portable data backup.
 

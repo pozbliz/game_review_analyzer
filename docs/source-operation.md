@@ -23,34 +23,37 @@ npm test
 npm run build
 ```
 
-## Development operation
+## Normal operation
 
-Run the backend from `backend/`:
-
-```powershell
-uv run uvicorn game_review_analyzer.interfaces.http.app:app --reload
-```
-
-Run the frontend from `frontend/` in another terminal:
+From the repository root, build the frontend after each frontend change:
 
 ```powershell
-npm run dev
+cd frontend
+npm run build
 ```
 
-Open `http://localhost:5173`. Vite sends `/api` requests to `http://127.0.0.1:8000`.
-
-## Production operation
-
-For the production delivery path, run the compiled frontend through FastAPI:
+Run the compiled frontend and API from `backend/`:
 
 ```powershell
 cd ../backend
 uv run uvicorn game_review_analyzer.interfaces.http.app:app
 ```
 
-Open `http://127.0.0.1:8000`. FastAPI serves both the compiled frontend and API on this port.
+Open `http://127.0.0.1:8000`. Port `5173` is not used for normal operation.
 
 The database schema is initialized or migrated automatically at backend startup.
+
+## Development operation
+
+When editing backend code, run the backend from `backend/` with reload enabled:
+
+```powershell
+uv run uvicorn game_review_analyzer.interfaces.http.app:app --reload
+```
+
+Run `npm run dev` from `frontend/` in another terminal. Open `http://localhost:5173`; Vite sends `/api` requests to `http://127.0.0.1:8000`.
+
+Rebuild the frontend before returning to normal operation.
 
 ## Configuration
 
@@ -92,6 +95,7 @@ Export the privacy-minimized package, process it through Codex, then import the 
 - Steam metadata, review text, Review Revisions, jobs, and reports are stored in the configured SQLite database.
 - The app retrieves public Steam data and no private Steam-user data.
 - Reviewer identity is omitted from analysis packages and report exports.
+- Report pages, saved-report cards, and exports omit provider and model names.
 - Default JSON, CSV, and HTML exports omit full review text. Enabling full text produces a privacy-warned artifact.
 - Codex CLI and Manual Codex send selected review text to external cloud processing. Ollama keeps analysis on the local device.
 - Deleting a Report Version, inactive incomplete job, or complete Game Dataset requires exact typed confirmation. Game Dataset deletion also removes its owned local reviews, jobs, and reports.
@@ -106,7 +110,7 @@ Back up the SQLite database before destructive maintenance or updates. Report ex
 4. Run both test suites.
 5. Start FastAPI; migrations run automatically and preserve existing data.
 
-Interrupted imports and analyses retain durable state. Extend and Replace resume their owned Steam refresh, exact reserved scope, and valid provider checkpoints.
+Interrupted imports and analyses retain durable state. Extend and Replace resume their owned Steam refresh, exact reserved scope, and valid provider checkpoints. Starting Extend opens the analysis progress screen. Steam refresh shows progress toward its 5,000-review scan limit.
 
 Use the visible retry or cancellation controls rather than editing SQLite. A failed or cancelled report update leaves the current report available. The interface shows a safe failure code and recovery instruction without storing provider output or review text.
 
