@@ -138,6 +138,8 @@ export interface AnalysisRun {
   extracted_review_count: number;
   oversized_review_count: number;
   report_kind: "main" | "test" | null;
+  refresh_imported_count: number | null;
+  refresh_target_count: number | null;
   phase: "queued" | "refreshing" | "analyzing" | "extracting" | "consolidating" | "completed" | "failed" | "cancelled";
 }
 
@@ -247,7 +249,13 @@ function parseAnalysisRun(payload: unknown): AnalysisRun {
       !(payload.report_version_id === null || typeof payload.report_version_id === "string")) {
     throw new Error("Invalid analysis run response");
   }
-  return payload as unknown as AnalysisRun;
+  return {
+    ...payload,
+    refresh_imported_count: typeof payload.refresh_imported_count === "number"
+      ? payload.refresh_imported_count : null,
+    refresh_target_count: typeof payload.refresh_target_count === "number"
+      ? payload.refresh_target_count : null,
+  } as unknown as AnalysisRun;
 }
 
 export async function startCodexAnalysis(

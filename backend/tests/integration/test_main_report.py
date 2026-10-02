@@ -33,6 +33,7 @@ from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     reserve_refreshed_analysis_scope,
     request_analysis_cancellation,
     retry_analysis_run,
+    start_analysis_run,
 )
 from game_review_analyzer.infrastructure.persistence.database import initialize_database
 from game_review_analyzer.infrastructure.persistence.game_datasets import save_game_dataset
@@ -65,6 +66,37 @@ from game_review_analyzer.infrastructure.steam_reviews import (
 from game_review_analyzer.interfaces.http.app import create_app
 from game_review_analyzer.shared.config import Settings
 from fastapi.testclient import TestClient
+
+
+def test_refresh_analysis_run_exposes_measured_refresh_progress(tmp_path: Path) -> None:
+    database_path: Path = seeded_database(tmp_path, review_count=10)
+    run = create_refresh_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=ThemeMetricPolicy(
+            minimum_support_count=1,
+            minimum_support_percentage=5,
+            technical_minimum_support_count=1,
+            technical_minimum_support_percentage=5,
+        ),
+        operation="replace",
+        base_report_id="main-report",
+    )
+    assert run.refresh_job_id is not None
+    with connect(database_path) as connection:
+        connection.execute(
+            "UPDATE analysis_jobs SET imported_count = 1500 WHERE id = ?",
+            (run.refresh_job_id,),
+        )
+
+    running = start_analysis_run(database_path, run.id)
+
+    assert running is not None
+    assert running.phase == "refreshing"
+    assert running.refresh_imported_count == 1_500
+    assert running.refresh_target_count == 5_000
 
 
 def test_report_slots_reserve_persisted_run_intent_independently(

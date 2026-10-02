@@ -57,6 +57,9 @@ describe("aggregate Test Report", () => {
 
     expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
     expect(screen.getByText("Test Report")).toBeVisible();
+    expect(screen.getByText("gpt-5.6-luna")).toBeVisible();
+    expect(screen.queryByText("codex-cli")).not.toBeInTheDocument();
+    expect(screen.queryByText("Provider")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Responsive combat" })).toBeVisible();
     expect(screen.getByText("4 reviews · 8% total")).toBeVisible();
     expect(screen.getByText("Oldest 4% · Newest 12% · +8 percentage points")).toBeVisible();
@@ -85,6 +88,10 @@ describe("aggregate Test Report", () => {
   });
 
   it("starts a 1,000-review Main Report extension beside the review count", async () => {
+    const navigationMock = vi.spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function navigate(this: HTMLAnchorElement): void {
+        expect(this.getAttribute("href")).toBe("/?appid=1145350");
+      });
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request, options) => {
       const url: string = request.toString();
       if (options?.method === "POST") {
@@ -112,7 +119,8 @@ describe("aggregate Test Report", () => {
     expect(extendButton.closest(".report-review-value")).toHaveTextContent("1000");
     fireEvent.click(extendButton);
 
-    expect(await screen.findByText(/Report extension started/)).toBeVisible();
+    await waitFor(() => expect(navigationMock).toHaveBeenCalledOnce());
+    expect(localStorage.getItem("active-analysis-run")).toBe("extension-1");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/games/1145350/reports/main/extend",
       { method: "POST" },

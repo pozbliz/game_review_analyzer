@@ -293,6 +293,10 @@ The main progress sequence is:
 5. Calculating metrics
 6. Saving and replacing the report
 
+Starting an extension opens this progress view automatically. During Steam refresh, the view shows imported reviews as a percentage of the refresh scan limit.
+
+Report pages, saved-report cards, and exports omit provider names. Provider provenance remains internal for validation, extension compatibility, and diagnostics. Import assigns neutral internal provenance when an export omits it.
+
 Selection and run creation reserve an exact review scope atomically. Concurrent runs cannot reserve the same extension scope.
 
 Each validated batch is checkpointed with its ordered input digest, provider, model, contract version, application-owned result, and measured usage.

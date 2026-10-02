@@ -30,6 +30,9 @@ describe("report exploration", () => {
     render(<ReportView reportId="report-1" />);
 
     expect(await screen.findByRole("heading", { name: "Hades II" })).toBeVisible();
+    expect(screen.getAllByText("fixture-model").length).toBeGreaterThan(0);
+    expect(screen.queryByText("manual-codex")).not.toBeInTheDocument();
+    expect(screen.queryByText("Provider")).not.toBeInTheDocument();
   });
 
   it("keeps the report visible when history is unavailable", async () => {

@@ -2,6 +2,14 @@
 
 ## 2026-10-02
 
+### Report output and extension progress
+
+- [x] Remove provider names from report pages, report history, saved-report cards, and JSON exports.
+- [x] Return to the analysis progress screen after starting a Main Report extension.
+- [x] Show measured Steam refresh percentage and a progress bar during report analysis.
+- [x] Clear transient analysis progress errors after polling recovers.
+- [x] Add frontend and backend regression coverage.
+
 ### Bounded Theme merge recovery
 
 - [x] Reproduce the negative Theme merge timeout after all map batches completed.

@@ -69,7 +69,57 @@ describe("application shell", () => {
       "href",
       "/reports/recent-report",
     );
+    expect(screen.getByText(/qwen3\.5:4b/)).toBeVisible();
+    expect(screen.queryByText(/Ollama/)).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /select the game to analyze/i })).toBeVisible();
+  });
+
+  it("shows measured Steam refresh percentage during report analysis", async () => {
+    localStorage.setItem("active-analysis-run", "analysis-1");
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/reports/recent") return json([]);
+      return json({
+        ...analysisRun("running"),
+        phase: "refreshing",
+        refresh_imported_count: 1_500,
+        refresh_target_count: 5_000,
+      });
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText(/Refreshing Steam reviews/)).toHaveTextContent("30%");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("value", "1500");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("max", "5000");
+  });
+
+  it("clears a transient analysis progress error after polling recovers", async () => {
+    localStorage.setItem("active-analysis-run", "analysis-1");
+    let progressRequests: number = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+      if (url === "/api/config") return json(publicConfig());
+      if (url === "/api/providers/codex-cli") return json(codexProvider());
+      if (url === "/api/providers/ollama") return json(ollamaProvider());
+      if (url === "/api/reports/recent") return json([]);
+      progressRequests += 1;
+      return progressRequests === 2
+        ? new Response("{}", { status: 503 })
+        : json(analysisRun("running"));
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Unable to refresh analysis progress.")).toBeVisible();
+    await waitFor(() => {
+      expect(screen.queryByText("Unable to refresh analysis progress.")).not.toBeInTheDocument();
+    }, { timeout: 1_500 });
   });
 
   it("keeps terminal background work out of the initial catalog", async () => {
@@ -254,7 +304,7 @@ describe("application shell", () => {
       "href",
       "/reports/report-latest",
     );
-    expect(screen.getByText(/Aug 12, 2026.*Codex CLI.*gpt-5.6-luna/i)).toBeVisible();
+    expect(screen.getByText(/Aug 12, 2026.*gpt-5.6-luna/i)).toBeVisible();
     expect(screen.getByRole("button", { name: "Create Report" })).toBeEnabled();
     expect(fetchMock).toHaveBeenCalledWith("/api/games/1145350/reports");
   });

@@ -1,5 +1,32 @@
 # Decision Log
 
+## 2026-10-02 - Report outputs omit provider names and extensions open progress
+
+**What changed:**
+
+- Removed provider names from report pages, report history, saved-report cards, and JSON exports.
+- Assigned neutral internal provenance when importing provider-free JSON exports.
+- Returned successful Main Report extensions to the selected game's analysis progress screen.
+- Exposed the linked refresh job counts and displayed measured percentage progress during Steam refresh.
+- Cleared transient analysis progress errors after the next successful poll.
+
+**Why:**
+
+- Provider identity does not help users interpret report findings.
+- Extension work begins away from the report page and needs immediate visible feedback.
+- Text-only refresh status did not show whether work was advancing.
+- A brief backend restart left a stale polling error visible after the service recovered.
+
+**New issues:**
+
+- Refresh percentage measures progress toward the 5,000-review scan limit. Steam can exhaust available reviews before reaching that limit.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-02 - Main Report merges use bounded durable chunks
 
 **What changed:**

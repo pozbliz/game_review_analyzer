@@ -190,7 +190,12 @@ function CatalogApp(): JSX.Element {
     let active = true;
     const refresh = (): void => {
       getAnalysisRun(analysisRun.id)
-        .then((nextRun) => { if (active) setAnalysisRun(nextRun); })
+        .then((nextRun) => {
+          if (active) {
+            setAnalysisRun(nextRun);
+            setAnalysisError("");
+          }
+        })
         .catch(() => { if (active) setAnalysisError("Unable to refresh analysis progress."); });
     };
     refresh();
@@ -525,7 +530,27 @@ function CatalogApp(): JSX.Element {
                     </p>
                   )}
                   {analysisRun.state === "running" && analysisRun.phase === "refreshing" && (
-                    <p>Refreshing Steam reviews before selecting the report scope</p>
+                    <>
+                      <p>
+                        Refreshing Steam reviews before selecting the report scope
+                        {analysisRun.refresh_imported_count !== null
+                          && analysisRun.refresh_target_count !== null
+                          && analysisRun.refresh_target_count > 0
+                          ? ` · ${Math.min(100, Math.round(
+                            analysisRun.refresh_imported_count
+                              / analysisRun.refresh_target_count * 100,
+                          ))}%`
+                          : ""}
+                      </p>
+                      {analysisRun.refresh_imported_count !== null
+                        && analysisRun.refresh_target_count !== null
+                        && analysisRun.refresh_target_count > 0 && (
+                        <progress
+                          value={analysisRun.refresh_imported_count}
+                          max={analysisRun.refresh_target_count}
+                        />
+                      )}
+                    </>
                   )}
                   {analysisRun.state === "running" && analysisRun.phase === "extracting" && (
                     <p>{analysisRun.extracted_review_count.toLocaleString()} of {analysisRun.review_count.toLocaleString()} reviews {analysisRun.report_kind === "main" ? "analyzed and checkpointed" : "extracted and cached"}</p>
@@ -761,12 +786,7 @@ function CatalogApp(): JSX.Element {
 
 function formatReportHistoryEntry(entry: ReportHistoryEntry): string {
   const date: Date = new Date(`${entry.created_at.replace(" ", "T")}Z`);
-  const provider: string = ({
-    "codex-cli": "Codex CLI",
-    "manual-codex": "Manual Codex",
-    ollama: "Ollama",
-  } as Record<string, string>)[entry.provider] ?? entry.provider;
-  return `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date)} · ${provider} · ${entry.model}`;
+  return `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date)} · ${entry.model}`;
 }
 
 function formatReportDate(createdAt: string): string {

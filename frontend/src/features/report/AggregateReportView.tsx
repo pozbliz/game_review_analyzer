@@ -24,7 +24,7 @@ export default function AggregateReportView(
   const [openThemeId, setOpenThemeId] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<Record<string, AggregateThemeEvidence>>({});
   const [evidenceError, setEvidenceError] = useState<string>("");
-  const [extensionState, setExtensionState] = useState<"idle" | "starting" | "started" | "failed">("idle");
+  const [extensionState, setExtensionState] = useState<"idle" | "starting" | "failed">("idle");
   const [extensionError, setExtensionError] = useState<string>("");
   const [deleteState, setDeleteState] = useState<"idle" | "deleting" | "failed">("idle");
 
@@ -59,7 +59,9 @@ export default function AggregateReportView(
     extendMainReport(appId)
       .then((run) => {
         window.localStorage.setItem("active-analysis-run", run.id);
-        setExtensionState("started");
+        const returnLink: HTMLAnchorElement = document.createElement("a");
+        returnLink.href = `/?appid=${appId}`;
+        returnLink.click();
       })
       .catch((error: unknown) => {
         setExtensionState("failed");
@@ -110,9 +112,8 @@ export default function AggregateReportView(
         {report.scope.oversized_review_count > 0 && (
           <div><span>Oversized reviews skipped</span><strong>{report.scope.oversized_review_count}</strong></div>
         )}
-        <div><span>Provider</span><strong>{report.provider} · {report.model}</strong></div>
+        <div><span>Model</span><strong>{report.model}</strong></div>
       </section>
-      {extensionState === "started" && <p role="status">Report extension started. You can return to the game catalog to follow progress.</p>}
       {extensionState === "failed" && <p className="error" role="alert">{extensionError}</p>}
       {report.positive_themes.length === 0 && report.negative_themes.length === 0 ? (
         <section className="empty-report" role="status">

@@ -100,6 +100,9 @@ def export_report_json(
         evidence_bindings=bindings,
     )
     payload: dict[str, object] = document.model_dump(mode="json")
+    report_payload: dict[str, object] = payload["report"]
+    analysis_payload: dict[str, object] = report_payload["analysis_result"]
+    analysis_payload.pop("provider")
     if not include_full_review_text:
         for binding in payload["evidence_bindings"]:
             binding.pop("review_text")
@@ -110,7 +113,14 @@ def import_report_json(database_path: Path, payload: str) -> ReportVersion:
     """Validate and append an exported report against exact local evidence."""
 
     try:
-        document: JsonReportExport = JsonReportExport.model_validate_json(payload)
+        raw_document: object = json.loads(payload)
+        if isinstance(raw_document, dict):
+            report_payload: object = raw_document.get("report")
+            if isinstance(report_payload, dict):
+                analysis_payload: object = report_payload.get("analysis_result")
+                if isinstance(analysis_payload, dict):
+                    analysis_payload.setdefault("provider", "report-import")
+        document: JsonReportExport = JsonReportExport.model_validate(raw_document)
     except (ValidationError, ValueError) as error:
         raise ValueError("Invalid report export") from error
     if load_game_dataset(database_path, document.report.app_id) is None:

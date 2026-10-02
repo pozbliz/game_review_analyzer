@@ -157,7 +157,7 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
                     href={`/reports/${encodeURIComponent(entry.report_version_id)}`}
                     aria-current={entry.report_version_id === report.report_version_id ? "page" : undefined}
                   >
-                    {formatHistoryDate(entry.created_at)} · {entry.provider} · {entry.model}
+                    {formatHistoryDate(entry.created_at)} · {entry.model}
                   </a>
                 </li>
               ))}
@@ -172,7 +172,6 @@ export default function ReportView({ reportId }: ReportViewProps): JSX.Element {
         <div><span>Review scope</span><strong>{report.scope.review_count.toLocaleString()} reviews</strong></div>
         {report.scope.early && <div><span>Early cohort</span><strong>{report.scope.early.review_count.toLocaleString()} reviews</strong><small>{formatReviewDate(report.scope.early.source_created_from)}–{formatReviewDate(report.scope.early.source_created_to)}</small></div>}
         {report.scope.recent && <div><span>Recent cohort</span><strong>{report.scope.recent.review_count.toLocaleString()} reviews</strong><small>{formatReviewDate(report.scope.recent.source_created_from)}–{formatReviewDate(report.scope.recent.source_created_to)}</small></div>}
-        <div><span>Provider</span><strong>{report.provenance.provider}</strong></div>
         <div><span>Model</span><strong>{report.provenance.model}</strong></div>
       </section>
 

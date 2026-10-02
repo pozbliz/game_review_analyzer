@@ -40,6 +40,8 @@ class AnalysisRun(BaseModel):
     operation: AnalysisOperation | None
     base_report_id: str | None
     refresh_job_id: str | None
+    refresh_imported_count: int | None
+    refresh_target_count: int | None
 
     @computed_field
     @property
@@ -369,7 +371,11 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
             "AND extraction.model = analysis_runs.model "
             "AND extraction.contract_version = '1.0' "
             "AND extraction.review_revision_id IN ("
-            "SELECT value FROM json_each(analysis_runs.review_revision_ids_json))) END "
+            "SELECT value FROM json_each(analysis_runs.review_revision_ids_json))) END, "
+            "(SELECT imported_count FROM analysis_jobs "
+            "WHERE id = analysis_runs.refresh_job_id), "
+            "(SELECT target_count FROM analysis_jobs "
+            "WHERE id = analysis_runs.refresh_job_id) "
             "FROM analysis_runs WHERE id = ?",
             (run_id,),
         ).fetchone()
@@ -389,6 +395,8 @@ def get_analysis_run(database_path: Path, run_id: str) -> AnalysisRun:
         base_report_id=row[18],
         refresh_job_id=row[19],
         extracted_review_count=int(row[20]),
+        refresh_imported_count=row[21],
+        refresh_target_count=row[22],
     )
 
 
