@@ -1256,6 +1256,7 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
         "newest_review_count": 50,
         "oversized_review_count": 0,
     }
+    assert report.json()["unseen_review_count"] == 0
     assert report.json()["positive_themes"] == []
     assert report.json()["negative_themes"] == []
     assert replacement.status_code == 202
@@ -1306,7 +1307,7 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
                 usage=ProviderUsage(100, 0, 10),
             )
 
-    database_path: Path = seeded_database(tmp_path, review_count=3_000)
+    database_path: Path = seeded_database(tmp_path, review_count=2_375)
     provider = EmptyThemeProvider()
     refresh_source = EmptyRefreshSource()
     status = lambda: CodexCliStatus(
@@ -1359,6 +1360,7 @@ def test_api_extends_main_report_with_1000_unseen_reviews(tmp_path: Path) -> Non
     assert pending_report["report_id"] == first_report["report_id"]
     assert completed["state"] == "completed"
     assert extended_report["scope"]["review_count"] == 2_000
+    assert extended_report["unseen_review_count"] == 375
     assert extended_report["created_at"]
     assert refresh_failed["state"] == "failed"
     assert refresh_failed["error_code"] == "steam_unavailable"

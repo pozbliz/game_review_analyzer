@@ -27,6 +27,7 @@ export interface AggregateReport {
   };
   provider: string;
   model: string;
+  unseen_review_count: number | null;
   positive_themes: AggregateTheme[];
   negative_themes: AggregateTheme[];
 }
@@ -254,6 +255,8 @@ function parseAggregateReport(payload: unknown): AggregateReport {
         "oversized_review_count",
       ]) ||
       !strings(payload, ["provider", "model"]) ||
+      !(payload.unseen_review_count === null ||
+        typeof payload.unseen_review_count === "number") ||
       !Array.isArray(payload.positive_themes) || !Array.isArray(payload.negative_themes)) {
     throw new Error("Invalid aggregate report response");
   }
@@ -267,6 +270,7 @@ function parseAggregateReport(payload: unknown): AggregateReport {
     scope: payload.scope as AggregateReport["scope"],
     provider: payload.provider as string,
     model: payload.model as string,
+    unseen_review_count: payload.unseen_review_count as number | null,
     positive_themes: payload.positive_themes.map(parseAggregateTheme),
     negative_themes: payload.negative_themes.map(parseAggregateTheme),
   };

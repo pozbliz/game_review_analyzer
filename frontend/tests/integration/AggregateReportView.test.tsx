@@ -24,6 +24,7 @@ describe("aggregate Test Report", () => {
       },
       provider: "codex-cli",
       model: "gpt-5.6-luna",
+      unseen_review_count: 375,
       positive_themes: [{
         theme_id: "responsive-combat",
         title: "Responsive combat",
@@ -111,12 +112,15 @@ describe("aggregate Test Report", () => {
         game: { app_id: 1145350, title: "Hades II" }, metadata: metadata(),
         scope: { review_count: 1_000, oldest_review_count: 500, newest_review_count: 500, oversized_review_count: 0 },
         provider: "codex-cli", model: "gpt-5.6-luna",
+        unseen_review_count: 375,
         positive_themes: [], negative_themes: [],
       }), { status: 200 });
     });
 
     render(<AggregateReportView appId={1145350} kind="main" />);
-    const extendButton: HTMLElement = await screen.findByRole("button", { name: "Extend Report" });
+    const extendButton: HTMLElement = await screen.findByRole("button", {
+      name: "Extend Report · 375 unseen",
+    });
     expect(extendButton.closest(".report-review-value")).toHaveTextContent("1000");
     fireEvent.click(extendButton);
 
@@ -141,6 +145,7 @@ describe("aggregate Test Report", () => {
         game: { app_id: 1145350, title: "Hades II" }, metadata: metadata(),
         scope: { review_count: 1_000, oldest_review_count: 500, newest_review_count: 500, oversized_review_count: 0 },
         provider: "codex-cli", model: "gpt-5.6-luna",
+        unseen_review_count: null,
         positive_themes: [], negative_themes: [],
       }), { status: 200 });
     });
@@ -162,6 +167,7 @@ describe("aggregate Test Report", () => {
         game: { app_id: 1145350, title: "Hades II" }, metadata: metadata(),
         scope: { review_count: 1_000, oldest_review_count: 500, newest_review_count: 500, oversized_review_count: 0 },
         provider: "codex-cli", model: "gpt-5.6-luna",
+        unseen_review_count: null,
         positive_themes: [], negative_themes: [],
       }), { status: 200 });
     });

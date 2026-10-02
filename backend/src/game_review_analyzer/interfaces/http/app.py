@@ -69,6 +69,7 @@ from game_review_analyzer.infrastructure.persistence.analysis_runs import (
     fail_analysis_run,
     get_analysis_run,
     load_latest_analysis_run,
+    limited_usable_unseen_review_count,
     recoverable_analysis_run_ids,
     request_analysis_cancellation,
     retry_analysis_run,
@@ -626,7 +627,16 @@ def create_app(
         )
         if created_at is None:
             raise HTTPException(status_code=404, detail={"code": "report_not_found"})
-        return build_aggregate_report_response(report, created_at)
+        unseen_review_count = limited_usable_unseen_review_count(
+            resolved_settings.database_path,
+            app_id=app_id,
+            excluded_revision_ids=report.review_revision_ids,
+        )
+        return build_aggregate_report_response(
+            report,
+            created_at,
+            unseen_review_count=unseen_review_count,
+        )
 
     @app.get(
         f"{API_PREFIX}/games/{{app_id}}/reports/test",

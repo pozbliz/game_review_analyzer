@@ -314,7 +314,7 @@ This slice records superseded Version 2 behavior. Slices 16–22 replace its rep
 
 **Tradeoff:** Deleted Version 2 data and behavior cannot be restored through the application.
 
-**Status:** Approved; blocked by Slice 19.
+**Status:** Approved; ready for implementation.
 
 ## Slice 21 — Export aggregate Version 3 reports
 

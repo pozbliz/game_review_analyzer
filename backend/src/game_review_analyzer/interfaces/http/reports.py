@@ -75,6 +75,7 @@ class AggregateReportResponse(BaseModel):
     scope: AggregateReportScopeResponse
     provider: str
     model: str
+    unseen_review_count: int | None = None
     positive_themes: tuple[AggregateThemeResponse, ...]
     negative_themes: tuple[AggregateThemeResponse, ...]
 
@@ -99,6 +100,7 @@ class AggregateThemeEvidenceResponse(BaseModel):
 def build_aggregate_report_response(
     report: AggregateReport,
     created_at: str,
+    unseen_review_count: int | None = None,
 ) -> AggregateReportResponse:
     """Build a public aggregate response without internal memberships."""
 
@@ -138,6 +140,7 @@ def build_aggregate_report_response(
         ),
         provider=report.provider,
         model=report.model,
+        unseen_review_count=unseen_review_count,
         positive_themes=tuple(
             theme_response(metric)
             for metric in report.theme_metrics.positive_headlines

@@ -94,7 +94,7 @@ The current report remains readable during processing. A successful extension at
 
 A failed or cancelled extension leaves the current report unchanged. Retry resumes from validated checkpoints.
 
-When fewer than 1,000 usable reviews remain, the action states the remaining count. It analyzes every usable unseen review once.
+When fewer than 1,000 usable reviews remain before refresh, the action states the current count. The post-refresh selection remains authoritative and analyzes every usable unseen review once.
 
 ### Replace the main report
 

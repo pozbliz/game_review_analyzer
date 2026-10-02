@@ -253,6 +253,29 @@ def reserve_refreshed_analysis_scope(
     return get_analysis_run(database_path, run_id)
 
 
+def limited_usable_unseen_review_count(
+    database_path: Path,
+    *,
+    app_id: int,
+    excluded_revision_ids: tuple[int, ...],
+) -> int | None:
+    """Return an exact usable unseen count only while it is below 1,000."""
+
+    try:
+        with connect(database_path) as connection:
+            early_ids, recent_ids, _ = _select_analysis_scope(
+                connection,
+                app_id=app_id,
+                cohort_size=500,
+                filter_oversized=True,
+                excluded_revision_ids=excluded_revision_ids,
+            )
+    except NoUnseenReviews:
+        return 0
+    count: int = len(early_ids) + len(recent_ids)
+    return count if count < 1_000 else None
+
+
 def _select_analysis_scope(
     connection: sqlite3.Connection,
     *,

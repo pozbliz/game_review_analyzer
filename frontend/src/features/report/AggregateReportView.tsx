@@ -101,7 +101,11 @@ export default function AggregateReportView(
             <strong>{report.scope.review_count}</strong>
             {kind === "main" && (
               <button type="button" onClick={extendReport} disabled={extensionState !== "idle"}>
-                {extensionState === "starting" ? "Starting..." : "Extend Report"}
+                {extensionState === "starting"
+                  ? "Starting..."
+                  : `Extend Report${report.unseen_review_count === null
+                    ? ""
+                    : ` · ${report.unseen_review_count} unseen`}`}
               </button>
             )}
           </p>

@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-10-02 - Extend Report shows the bounded unseen count
+
+**What changed:**
+
+- Added the current usable unseen-review count to `Extend Report` when fewer than 1,000 remain.
+- Reused the extension scope rules so analyzed identities and oversized reviews do not inflate the count.
+
+**Why:**
+
+- Users need to see when the next extension will contain fewer than 1,000 reviews.
+- The pre-refresh count is advisory because Steam refresh can add reviews before scope reservation.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-02 - Report outputs omit analysis engine names and extensions open progress
 
 **What changed:**
