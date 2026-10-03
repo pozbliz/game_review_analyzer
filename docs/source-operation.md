@@ -87,6 +87,9 @@ The backend console emits redacted JSON timing events for every Codex attempt an
 ## Local data and privacy
 
 - Steam metadata, review text, Review Revisions, jobs, and reports are stored in the configured SQLite database.
+- Completed reports save automatically and remain available after closing or restarting the application.
+- Each game keeps its latest Main Report and Test Report. Successful replacement deletes the superseded report.
+- Report exports and imports are outside scope. The application runs locally without hosted storage or user accounts.
 - The app retrieves public Steam data and no private Steam-user data.
 - Reviewer identity is omitted from analysis requests.
 - Report pages and saved-report cards omit analysis engine names.

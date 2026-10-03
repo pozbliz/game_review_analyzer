@@ -2,7 +2,7 @@
 
 ## Status
 
-The progressive aggregate-report design and this strategic plan are approved. Slices 0–15 record the earlier implementation. Their Version 2 report behavior is superseded where it conflicts with `DESIGN.md`. Slices 16–22 replace that behavior. Slices 16–17 are complete. Slice 18 is the execution frontier.
+The progressive aggregate-report design and this strategic plan are approved. Slices 0–15 record the earlier implementation. Their Version 2 report behavior is superseded where it conflicts with `DESIGN.md`. Slices 16–22 replace that behavior. Slices 16–20 are complete. Slice 21 was cancelled by the user on 2026-10-03. Slice 22 is the verification frontier.
 
 ## Durable verification seams
 
@@ -16,7 +16,6 @@ Implementation should preserve these stable behavioral boundaries:
 - deterministic Theme Metrics
 - Credential Store
 - immutable Report Repository
-- versioned Export/Import
 
 Each slice must remain green, independently verifiable, and suitable for an atomic commit.
 
@@ -210,7 +209,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Scope:** integration and security verification, documentation, CI, MIT license, clean-install workflow, and source release.
 
-**Acceptance:** A clean Windows environment completes installation, Full Import, Test Report, Main Report, extension, replacement, recovery, and export scenarios. Documentation covers Codex CLI, data paths, privacy, and recovery.
+**Acceptance:** A clean Windows environment completes installation, Full Import, Test Report, Main Report, extension, replacement, and recovery scenarios. Documentation covers Codex CLI, data paths, privacy, and recovery.
 
 **Tradeoff:** Packaged releases and advertised macOS/Linux support remain outside this release gate.
 
@@ -224,7 +223,7 @@ Each slice must remain green, independently verifiable, and suitable for an atom
 
 **Scope:** Windows packaging of the established frontend/backend delivery path, migration/update guidance, clean-machine validation, and macOS/Linux source checks.
 
-**Acceptance:** Clean Windows install, first run, analysis, restart recovery, export, update, data preservation, and uninstall checks pass. macOS/Linux support claims match recorded source validation.
+**Acceptance:** Clean Windows install, first run, analysis, restart recovery, update, data preservation, and uninstall checks pass. macOS/Linux support claims match recorded source validation.
 
 **Tradeoff:** Packaged macOS and Linux releases remain deferred.
 
@@ -310,7 +309,7 @@ This slice records superseded Version 2 behavior. Slices 16–22 replace its rep
 
 **Scope:** Catalog and report routes, report history, Opinion Points, excerpts, Version 2 evidence APIs, Evidence Filters, categories, mixed reception, mechanic classifications, provider controls, legacy schemas, and obsolete adapters.
 
-**Acceptance:** Removed Version 2 report paths and controls are unavailable. The interface exposes only Test, create Main, Extend, Replace, export, cancel, retry, and current Theme evidence actions where valid. Version 2 reports cannot be read, imported, or extended. Backend and frontend checks pass after dead paths are deleted.
+**Acceptance:** Removed Version 2 report paths and controls are unavailable. The interface exposes only Test, create Main, Extend, Replace, cancel, retry, and current Theme evidence actions where valid. Version 2 reports cannot be read, imported, or extended. Backend and frontend checks pass after dead paths are deleted.
 
 **Tradeoff:** Deleted Version 2 data and behavior cannot be restored through the application.
 
@@ -328,29 +327,27 @@ This slice records superseded Version 2 behavior. Slices 16–22 replace its rep
 
 **Tradeoff:** JSON remains tied to a compatible local Game Dataset and is not a portable data backup.
 
-**Status:** Approved; ready for implementation.
+**Status:** Cancelled without implementation on 2026-10-03. The user removed report export and import from scope. The requirements above remain as historical context and are not release requirements.
 
 ## Slice 22 — Verify the progressive workflow
 
 **Outcome:** Verify the 50-review, 1,000-review, and 2,000-review workflows before release work resumes.
 
-**Blocked by:** Slices 16–21.
+**Blocked by:** None for workflow verification. Slices 16–20 are complete; Slice 21 is cancelled.
 
-**Scope:** Live Codex CLI runs, token and timing measurements, restart recovery, connected-browser checks, exports, automated checks, and operating documentation.
+**Scope:** Live Codex CLI runs, token and timing measurements, restart recovery, connected-browser checks, automated checks, and operating documentation.
 
-**Acceptance:** Verification proves Test Report isolation, first Main Report creation, one extension, replacement, truthful progress, recovery, and safe exports. Backend tests, frontend tests, type checking, and the production build pass. A human reviews the live Theme output for usefulness before release approval.
+**Acceptance:** Verification proves Test Report isolation, first Main Report creation, one extension, replacement, truthful progress, and recovery. Backend tests, frontend tests, type checking, and the production build pass. A human reviews the live Theme output for usefulness before release approval.
 
 **Tradeoff:** Poor live speed, token use, or Theme quality can block release and require a design revision.
 
-**Status:** Approved; blocked by Slices 16–21.
+**Status:** Approved; ready for remaining verification.
 
 ## Deferred
 
 - Embedding-assisted semantic grouping
 - Cross-game and cross-version comparison
 - Automated translation and multilingual analysis
-- PDF export
-- Portable Report Archives containing the complete evidence required to restore reports on another installation
 - Public multi-user hosting
 - Additional review sources
 - Manual Theme correction
@@ -361,8 +358,9 @@ This slice records superseded Version 2 behavior. Slices 16–22 replace its rep
 ## Approval gates
 
 - **Design:** satisfied; the progressive aggregate-report design is approved.
-- **Plan:** satisfied; Slices 16–22 and their order are approved.
-- **Tasks:** revise `TASKS.md` through `$create-implementation-tasks` before Slice 18 implementation.
+- **Plan:** satisfied; Slices 16–20 and 22 remain approved. Slice 21 is cancelled by the user.
+- **Report transfer:** cancelled; PDF exports and Portable Report Archives were also removed from deferred scope on 2026-10-03.
+- **Tasks:** satisfied for completed Slices 16–20 and cancelled Slice 21; `TASKS.md` tracks remaining verification and release work.
 - **Analysis quality:** review live Theme usefulness after Slice 22 verification.
 - **Steam:** existing policy validation remains required for release.
 - **Release:** complete Slice 22, confirm the MIT copyright holder, and approve the release candidate before Slice 13 publication.

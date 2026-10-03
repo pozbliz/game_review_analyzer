@@ -10,6 +10,8 @@ The current application implements the progressive aggregate report design throu
 
 Version 2 routes, schemas, storage, controls, and compatibility were removed on 2026-10-02.
 
+The user removed report exports and imports from scope on 2026-10-03. Local SQLite persistence remains the storage model.
+
 ## Purpose and scope
 
 Game Review Analyzer is a local web application for game developers. It identifies the main positive and negative opinions across one Steam game's English reviews.
@@ -29,7 +31,6 @@ The application runs on the user's machine. Windows is the first packaged-releas
 - Restrict Codex to semantic Theme extraction, summarization, polarity, membership, grouping, and discard decisions.
 - Derive identifiers, scope completion, provenance, metrics, ordering, and persistence locally.
 - Calculate every displayed metric locally from validated memberships.
-- Export aggregated reports without review text or reviewer identity.
 
 ### Non-goals
 
@@ -43,6 +44,7 @@ The application runs on the user's machine. Windows is the first packaged-releas
 - Version 2 report reading, import, migration, or compatibility.
 - Preserved history for superseded main reports or test reports.
 - Public accounts, teams, or multi-tenant hosting.
+- Report exports, report imports, PDF reports, or Portable Report Archives.
 
 ## Core user experience
 
@@ -297,7 +299,7 @@ The main progress sequence is:
 
 Starting an extension opens this progress view automatically. During Steam refresh, the view shows imported reviews as a percentage of the refresh scan limit.
 
-Report pages, saved-report cards, and exports omit provider and model names. Provider and model provenance remain internal for validation, extension compatibility, and diagnostics. Import assigns neutral internal provenance when an export omits it.
+Report pages and saved-report cards omit provider and model names. Provider and model provenance remain internal for validation, extension compatibility, and diagnostics.
 
 Selection and run creation reserve an exact review scope atomically. Concurrent runs cannot reserve the same extension scope.
 
@@ -336,23 +338,15 @@ Reports store exact analyzed Review Revision memberships, cohort membership, pro
 
 Version 2 records and exports are unsupported. The target requires no compatibility reader, importer, or migration path.
 
-Application data remains local in the configured SQLite path. Storage controls may delete a Main Report, Test Report, inactive run, or Game Dataset.
+Application data remains local in the configured SQLite path. Completed reports save automatically and remain available after closing or restarting the application. Storage controls may delete a Main Report, Test Report, inactive run, or Game Dataset.
 
 Destructive deletion requires explicit confirmation. Deleting a Game Dataset also deletes its reports, runs, reviews, and checkpoints.
 
-## Exports and privacy
+## Local storage and privacy
 
-Version 3 exports contain aggregated Themes and metrics.
+Reports remain in the local SQLite database. The application provides no report download or report-file import workflow. Database backups remain an operational responsibility.
 
-- HTML contains the readable report without review evidence.
-- CSV contains one row per Theme with total and cohort metrics.
-- JSON contains the report and internal revision memberships for local backup and re-import.
-
-Default exports contain no review text, excerpts, reviewer name, avatar, or SteamID.
-
-JSON import requires the matching local Game Dataset and Review Revisions. Imported Version 3 reports use the same main or test slot rules.
-
-Steam metadata, review text, and provider output remain untrusted content. Interfaces and exports escape text and block unsafe markup and URLs.
+Steam metadata, review text, and provider output remain untrusted content. Interfaces escape text and block unsafe markup and URLs.
 
 ## Architecture and durable seams
 
@@ -366,7 +360,6 @@ Existing module boundaries remain useful:
 - **Analysis Runner:** review reservation, batching, checkpoints, cancellation, and atomic report replacement
 - **Theme Metrics:** pure calculation from scope and membership sets
 - **Report Repository:** one main and one test slot per game with exact bindings
-- **Export/Import:** Version 3 aggregated formats and strict local membership validation
 - **CLI Runner:** isolated Codex execution, bounded retries, cancellation, usage, and redacted diagnostics
 
 The provider interface remains the main external seam. Its adapter hides raw model output and returns application-bound semantic results.
@@ -406,7 +399,6 @@ The React client does not own provider execution, Steam access, authoritative me
 - Theme Metrics tests cover 5% eligibility, five-item caps, cohort denominators, unequal cohorts, ranking, and empty reports.
 - Analysis Runner tests cover atomic reservation, checkpoint reuse, cancellation, restart, refresh failure, and replacement safety.
 - Report Repository tests prove one independent main slot and one independent test slot per game.
-- Export tests prove aggregated content, local JSON validation, and absence of review text or reviewer identity.
 - Frontend tests cover actions, progress, one-report replacement, test-report separation, empty results, and accessible responsive lists.
 
 ### Observable scenarios
@@ -432,8 +424,6 @@ The React client does not own provider execution, Steam access, authoritative me
 - Embedding-assisted grouping
 - Cross-game comparison
 - Automated translation and multilingual analysis
-- PDF export
-- Portable archives containing raw review text
 - Public multi-user hosting
 
 ## Open questions requiring human judgment

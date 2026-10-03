@@ -66,7 +66,7 @@ export default function StorageControls({
           <div><dt>Retained</dt><dd>{diagnostics.game_dataset_count} games · {diagnostics.report_version_count} reports · {diagnostics.review_revision_count.toLocaleString()} revisions</dd></div>
         </dl>
       )}
-      <p className="storage-guidance">Data-directory relocation is not available yet. Export important reports before deletion; default exports are not complete evidence backups.</p>
+      <p className="storage-guidance">Reports save automatically in the local database. Data-directory relocation is not available yet.</p>
 
       <details className="danger-zone">
         <summary>Destructive controls</summary>

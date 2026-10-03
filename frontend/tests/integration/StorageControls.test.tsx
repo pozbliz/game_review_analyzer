@@ -25,6 +25,8 @@ it("shows local storage and requires exact destructive confirmations", async () 
   fireEvent.click(screen.getByRole("button", { name: "Load storage details" }));
   expect(await screen.findByText("2 KB")).toBeVisible();
   expect(screen.getByText(/data-directory relocation is not available/i)).toBeVisible();
+  expect(screen.getByText(/reports save automatically in the local database/i)).toBeVisible();
+  expect(screen.queryByText(/export important reports/i)).not.toBeInTheDocument();
 
   const reportConfirmation = screen.getByLabelText("Type report-1 to delete this report");
   const deleteReport = screen.getByRole("button", { name: "Delete this report" });

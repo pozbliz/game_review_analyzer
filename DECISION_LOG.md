@@ -1,5 +1,53 @@
 # Decision Log
 
+## 2026-10-03 - Specification glossary uses canonical Version 3 terminology
+
+**What changed:**
+
+- Replaced obsolete definitions in `docs/specifications/DOMAIN_GLOSSARY.md` with an index linking to the nine canonical terms in `CONTEXT.md`.
+- Removed superseded Version 2 definitions and cancelled report-transfer terminology from the glossary.
+- Completed the documentation follow-up in `TASKS.md`.
+
+**Why:**
+
+- `CONTEXT.md` is the canonical terminology source under the repository instructions.
+- Linking to its definitions avoids a second glossary that can drift from current behavior.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-10-03 - Report exports and imports removed from scope
+
+**What changed:**
+
+- Removed report export and import from current scope and release verification requirements.
+- Cancelled Slice 21 and its unimplemented tasks, including deferred PDF export and Portable Report Archives.
+- Removed obsolete export guidance from storage controls and unused report-transfer validation code. Current Version 3 has no report-transfer routes or controls.
+- Retained automatic local SQLite persistence, one Main Report and one Test Report per game, and operational database backups.
+- Kept Steam review acquisition, evaluation-labeler JSON, and telemetry export outside this report-transfer removal.
+
+**Why:**
+
+- The user will use the installed local application and does not need report transfer.
+- Local reports already remain available after application restarts. Report transfer is not required for saving them.
+
+**New issues:**
+
+- `docs/specifications/DOMAIN_GLOSSARY.md` still presents Version 2 terms and Portable Report Archive as current, despite canonical Version 3 definitions in `CONTEXT.md`. Reconciliation is tracked in `TASKS.md`.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-03 - Current Themes disclose their supporting reviews
 
 **What changed:**

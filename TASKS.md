@@ -1,5 +1,18 @@
 # Tasks
 
+## 2026-10-03
+
+### Remove report exports and imports
+
+- [x] Remove obsolete report-transfer guidance and unused validation code while preserving local SQLite reports.
+- [x] Update current scope, release requirements, and local-storage documentation.
+- [x] Close Version 3 Exports, PDF export, and Portable Report Archive tasks as cancelled without implementation.
+- [x] Verify 114 backend tests, 21 frontend tests, TypeScript checks, and the production build.
+
+### Documentation follow-ups
+
+- [x] Reconcile `docs/specifications/DOMAIN_GLOSSARY.md` with canonical Version 3 terminology in `CONTEXT.md`; replace obsolete definitions with links to the canonical terms.
+
 ## 2026-10-02
 
 ### Report review evidence restoration
@@ -173,18 +186,20 @@
 
 ### Version 3 Exports
 
-- [ ] Add aggregate HTML, CSV, and JSON contract tests.
-- [ ] Implement sanitized HTML and one-row-per-Theme CSV.
-- [ ] Implement JSON with internal revision memberships.
-- [ ] Reject imports with missing local revisions.
-- [ ] Enforce Main and Test Report slot rules during import.
-- [ ] Add privacy and content-injection tests.
-- [ ] Update export and import controls.
-- [ ] Verify exports contain no review text or reviewer identity.
+**Status:** Cancelled by the user on 2026-10-03. Items below were closed without implementation.
+
+- [x] Cancelled without implementation: Add aggregate HTML, CSV, and JSON contract tests.
+- [x] Cancelled without implementation: Implement sanitized HTML and one-row-per-Theme CSV.
+- [x] Cancelled without implementation: Implement JSON with internal revision memberships.
+- [x] Cancelled without implementation: Reject imports with missing local revisions.
+- [x] Cancelled without implementation: Enforce Main and Test Report slot rules during import.
+- [x] Cancelled without implementation: Add privacy and content-injection tests.
+- [x] Cancelled without implementation: Update export and import controls.
+- [x] Cancelled without implementation: Verify exports contain no review text or reviewer identity.
 
 ### Progressive Workflow Verification
 
-- [ ] Run the complete automated test and build suite.
+- [x] Run the complete automated test and build suite. Verified 114 backend tests, 21 frontend tests, TypeScript checks, and the production build on 2026-10-03.
 - [ ] Verify restart recovery with reserved scopes and completed batches.
 - [ ] Run live 50-review, 1,000-review, and 2,000-review Codex workflows. The 1,000-review workflow is complete.
 - [ ] Record elapsed time and measured token use. The 1,000-review run used 439,101 input and 28,581 output tokens; its recovered merge took 73 seconds.
@@ -530,14 +545,14 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 
 ### Slice 13 — Publish the source-based MVP
 
-**Blocked by:** Slices 5–12, Steam-policy validation, accessibility/security gates, copyright-holder confirmation, and release approval.
+**Blocked by:** Progressive Workflow Verification, Steam-policy validation, accessibility/security gates, copyright-holder confirmation, and release approval.
 
 - [ ] Complete Steam-policy, security, privacy, accessibility, and analysis-quality release gates.
 - [x] Add and test a secret-free `.env.example`.
 - [ ] [HUMAN] Confirm the copyright holder for the MIT license.
 - [ ] Add the MIT license and source-release metadata.
 - [x] Write source installation, provider, Ollama, Codex, storage, privacy, export, update, and recovery documentation.
-- [ ] Run a clean-Windows source installation through Full Import, Test Report, Main Report, extension, replacement, recovery, and export.
+- [ ] Run a clean-Windows source installation through Full Import, Test Report, Main Report, extension, replacement, and recovery.
 - [ ] Run full CI, dependency, secret-leak, sanitization, accessibility, and release-artifact checks.
 - [ ] [HUMAN] Review and approve the source-release candidate.
 
@@ -548,7 +563,7 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [ ] Evaluate Windows packaging options against startup, migration, signing, update, and clean-machine requirements.
 - [ ] Record the selected packaging design and verification strategy.
 - [ ] Build a Windows release containing the compiled frontend and backend runtime without development-tool dependencies.
-- [ ] Test first run, restart recovery, migrations, update, export, and data preservation.
+- [ ] Test first run, restart recovery, migrations, update, and data preservation.
 - [ ] [HUMAN] Confirm expected application-data retention after uninstall.
 - [ ] Validate installation and uninstall behavior on a clean Windows environment.
 - [ ] Validate source-based operation on macOS and Linux before advertising support.
@@ -563,8 +578,8 @@ Active implementation checklist derived from the approved `PLAN.md`. Tasks remai
 - [x] Closed without implementation; Version 3 reports include fixed oldest and newest cohorts.
 - [ ] Add cross-game and cross-version comparison.
 - [ ] Add automated translation and multilingual analysis with original-text provenance.
-- [ ] Add PDF export.
-- [ ] Add a privacy-warned Portable Report Archive for restoring complete reports without an existing local Game Dataset.
+- [x] Cancelled without implementation on 2026-10-03: Add PDF export.
+- [x] Cancelled without implementation on 2026-10-03: Add a privacy-warned Portable Report Archive for restoring complete reports without an existing local Game Dataset.
 - [ ] Evaluate public multi-user hosting as a separate product phase.
 - [ ] Evaluate additional review sources after the Steam workflow is mature.
 - [ ] Add manual Theme correction tools.

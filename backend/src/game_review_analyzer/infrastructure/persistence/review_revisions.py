@@ -75,31 +75,3 @@ def load_review_revisions_by_ids(
     if set(revisions) != set(identifiers):
         raise ValueError("One or more Review Revisions are unavailable")
     return revisions
-
-
-def match_review_revision_ids(
-    database_path: Path,
-    app_id: int,
-    content_sha256_by_review_id: dict[str, str],
-) -> dict[str, int]:
-    """Resolve exact local revisions for a versioned report import."""
-
-    review_ids: tuple[str, ...] = tuple(content_sha256_by_review_id)
-    if not review_ids:
-        return {}
-    placeholders: str = ",".join("?" for _ in review_ids)
-    with sqlite3.connect(database_path) as connection:
-        rows: list[tuple[int, str, str]] = connection.execute(
-            "SELECT review_revisions.id, reviews.id, review_revisions.content_hash "
-            "FROM review_revisions JOIN reviews ON reviews.id = review_revisions.review_id "
-            f"WHERE reviews.app_id = ? AND reviews.id IN ({placeholders})",
-            (app_id, *review_ids),
-        ).fetchall()
-    matches: dict[str, int] = {
-        review_id: revision_id
-        for revision_id, review_id, content_sha256 in rows
-        if content_sha256_by_review_id.get(review_id) == content_sha256
-    }
-    if set(matches) != set(content_sha256_by_review_id):
-        raise ValueError("Report evidence is missing or mismatched")
-    return matches

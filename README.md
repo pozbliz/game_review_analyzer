@@ -49,12 +49,15 @@ Current application data was reset before this redesign. The gitignored evaluati
 - Let users configure the support threshold and per-list Theme cap before creating a report.
 - Keep one separate 50-review Test Report for provider testing.
 - Include tags, regional price, descriptions, features, platforms, DLC/storefront information, screenshots, and opt-in Steam-hosted trailers when available.
-- Export aggregated Theme metrics without review text or reviewer identity.
 - Avoid design recommendations.
 
 ## Planned operation
 
-The MVP runs locally in a browser and stores data on the user's machine.
+The application runs locally in a browser on the user's machine, without hosted application infrastructure or user accounts.
+
+Completed reports save automatically in the local SQLite database and remain available after closing or restarting the application.
+
+Each game retains its latest Main Report and Test Report. Successful replacement deletes the superseded report. Report export and import are outside scope.
 
 Source code will be public at [pozbliz/game_review_analyzer](https://github.com/pozbliz/game_review_analyzer) under the MIT license.
 
