@@ -182,7 +182,7 @@ h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
 .aggregate-theme-chevron { display: grid; flex: 0 0 2rem; width: 2rem; height: 2rem; padding: 0; place-items: center; border: 1px solid #b9cbbd; border-radius: 7px; color: var(--forest-dark); background: #eef3e9; font-size: 1.5rem; line-height: 1; transition: transform 140ms cubic-bezier(.23, 1, .32, 1), background 140ms ease; }
 .aggregate-theme-chevron[aria-expanded="true"] { border-color: #84a990; background: var(--sage); }
 .aggregate-theme-chevron:active { transform: scale(.96); }
-.aggregate-theme-evidence { max-height: 40rem; margin-top: .7rem; padding: 0 .9rem; overflow-y: auto; border: 1px solid #c9d8cb; border-radius: 10px; background: #eef3e9; }
+.aggregate-theme-evidence { max-height: 40rem; margin-top: .7rem; padding: 0 .9rem; overflow-y: auto; scrollbar-gutter: stable; border: 1px solid #c9d8cb; border-radius: 10px; background: #eef3e9; }
 .aggregate-theme-evidence article { padding: 1rem .15rem; }
 .aggregate-theme-evidence article + article { border-top: 1px solid #c9d8cb; }
 .aggregate-theme-evidence summary { cursor: pointer; color: var(--forest-dark); font-size: .8rem; font-weight: 750; }

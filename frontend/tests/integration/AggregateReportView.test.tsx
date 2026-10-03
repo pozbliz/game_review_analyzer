@@ -34,7 +34,17 @@ describe("aggregate Test Report", () => {
         newest_support_percentage: 12,
         percentage_point_difference: 8,
       }],
-      negative_themes: [],
+      negative_themes: [{
+        theme_id: "slow-progression",
+        title: "Slow progression",
+        summary: "Players criticize slow progression.",
+        polarity: "negative",
+        support_count: 3,
+        total_support_percentage: 6,
+        oldest_support_percentage: 8,
+        newest_support_percentage: 4,
+        percentage_point_difference: -4,
+      }],
     };
     const evidence = {
       theme_id: "responsive-combat",
@@ -48,7 +58,9 @@ describe("aggregate Test Report", () => {
       const url: string = request.toString();
       const payload: object = url.endsWith("/themes/responsive-combat/evidence")
         ? evidence
-        : report;
+        : url.endsWith("/themes/slow-progression/evidence")
+          ? { theme_id: "slow-progression", title: "Slow progression", reviews: [] }
+          : report;
       return new Response(JSON.stringify(payload), { status: 200 });
     });
 
@@ -65,6 +77,7 @@ describe("aggregate Test Report", () => {
     });
     expect(toggle).toHaveTextContent("▾");
     expect(toggle).not.toHaveTextContent("Responsive combat");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
 
     fireEvent.click(toggle);
 
@@ -80,10 +93,20 @@ describe("aggregate Test Report", () => {
     );
 
     fireEvent.click(screen.getByRole("button", {
-      name: "Hide supporting reviews for Responsive combat",
+      name: "Show supporting reviews for Slow progression",
     }));
     expect(screen.queryByRole("region", {
       name: "Supporting reviews for Responsive combat",
+    })).not.toBeInTheDocument();
+    expect(await screen.findByRole("region", {
+      name: "Supporting reviews for Slow progression",
+    })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "Hide supporting reviews for Slow progression",
+    }));
+    expect(screen.queryByRole("region", {
+      name: "Supporting reviews for Slow progression",
     })).not.toBeInTheDocument();
   });
 
