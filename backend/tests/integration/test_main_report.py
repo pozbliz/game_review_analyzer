@@ -546,7 +546,9 @@ def test_main_report_reuses_map_checkpoints_and_retains_two_percent_candidates(
         retained_evidence = client.get(
             "/api/games/1145350/reports/main/themes/retained/evidence"
         )
-    assert visible_evidence.status_code == 404
+    assert visible_evidence.status_code == 200
+    assert visible_evidence.json()["theme_id"] == "visible"
+    assert len(visible_evidence.json()["reviews"]) == 25
     assert retained_evidence.status_code == 404
 
 
