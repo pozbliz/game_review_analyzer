@@ -14,7 +14,7 @@ Version 2 routes, schemas, storage, controls, and compatibility were removed on 
 
 Game Review Analyzer is a local web application for game developers. It identifies the main positive and negative opinions across one Steam game's English reviews.
 
-The target favors useful summaries, lower token use, fast recovery, and simple report reading. It does not provide per-review proof for Theme assignments.
+The target favors useful summaries, lower token use, fast recovery, and simple report reading with on-demand access to supporting reviews.
 
 The application runs on the user's machine. Windows is the first packaged-release target. Source-based use should remain portable where dependencies permit.
 
@@ -33,7 +33,7 @@ The application runs on the user's machine. Windows is the first packaged-releas
 
 ### Non-goals
 
-- Per-review evidence, exact excerpts, Opinion Points, or evidence drill-down.
+- Exact excerpts or Opinion Points.
 - Theme categories, mechanic classifications, mixed-reception links, or direction labels.
 - Evidence Filters or temporary metric recalculation by review attributes.
 - Manual Theme editing, hiding, or correction.

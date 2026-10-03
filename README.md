@@ -14,7 +14,7 @@ Steam review imports wait two seconds between pages and honor rate-limit delays 
 
 The application uses one progressive Main Report and one separate 50-review Test Report per game.
 
-It has no Opinion Points, excerpts, evidence browsing, categories, filters, mixed-reception links, or Version 2 compatibility.
+It has no Opinion Points, excerpts, categories, filters, mixed-reception links, or Version 2 compatibility.
 
 ## Current implementation status
 
@@ -36,6 +36,7 @@ The current Test and Main Reports occupy separate per-game slots. Extend and Rep
 Positive and negative Main Report candidates use separate merge calls of at most 25 candidates. Invalid Theme output is retried once before the run fails.
 Retries keep the reserved scope and valid map and merge checkpoints. Corrupt or incompatible checkpoints are discarded and rebuilt without replacing the current report.
 Reports independently apply the selected Theme limit to positive and negative Themes that meet the selected cohort threshold. The two lists can have different counts.
+Each Theme can disclose its complete supporting reviews from local storage, ordered by helpful votes.
 
 Current application data was reset before this redesign. The gitignored evaluation corpus remains available.
 
@@ -157,4 +158,4 @@ The frontend shell lives under `frontend/src/app/`. Shared styles use `frontend/
 - A separate Test Report uses 25 oldest and 25 newest reviews without refreshing Steam.
 - Full imports and Codex CLI analysis can be slow or quota-intensive for popular games. Each Codex attempt stops after 120 seconds, and transient failures receive one retry.
 - The application data path can be changed only through an environment variable; there is no in-app relocation workflow.
-- Reports expose deterministic aggregate Theme metrics without per-review evidence.
+- Reports expose deterministic aggregate Theme metrics and load supporting reviews only when requested.

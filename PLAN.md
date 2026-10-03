@@ -308,9 +308,9 @@ This slice records superseded Version 2 behavior. Slices 16–22 replace its rep
 
 **Blocked by:** Slice 19.
 
-**Scope:** Catalog and report routes, report history, Opinion Points, excerpts, evidence APIs, Evidence Filters, categories, mixed reception, mechanic classifications, provider controls, legacy schemas, and obsolete adapters.
+**Scope:** Catalog and report routes, report history, Opinion Points, excerpts, Version 2 evidence APIs, Evidence Filters, categories, mixed reception, mechanic classifications, provider controls, legacy schemas, and obsolete adapters.
 
-**Acceptance:** Removed report paths and controls are unavailable. The interface exposes only Test, create Main, Extend, Replace, export, cancel, and retry actions where valid. Version 2 reports cannot be read, imported, or extended. Backend and frontend checks pass after dead paths are deleted.
+**Acceptance:** Removed Version 2 report paths and controls are unavailable. The interface exposes only Test, create Main, Extend, Replace, export, cancel, retry, and current Theme evidence actions where valid. Version 2 reports cannot be read, imported, or extended. Backend and frontend checks pass after dead paths are deleted.
 
 **Tradeoff:** Deleted Version 2 data and behavior cannot be restored through the application.
 

@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-10-03 - Current Themes disclose their supporting reviews
+
+**What changed:**
+
+- Restored supporting-review routes for current Main and Test Reports.
+- Added an arrow-only disclosure beside each Theme title.
+- Loaded complete local reviews on demand and ordered them by helpful votes descending.
+
+**Why:**
+
+- Stored Theme memberships already identify the exact Review Revisions behind each aggregate metric.
+- On-demand disclosure keeps the report summary compact while letting users inspect its source reviews.
+
+**New issues:**
+
+- None.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
 ## 2026-10-02 - Review counts distinguish English analysis from Steam totals
 
 **What changed:**

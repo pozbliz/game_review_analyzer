@@ -32,12 +32,37 @@ export interface AggregateReport {
   negative_themes: AggregateTheme[];
 }
 
+export interface AggregateEvidenceReview {
+  review_revision_id: number;
+  text: string;
+  recommended: boolean;
+  votes_helpful: number;
+}
+
+export interface AggregateThemeEvidence {
+  theme_id: string;
+  title: string;
+  reviews: AggregateEvidenceReview[];
+}
+
 export async function getTestReport(appId: number): Promise<AggregateReport> {
   return getAggregateReport(`/api/games/${appId}/reports/test`);
 }
 
 export async function getMainReport(appId: number): Promise<AggregateReport> {
   return getAggregateReport(`/api/games/${appId}/reports/main`);
+}
+
+export async function getAggregateThemeEvidence(
+  appId: number,
+  themeId: string,
+  kind: "main" | "test",
+): Promise<AggregateThemeEvidence> {
+  const path: string = `/api/games/${appId}/reports/${kind}/themes/` +
+    `${encodeURIComponent(themeId)}/evidence`;
+  const response: Response = await fetch(path);
+  if (!response.ok) throw new Error(`Request failed: ${path}`);
+  return parseAggregateThemeEvidence(await response.json());
 }
 
 async function getAggregateReport(path: string): Promise<AggregateReport> {
@@ -90,6 +115,17 @@ function parseAggregateTheme(value: unknown): AggregateTheme {
     throw new Error("Invalid aggregate Theme response");
   }
   return value as unknown as AggregateTheme;
+}
+
+function parseAggregateThemeEvidence(payload: unknown): AggregateThemeEvidence {
+  if (!isRecord(payload) || !strings(payload, ["theme_id", "title"]) ||
+      !Array.isArray(payload.reviews) || !payload.reviews.every((review: unknown) =>
+        isRecord(review) && typeof review.review_revision_id === "number" &&
+        typeof review.text === "string" && typeof review.recommended === "boolean" &&
+        typeof review.votes_helpful === "number")) {
+    throw new Error("Invalid aggregate Theme evidence response");
+  }
+  return payload as unknown as AggregateThemeEvidence;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

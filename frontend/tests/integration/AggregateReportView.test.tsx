@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AggregateReportView from "../../src/features/report/AggregateReportView";
 
@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 describe("aggregate Test Report", () => {
-  it("shows aggregate Themes without review evidence controls", async () => {
+  it("expands helpful-first review evidence from an arrow-only control", async () => {
     const report = {
       schema_version: "3.0",
       report_id: "test-report",
@@ -36,9 +36,21 @@ describe("aggregate Test Report", () => {
       }],
       negative_themes: [],
     };
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify(report), { status: 200 }),
-    );
+    const evidence = {
+      theme_id: "responsive-combat",
+      title: "Responsive combat",
+      reviews: [
+        { review_revision_id: 2, text: "Most helpful review", recommended: true, votes_helpful: 20 },
+        { review_revision_id: 1, text: "Less helpful review", recommended: false, votes_helpful: 3 },
+      ],
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (request) => {
+      const url: string = request.toString();
+      const payload: object = url.endsWith("/themes/responsive-combat/evidence")
+        ? evidence
+        : report;
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
 
     render(<AggregateReportView appId={1145350} />);
 
@@ -48,7 +60,31 @@ describe("aggregate Test Report", () => {
     expect(screen.getByRole("heading", { name: "Responsive combat" })).toBeVisible();
     expect(screen.getByText("4 reviews · 8% total")).toBeVisible();
     expect(screen.getByText("Oldest 4% · Newest 12% · +8 percentage points")).toBeVisible();
-    expect(screen.queryByRole("button", { name: /review evidence/i })).not.toBeInTheDocument();
+    const toggle = screen.getByRole("button", {
+      name: "Show supporting reviews for Responsive combat",
+    });
+    expect(toggle).toHaveTextContent("▾");
+    expect(toggle).not.toHaveTextContent("Responsive combat");
+
+    fireEvent.click(toggle);
+
+    const evidenceList = await screen.findByRole("region", {
+      name: "Supporting reviews for Responsive combat",
+    });
+    const reviews = within(evidenceList).getAllByRole("article");
+    expect(reviews[0]).toHaveTextContent("Most helpful review");
+    expect(reviews[0]).toHaveTextContent("20 helpful votes");
+    expect(reviews[1]).toHaveTextContent("Less helpful review");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/games/1145350/reports/test/themes/responsive-combat/evidence",
+    );
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "Hide supporting reviews for Responsive combat",
+    }));
+    expect(screen.queryByRole("region", {
+      name: "Supporting reviews for Responsive combat",
+    })).not.toBeInTheDocument();
   });
 
   it("starts a 1,000-review Main Report extension beside the review count", async () => {

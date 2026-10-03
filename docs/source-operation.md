@@ -90,6 +90,7 @@ The backend console emits redacted JSON timing events for every Codex attempt an
 - The app retrieves public Steam data and no private Steam-user data.
 - Reviewer identity is omitted from analysis requests.
 - Report pages and saved-report cards omit analysis engine names.
+- Report Theme disclosures load complete supporting reviews from local storage only when opened.
 - Codex CLI sends selected review text to external cloud processing.
 - Deleting a report also deletes its completed run and checkpoints.
 - Deleting an inactive import job or complete Game Dataset requires exact typed confirmation. Game Dataset deletion removes all owned local data.
