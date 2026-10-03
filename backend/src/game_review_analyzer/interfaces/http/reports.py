@@ -1,5 +1,6 @@
-"""Public Version 3 report response contracts."""
+"""Public Version 3 report and supporting-review response contracts."""
 
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel
@@ -10,7 +11,11 @@ from game_review_analyzer.domain.reports import (
     AggregateThemeMetric,
     ThemeDefinition,
 )
+from game_review_analyzer.domain.reviews import SteamReview
 from game_review_analyzer.domain.steam_metadata import SteamMetadata
+from game_review_analyzer.infrastructure.persistence.review_revisions import (
+    load_review_revisions_by_ids,
+)
 
 
 class ReportGameResponse(BaseModel):
@@ -56,6 +61,23 @@ class AggregateReportResponse(BaseModel):
     unseen_review_count: int | None = None
     positive_themes: tuple[AggregateThemeResponse, ...]
     negative_themes: tuple[AggregateThemeResponse, ...]
+
+
+class AggregateEvidenceReviewResponse(BaseModel):
+    """Expose one complete local review supporting an aggregate Theme."""
+
+    review_revision_id: int
+    text: str
+    recommended: bool
+    votes_helpful: int
+
+
+class AggregateThemeEvidenceResponse(BaseModel):
+    """Expose helpful-first supporting reviews for one aggregate Theme."""
+
+    theme_id: str
+    title: str
+    reviews: tuple[AggregateEvidenceReviewResponse, ...]
 
 
 def build_aggregate_report_response(
@@ -107,5 +129,50 @@ def build_aggregate_report_response(
         negative_themes=tuple(
             theme_response(metric)
             for metric in report.theme_metrics.negative_headlines
+        ),
+    )
+
+
+def build_aggregate_theme_evidence_response(
+    database_path: Path,
+    report: AggregateReport,
+    theme_id: str,
+) -> AggregateThemeEvidenceResponse | None:
+    """Join one aggregate Theme's memberships to helpful-first local reviews."""
+
+    theme: ThemeDefinition | None = next(
+        (item for item in report.themes if item.theme_id == theme_id), None
+    )
+    if theme is None:
+        return None
+    revision_ids: tuple[int, ...] = tuple(
+        membership.review_revision_id
+        for membership in report.memberships
+        if membership.theme_id == theme_id
+    )
+    reviews_by_id: dict[int, SteamReview] = load_review_revisions_by_ids(
+        database_path, revision_ids
+    )
+    ordered_reviews: tuple[tuple[int, SteamReview], ...] = tuple(
+        sorted(
+            reviews_by_id.items(),
+            key=lambda item: (
+                -item[1].votes_helpful,
+                -item[1].source_created_at,
+                item[0],
+            ),
+        )
+    )
+    return AggregateThemeEvidenceResponse(
+        theme_id=theme.theme_id,
+        title=theme.title,
+        reviews=tuple(
+            AggregateEvidenceReviewResponse(
+                review_revision_id=revision_id,
+                text=review.text,
+                recommended=review.recommended,
+                votes_helpful=review.votes_helpful,
+            )
+            for revision_id, review in ordered_reviews
         ),
     )

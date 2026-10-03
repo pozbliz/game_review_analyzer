@@ -108,7 +108,9 @@ from game_review_analyzer.shared.config import Settings
 from game_review_analyzer.shared.telemetry import configure_telemetry, log_event
 from game_review_analyzer.interfaces.http.reports import (
     AggregateReportResponse,
+    AggregateThemeEvidenceResponse,
     build_aggregate_report_response,
+    build_aggregate_theme_evidence_response,
 )
 
 API_PREFIX = "/api"
@@ -555,6 +557,30 @@ def create_app(
         if created_at is None:
             raise HTTPException(status_code=404, detail={"code": "report_not_found"})
         return build_aggregate_report_response(report, created_at)
+
+    @app.get(
+        f"{API_PREFIX}/games/{{app_id}}/reports/{{kind}}/themes/"
+        "{theme_id}/evidence",
+        response_model=AggregateThemeEvidenceResponse,
+    )
+    def report_theme_evidence(
+        app_id: int,
+        kind: Literal["main", "test"],
+        theme_id: str,
+    ) -> AggregateThemeEvidenceResponse:
+        report = load_aggregate_report_slot(
+            resolved_settings.database_path, app_id, kind
+        )
+        if report is None:
+            raise HTTPException(status_code=404, detail={"code": "report_not_found"})
+        evidence = build_aggregate_theme_evidence_response(
+            resolved_settings.database_path,
+            report,
+            theme_id,
+        )
+        if evidence is None:
+            raise HTTPException(status_code=404, detail={"code": "theme_not_found"})
+        return evidence
 
     def existing_analysis_run(run_id: str) -> AnalysisRun:
         try:

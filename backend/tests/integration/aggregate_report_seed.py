@@ -5,7 +5,10 @@ import sqlite3
 
 from game_review_analyzer.domain.reports import (
     AggregateReport,
+    AggregateThemeMetric,
     AggregateThemeMetrics,
+    ThemeDefinition,
+    ThemeMembership,
     ThemeMetricPolicy,
 )
 from game_review_analyzer.domain.reviews import SteamReview
@@ -36,8 +39,8 @@ def seed_aggregate_report(database_path: Path) -> None:
         database_path,
         metadata.app_id,
         (
-            review("review-1", "Combat is responsive.", True),
-            review("review-2", "Fights feel responsive.", False),
+            review("review-1", "Combat is responsive.", True, 3),
+            review("review-2", "Fights feel responsive.", False, 20),
         ),
     )
     with sqlite3.connect(database_path) as connection:
@@ -67,18 +70,56 @@ def seed_aggregate_report(database_path: Path) -> None:
                 technical_minimum_support_count=1,
                 technical_minimum_support_percentage=5,
             ),
-            themes=(),
-            memberships=(),
+            themes=(
+                ThemeDefinition(
+                    theme_id="responsive-combat",
+                    title="Responsive combat",
+                    summary="Players praise responsive combat.",
+                    polarity="positive",
+                ),
+            ),
+            memberships=tuple(
+                ThemeMembership(
+                    theme_id="responsive-combat",
+                    review_revision_id=revision_id,
+                )
+                for revision_id in revision_ids
+            ),
             theme_metrics=AggregateThemeMetrics(
-                all_themes=(),
-                positive_headlines=(),
+                all_themes=(
+                    AggregateThemeMetric(
+                        theme_id="responsive-combat",
+                        polarity="positive",
+                        support_count=2,
+                        total_support_percentage=100,
+                        oldest_support_percentage=100,
+                        newest_support_percentage=100,
+                        percentage_point_difference=0,
+                    ),
+                ),
+                positive_headlines=(
+                    AggregateThemeMetric(
+                        theme_id="responsive-combat",
+                        polarity="positive",
+                        support_count=2,
+                        total_support_percentage=100,
+                        oldest_support_percentage=100,
+                        newest_support_percentage=100,
+                        percentage_point_difference=0,
+                    ),
+                ),
                 negative_headlines=(),
             ),
         ),
     )
 
 
-def review(review_id: str, text: str, recommended: bool) -> SteamReview:
+def review(
+    review_id: str,
+    text: str,
+    recommended: bool,
+    votes_helpful: int,
+) -> SteamReview:
     return SteamReview(
         review_id=review_id,
         language="english",
@@ -86,7 +127,7 @@ def review(review_id: str, text: str, recommended: bool) -> SteamReview:
         source_created_at=100,
         source_updated_at=100,
         recommended=recommended,
-        votes_helpful=3,
+        votes_helpful=votes_helpful,
         votes_funny=0,
         weighted_vote_score=0,
         steam_purchase=True,

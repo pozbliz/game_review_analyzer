@@ -4,9 +4,9 @@
 
 ### Report review evidence restoration
 
-- [ ] Restore the current report evidence endpoint from Theme memberships and stored reviews.
+- [x] Restore the current report evidence endpoint from Theme memberships and stored reviews.
 - [ ] Add an arrow-only disclosure to each Theme for its actual supporting reviews.
-- [ ] Order supporting reviews by helpful upvotes descending.
+- [x] Order supporting reviews by helpful upvotes descending.
 - [ ] Add backend and frontend regression coverage and update current documentation.
 
 ### Review count clarity
