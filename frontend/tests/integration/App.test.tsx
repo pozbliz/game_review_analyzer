@@ -125,8 +125,8 @@ describe("application shell", () => {
     render(<App />);
 
     expect(await screen.findByText(/Refreshing Steam reviews/)).toHaveTextContent("30%");
-    expect(screen.getByRole("progressbar")).toHaveAttribute("value", "1500");
-    expect(screen.getByRole("progressbar")).toHaveAttribute("max", "5000");
+    expect(screen.getByRole("progressbar", { name: "Steam review refresh" })).toHaveAttribute("value", "1500");
+    expect(screen.getByRole("progressbar", { name: "Steam review refresh" })).toHaveAttribute("max", "5000");
   });
 
   it("starts a Full import when the selected game has no completed dataset", async () => {
@@ -141,6 +141,26 @@ describe("application shell", () => {
       expect.objectContaining({ method: "POST" }),
     ));
     expect(await screen.findByRole("heading", { name: "Downloading reviews" })).toBeVisible();
+    expect(screen.getByRole("progressbar", { name: "Full history import" })).toBeVisible();
+  });
+
+  it("keeps the selected Theme settings after a Full import completes", async () => {
+    mockShell({ workspace: workspace(false), importJob: job("completed", 5_000) });
+
+    render(<App />);
+    await previewGame();
+    fireEvent.change(screen.getByLabelText("Minimum support percentage"), {
+      target: { value: "7.5" },
+    });
+    fireEvent.change(screen.getByLabelText("Maximum Themes per list"), {
+      target: { value: "4" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
+
+    expect(await screen.findByRole("heading", { name: "Import complete" })).toBeVisible();
+    expect(screen.getByText("Selected Theme settings: 7.5% minimum cohort support and up to 4 Themes per polarity list."))
+      .toBeVisible();
+    expect(screen.queryByText(/at least 2 reviews and 1% support/)).not.toBeInTheDocument();
   });
 });
 

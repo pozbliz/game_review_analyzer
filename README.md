@@ -89,6 +89,7 @@ Embeddings are not required in the MVP. They remain a future enhancement for sem
 - `docs/specifications/ANALYSIS_EVALUATION.md` — analysis-quality corpus format and scoring rules
 - `docs/evaluation/pilot-v1.md` — first human-adjudicated evaluation results and limits
 - `docs/evaluation/ollama-pilot-v1.md` — local Qwen 3.5 4B/9B contract and performance results
+- `docs/evaluation/progressive-workflow-v3.md` — current live workflow checks, measurements, findings, and remaining acceptance gates
 - `docs/steam-data-policy.md` — validated Steam Web API and best-effort storefront obligations
 - `docs/source-operation.md` — source installation, configuration, providers, privacy, updates, and recovery
 - `PLAN.md` — phased implementation sequence

@@ -125,7 +125,7 @@ export default function AggregateReportView(
       {extensionState === "failed" && <p className="error" role="alert">{extensionError}</p>}
       {report.positive_themes.length === 0 && report.negative_themes.length === 0 ? (
         <section className="empty-report" role="status">
-          <h2>No main Theme met the 5% threshold</h2>
+          <h2>No Theme met this report's support threshold</h2>
         </section>
       ) : (
         <div className="theme-columns aggregate-theme-columns">

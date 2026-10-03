@@ -8,6 +8,24 @@ afterEach(() => {
 });
 
 describe("aggregate Test Report", () => {
+  it.each(["test", "main"] as const)("describes an empty %s report without assuming its support threshold", async (kind) => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      schema_version: "3.0", report_id: "empty-report",
+      created_at: "2026-09-30 04:06:47", kind,
+      game: { app_id: 1145350, title: "Hades II" }, metadata: metadata(),
+      scope: { review_count: 50, oldest_review_count: 25, newest_review_count: 25, oversized_review_count: 0 },
+      unseen_review_count: null,
+      positive_themes: [], negative_themes: [],
+    }), { status: 200 }));
+
+    render(<AggregateReportView appId={1145350} kind={kind} />);
+
+    expect(await screen.findByRole("heading", {
+      name: "No Theme met this report's support threshold",
+    })).toBeVisible();
+    expect(screen.queryByText(/5% threshold/)).not.toBeInTheDocument();
+  });
+
   it("expands helpful-first review evidence from an arrow-only control", async () => {
     const report = {
       schema_version: "3.0",

@@ -424,7 +424,7 @@ function CatalogApp(): JSX.Element {
                   {job.state === "failed" && job.error_code && (
                     <p className="error">Error code: <code>{job.error_code}</code></p>
                   )}
-                  {job.state !== "completed" && <progress />}
+                  {job.state !== "completed" && <progress aria-label="Full history import" />}
                   {job.state === "failed" && <button type="button" onClick={retryImport}>Retry import</button>}
                   {["queued", "running"].includes(job.state) && (
                     <button type="button" onClick={cancelImport}>Cancel import</button>
@@ -451,7 +451,7 @@ function CatalogApp(): JSX.Element {
                   {jobDeleted && <p role="status">Incomplete job deleted</p>}
                   {job.state === "completed" && !analysisRun && (
                     <>
-                      <p>Provisional report thresholds: at least 2 reviews and 1% support.</p>
+                      <p>Selected Theme settings: {minimumSupportPercentage}% minimum cohort support and up to {maximumThemesPerPolarity} Themes per polarity list.</p>
                       <button
                         type="button"
                         onClick={beginAnalysis}
@@ -498,6 +498,7 @@ function CatalogApp(): JSX.Element {
                         && analysisRun.refresh_target_count !== null
                         && analysisRun.refresh_target_count > 0 && (
                         <progress
+                          aria-label="Steam review refresh"
                           value={analysisRun.refresh_imported_count}
                           max={analysisRun.refresh_target_count}
                         />

@@ -13,6 +13,12 @@
 
 - [x] Reconcile `docs/specifications/DOMAIN_GLOSSARY.md` with canonical Version 3 terminology in `CONTEXT.md`; replace obsolete definitions with links to the canonical terms.
 
+### Workflow verification follow-ups
+
+- [x] Give the import and Steam refresh progress bars accessible names.
+- [x] Replace obsolete 2-review/1% guidance after Full Import with the selected report settings.
+- [x] Make empty-report threshold text refer to the report's support threshold instead of a fixed 5%, without adding API fields.
+
 ## 2026-10-02
 
 ### Report review evidence restoration
@@ -199,12 +205,12 @@
 
 ### Progressive Workflow Verification
 
-- [x] Run the complete automated test and build suite. Verified 114 backend tests, 21 frontend tests, TypeScript checks, and the production build on 2026-10-03.
-- [ ] Verify restart recovery with reserved scopes and completed batches.
-- [ ] Run live 50-review, 1,000-review, and 2,000-review Codex workflows. The 1,000-review workflow is complete.
-- [ ] Record elapsed time and measured token use. The 1,000-review run used 439,101 input and 28,581 output tokens; its recovered merge took 73 seconds.
-- [ ] Verify Test Report isolation, extension, and replacement in the browser.
-- [ ] Verify keyboard, narrow-screen, reduced-motion, and non-color behavior.
+- [x] Run the complete automated test and build suite. Verified 114 backend tests, 24 frontend tests, TypeScript checks, and the production build on 2026-10-03.
+- [x] Verify restart recovery with reserved scopes and completed batches. Forced restart during live Main replacement retained the exact scope and two completed map batches; the same run completed successfully.
+- [x] Run live 50-review, 1,000-review, and 2,000-review Codex workflows. Test creation, fresh Main replacement, and cumulative extension completed against an isolated database.
+- [x] Record elapsed time and measured token use in `docs/evaluation/progressive-workflow-v3.md`, including unavailable usage from interrupted and rejected calls. Earlier 1,000-review verification recorded 439,101 input and 28,581 output tokens and a 73-second recovered merge.
+- [ ] Verify Test Report isolation, extension, and replacement in the browser. API and database checks passed; browser acceptance requires a connected browser, unavailable in this session.
+- [ ] Verify keyboard, narrow-screen, reduced-motion, and non-color behavior. Source and component checks passed after UI corrections; connected-browser acceptance remains open.
 - [x] Update operating documentation for the new workflow.
 - [ ] [HUMAN] Review live Theme usefulness before release work resumes.
 

@@ -1,5 +1,35 @@
 # Decision Log
 
+## 2026-10-03 - Progressive workflow verification uses isolated local data
+
+**What changed:**
+
+- Started the remaining technical Slice 22 checks against a SQLite backup on a separate local backend port.
+- Completed a live 50-review Test Report and verified Main Report isolation, exact cohort membership, metrics, and supporting-review evidence.
+- Forced a verification backend restart during Main replacement. The same reserved scope and completed map checkpoints survived.
+- Completed the fresh 1,000-review replacement after recovery while retaining the independent Test Report.
+- Completed a live extension to 2,000 distinct reviews and verified exact scope union, cohort counts, slot isolation, and database integrity.
+- Recorded successful-result token totals and excluded unavailable usage from the interrupted call and rejected merge attempt.
+- Added accessible progress names and corrected obsolete report-threshold wording through failing component assertions and scoped fixes.
+- Recorded verification evidence and remaining gates in `docs/evaluation/progressive-workflow-v3.md`.
+
+**Why:**
+
+- An isolated database permits live replacement and interruption checks without changing the user's current reports.
+- Actual process termination verifies recovery beyond persistence-only automated tests.
+
+**New issues:**
+
+- Found and corrected missing progress names, obsolete completed-import thresholds, and fixed 5% empty-report wording.
+- The three UI findings are closed in `TASKS.md`; browser acceptance remains open.
+
+**Needs human judgment:**
+
+- Browser acceptance requires a connected browser; none is available in this session.
+- Live Theme usefulness remains the user's release gate.
+
+---
+
 ## 2026-10-03 - Specification glossary uses canonical Version 3 terminology
 
 **What changed:**

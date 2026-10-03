@@ -341,7 +341,7 @@ This slice records superseded Version 2 behavior. Slices 16–22 replace its rep
 
 **Tradeoff:** Poor live speed, token use, or Theme quality can block release and require a design revision.
 
-**Status:** Approved; ready for remaining verification.
+**Status:** Live 50-review Test creation, 1,000-review Main replacement, 2,000-review cumulative extension, actual backend restart recovery, API isolation, token/timing measurements, and automated checks passed on 2026-10-03. Connected-browser acceptance remains open because no browser is connected. Human Theme usefulness review remains required. See `docs/evaluation/progressive-workflow-v3.md`.
 
 ## Deferred
 
