@@ -124,7 +124,8 @@ def test_refresh_http_contract_does_not_restore_report_history(tmp_path: Path) -
     assert refresh_response.status_code == 202
     assert refresh_response.json()["scope"] == "refresh"
     assert history_response.status_code == 404
-    assert recent_response.status_code == 404
+    assert recent_response.status_code == 200
+    assert [report["report_id"] for report in recent_response.json()] == ["report-1"]
 
 
 def stored_history(database_path: Path) -> tuple[str, list[tuple[int, str]], str]:

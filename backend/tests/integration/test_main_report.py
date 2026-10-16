@@ -1,6 +1,7 @@
 """First Main Report integration tests."""
 
 from pathlib import Path
+from time import monotonic, sleep
 
 import pytest
 import game_review_analyzer.infrastructure.analysis_runner as analysis_runner_module
@@ -155,6 +156,31 @@ def test_report_slots_reserve_persisted_run_intent_independently(
     )
     assert replacement.operation == "create"
     assert replacement.base_report_id is None
+
+
+def test_report_size_migration_preserves_existing_runs(tmp_path: Path) -> None:
+    database_path: Path = seeded_database(tmp_path, review_count=2)
+    run = create_analysis_run(
+        database_path,
+        app_id=1145350,
+        provider="codex-cli",
+        model="gpt-5.6-luna",
+        metric_policy=metric_policy(),
+        report_kind="main",
+        operation="create",
+    )
+    with connect(database_path) as connection:
+        connection.execute("ALTER TABLE analysis_runs DROP COLUMN cohort_size")
+        connection.execute("DELETE FROM schema_migrations WHERE version = 19")
+
+    initialize_database(database_path)
+    initialize_database(database_path)
+
+    assert get_analysis_run(database_path, run.id) == run
+    with connect(database_path) as connection:
+        assert connection.execute(
+            "SELECT cohort_size FROM analysis_runs WHERE id = ?", (run.id,),
+        ).fetchone() == (500,)
 
 
 def test_main_report_selects_500_oldest_and_500_newest_complete_reviews(
@@ -1173,7 +1199,109 @@ def test_theme_batch_from_previous_contract_is_ignored(tmp_path: Path) -> None:
     )
 
 
-def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
+@pytest.mark.parametrize("review_limit", [1_000, 5_000, 10_000])
+def test_api_creates_main_report_with_selected_scope(
+    tmp_path: Path, review_limit: int,
+) -> None:
+    class FailingRefreshSource:
+        def __init__(self) -> None:
+            self.fail: bool = True
+
+        def iter_pages(self, app_id: int, start_cursor: str = "*"):
+            del app_id, start_cursor
+            if self.fail:
+                raise SteamReviewsUnavailable
+            yield ReviewPage(reviews=(), next_cursor="done")
+
+    class EmptyThemeProvider:
+        model: str = "gpt-5.6-luna"
+        provider: str = "codex-cli"
+
+        def analyze_themes(self, request, *, cancel_event=None) -> ThemeProviderRun:
+            return ThemeProviderRun(
+                result=ThemeAnalysisResult(
+                    schema_version="3.1",
+                    request_id=request.request_id,
+                    scope_sha256=request.scope_sha256,
+                    provider=self.provider,
+                    model=self.model,
+                    completed_review_revision_ids=tuple(
+                        review.review_revision_id for review in request.reviews
+                    ),
+                    themes=(),
+                ),
+                usage=ProviderUsage(1, 0, 1),
+            )
+
+    database_path: Path = seeded_database(tmp_path, review_count=12_000)
+    refresh_source = FailingRefreshSource()
+    with TestClient(create_app(
+        Settings(database_path=database_path),
+        codex_status_source=lambda: CodexCliStatus(
+            True, True, "codex-cli test", "gpt-5.6-luna", "low"
+        ),
+        analysis_provider=EmptyThemeProvider(),
+        review_source=refresh_source,
+    )) as client:
+        started = client.post(
+            "/api/games/1145350/reports/main", json={"review_limit": review_limit},
+        )
+        assert started.status_code == 202
+        assert started.json()["review_count"] == review_limit
+        completed: dict = wait_for_completion(client, started.json()["id"])
+        report: dict = client.get("/api/games/1145350/reports/main").json()
+        replacement = client.post(
+            "/api/games/1145350/reports/main", json={"review_limit": review_limit},
+        )
+        assert replacement.status_code == 202
+        replacement_id: str = replacement.json()["id"]
+        failed: dict = wait_for_terminal_state(client, replacement_id)
+        assert failed["error_code"] == "steam_unavailable"
+        assert client.get("/api/games/1145350/reports/main").json() == report
+
+    refresh_source.fail = False
+    with TestClient(create_app(
+        Settings(database_path=database_path),
+        analysis_provider=EmptyThemeProvider(),
+        review_source=refresh_source,
+    )) as restarted_client:
+        assert restarted_client.post(f"/api/analysis-runs/{replacement_id}/retry").status_code == 202
+        replaced: dict = wait_for_completion(restarted_client, replacement_id)
+        replacement_report: dict = restarted_client.get("/api/games/1145350/reports/main").json()
+
+    assert completed["state"] == "completed"
+    assert completed["extracted_review_count"] == review_limit
+    oldest_ids: list[int] = completed["early_review_revision_ids"]
+    newest_ids: list[int] = completed["recent_review_revision_ids"]
+    assert oldest_ids == list(range(1, review_limit // 2 + 1))
+    assert newest_ids == list(range(12_001 - review_limit // 2, 12_001))
+    assert report["scope"]["review_count"] == review_limit
+    assert report["scope"]["oldest_review_count"] == review_limit // 2
+    assert report["scope"]["newest_review_count"] == review_limit // 2
+    assert replaced["state"] == "completed"
+    assert replaced["review_revision_ids"] == completed["review_revision_ids"]
+    assert replacement_report["report_id"] != report["report_id"]
+    assert replacement_report["scope"] == report["scope"]
+
+
+@pytest.mark.parametrize("review_limit", [0, -1, 50, 2_000, 10_001, 100_000])
+def test_api_rejects_unsupported_main_report_size(
+    tmp_path: Path, review_limit: int,
+) -> None:
+    database_path: Path = seeded_database(tmp_path, review_count=2)
+    with TestClient(create_app(Settings(database_path=database_path))) as client:
+        response = client.post(
+            "/api/games/1145350/reports/main", json={"review_limit": review_limit},
+        )
+
+    assert response.status_code == 422
+    assert load_latest_analysis_run(database_path, 1145350) is None
+
+
+@pytest.mark.parametrize("review_limit", [None, 10_000])
+def test_api_creates_and_reads_the_first_main_report(
+    tmp_path: Path, review_limit: int | None,
+) -> None:
     class EmptyRefreshSource:
         def __init__(self) -> None:
             self.calls: int = 0
@@ -1223,6 +1351,7 @@ def test_api_creates_and_reads_the_first_main_report(tmp_path: Path) -> None:
             json={
                 "minimum_support_percentage": 7.5,
                 "maximum_headlines_per_polarity": 4,
+                **({"review_limit": review_limit} if review_limit is not None else {}),
             },
         )
         run_id: str = started.json()["id"]
@@ -1423,19 +1552,16 @@ def test_extension_reports_when_no_unseen_reviews_remain(tmp_path: Path) -> None
 
 
 def wait_for_completion(client: TestClient, run_id: str) -> dict:
-    response = client.get(f"/api/analysis-runs/{run_id}")
-    for _ in range(100):
-        if response.json()["state"] == "completed":
-            break
-        response = client.get(f"/api/analysis-runs/{run_id}")
-    return response.json()
+    return wait_for_terminal_state(client, run_id)
 
 
 def wait_for_terminal_state(client: TestClient, run_id: str) -> dict:
+    deadline: float = monotonic() + 10
     response = client.get(f"/api/analysis-runs/{run_id}")
-    for _ in range(100):
+    while monotonic() < deadline:
         if response.json()["state"] in ("completed", "failed", "cancelled"):
             break
+        sleep(0.01)
         response = client.get(f"/api/analysis-runs/{run_id}")
     return response.json()
 

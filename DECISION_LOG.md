@@ -1,5 +1,185 @@
 # Decision Log
 
+## 2026-10-16 - Separate provider execution retries from output corrections
+
+**What changed:**
+
+- Map and merge calls now count temporary execution failures separately from invalid responses. Each class retains its own two-failure limit, permitting at most three calls per batch by default.
+- Validation correction instructions persist across execution retries. Cancellation and non-transient errors still stop immediately. The per-call time limit remains 120 seconds.
+- Execution failures now emit safe attempt diagnostics with stage, elapsed time, error code, and retry decision.
+- Timeout messages explain that retry resumes saved progress instead of suggesting an access failure.
+- Verification passed: 148 backend tests, 28 frontend tests, TypeScript checks, and the production build. Restarted port 8000 and verified the served timeout message, health, live Steam search, and unchanged saved report snapshots. No new live provider analysis ran.
+
+**Why:**
+
+- Darkest Dungeon's negative merge batch 18 returned an invalid response, then timed out during correction. Both failures consumed a shared two-attempt budget, so the app stopped before retrying the timed-out correction.
+- Independent bounded budgets prevent that observed sequence from ending a run. Regression tests reproduce both failure orders for map and merge calls and verify termination when either budget is exhausted.
+
+**New issues:**
+
+- The existing logs cannot explain the provider's internal reason for a stall. Local timeout evidence alone does not establish an authentication, network, or service-capacity cause.
+
+**Needs human judgment:**
+
+- None for this corrective change. A failed batch can make one additional call, consume more quota, and take longer before persistent failure is reported. External provider failures remain possible.
+
+---
+
+## 2026-10-16 - Recover a late timeout in the 10,000-review report
+
+**What changed:**
+
+- Retried Darkest Dungeon run `6a8d8c0a-7c38-47b0-a267-cb77d90c77eb` through the existing API. The run completed and published its Main Report.
+- Verified 10,000 analyzed reviews, split into disjoint oldest and newest cohorts of 5,000. All 135 map checkpoints and 39 existing merge checkpoints were reused.
+- Kept application code, batching, and the 120-second per-call limit unchanged.
+
+**Why:**
+
+- The original failure occurred during correction of negative merge batch 18, after all review analysis had finished. That provider attempt exceeded 120 seconds.
+- On retry, the same batch completed in 7.312 seconds. The final negative merge batch also timed out once; its automatic retry completed in 6.547 seconds.
+- These small merge calls succeeded unchanged. Increasing the report limit did not increase their batch size. Logs establish call timeouts, but do not establish the provider's internal cause.
+
+**New issues:**
+
+- No unresolved implementation issue was established. Provider calls can still time out; the existing checkpoint and retry path recovered this run.
+
+**Needs human judgment:**
+
+- Theme usefulness remains unreviewed. No new quality claim follows from successful execution.
+
+---
+
+## 2026-10-16 - Allow larger Main Reports at creation
+
+**What changed:**
+
+- Added 5,000- and 10,000-review scopes to `Create Report`, alongside the existing 50-review Test and 1,000-review Main scopes.
+- Main creation and replacement accept only supported sizes, defaulting to 1,000 when omitted. Cohorts remain non-overlapping and split the available usable reviews when fewer than requested exist.
+- Saved replacement cohort size with its durable run so refresh, retry, and restart use the same selection limit. Schema migration 19 gives existing runs the previous 500-review cohort limit.
+- Retained the existing map and merge batch limits and 1,000-review extension size.
+- Updated current usage documentation. This user-requested sizing change supersedes the baseline's fixed 1,000-review creation and replacement scope.
+
+**Why:**
+
+- The user requested immediate creation of 5,000- and 10,000-review reports without repeated extensions.
+- Existing cohort selection and batched analysis support larger scopes. Persisting the limit prevents replacement from reverting to 1,000 after refresh.
+
+**New issues:**
+
+- Larger fixture-backed tests exposed the existing test helper's polling-count limit. It now waits up to ten seconds for a terminal state.
+- No new implementation issue. Real Codex quota use and Theme quality at these sizes remain unmeasured.
+- Verification passed: 136 backend tests, 27 frontend tests, TypeScript checks, and the production build. The restarted port 8000 instance serves both new options and advertises all three Main Report limits. Health and live Steam search passed.
+- Backed up the local database before migration. Schema 19 applied successfully; all three saved report snapshots retained their previous hash.
+
+**Needs human judgment:**
+
+- None for implementation. Larger scopes take longer and consume more subscription quota; analysis still starts only through the user's action.
+
+---
+
+## 2026-10-12 - Show newest reports in the start-page workspace
+
+**What changed:**
+
+- Replaced the start-page Report Workspace prompt with the ten newest saved current report slots across all games.
+- Added a summary-only `/api/reports/recent` endpoint ordered by stored creation date descending, with report ID as a deterministic tie-breaker.
+- Each card shows the game, Main or Test Report type, English review count, and creation date. It links directly to the current report.
+- The list reloads when returning to game search and distinguishes loading, empty, and failed responses.
+
+**Why:**
+
+- The user requested recent reports on the start page in descending creation-date order.
+- The existing per-game workspace API could not list reports across games. SQLite extracts only the summary fields from current snapshots.
+- Ten cards provide a bounded recent list without adding pagination or restoring superseded report history.
+
+**New issues:**
+
+- No new implementation issue. All 125 backend tests, 25 frontend tests, TypeScript checks, and the production build passed.
+- Two existing native lifecycle tests required normal Windows process access for subprocess enumeration and termination; they passed outside the restricted tool environment.
+- Live verification confirmed Ruined King precedes Gothic 1 Classic by stored creation date. Both current-report endpoints, frontend assets, health, and Steam fallback search responded successfully.
+
+**Needs human judgment:**
+
+- Visual browser review remains unverified because no connected browser was available. The task tracker records this check.
+
+---
+
+## 2026-10-12 - Require Steam access checks during application startup
+
+**What changed:**
+
+- Added normal-terminal and network-enabled agent launch guidance to README.md and docs/source-operation.md.
+- Added project agent rules requiring the existing launcher, appropriate execution permissions, and frontend, health, and search checks before reporting success.
+- Documented a direct Steam check when search returns only cached catalog results and recovery for Windows socket error 10013.
+
+**Why:**
+
+- A detached backend inherited sandbox network restrictions during the previous launch. Local health succeeded while Steam search failed.
+- The user requested durable startup instructions to prevent the same launch error.
+
+**New issues:**
+
+- None. Live Steam verification depends on Steam availability; failures require diagnosis before startup can be reported as fully verified.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-10-12 - Restore Steam access after restricted launch
+
+**What changed:**
+
+- Stopped the port 8000 instance and restarted the existing Windows launcher outside the restricted tool environment.
+- Verified that the live search endpoint returns Hades II and Hades, and that the health endpoint responds successfully.
+
+**Why:**
+
+- The initial launch inherited network restrictions. Steam requests failed with Windows socket permission error 10013, and the search endpoint returned HTTP 503.
+- The unchanged search adapter succeeded in the normal process environment before restart.
+
+**New issues:**
+
+- No unresolved implementation issue. Source code and application configuration did not require changes.
+
+**Needs human judgment:**
+
+- None.
+
+---
+
+## 2026-10-04 - Supervised backend launch and exit recovery
+
+**What changed:**
+
+- Restored the stopped verification backend on port 8001. The existing Main replacement run `e1915773-b26c-4bcb-be6d-56ef8eff8c38` resumed its Steam refresh and completed.
+- Added `scripts/start-app.ps1` for detached Windows start and confirmed stop. It preserves the configured database and supports explicit port and database arguments.
+- Added up to three restart attempts with one-, two-, and four-second delays. Startup conflicts stop supervision instead of restarting repeatedly.
+- Added rotating exit diagnostics and safe startup stages and exception types without retaining raw exception messages or provider output.
+- Added exclusive database ownership before migrations and recovery. The supervised host binds its socket before application startup.
+- Used a native Windows Job to remove abandoned provider descendants before retry. The actual serving interpreter joins an empty named Job before application startup, including when the virtual-environment redirector has already spawned it.
+- Activated supervision on port 8001 after confirming no work remained active. Health and progress requests passed; saved Main and Test Report hashes remained unchanged across this handoff.
+
+**Why:**
+
+- The earlier backend ran in a temporary foreground tool session without exit supervision. Its precise termination trigger was not recorded. Windows events showed no matching reboot or Python crash.
+- Detached launch removes dependence on the launching terminal. Supervision reuses existing durable recovery after an unexpected backend exit.
+- Database locking prevents another backend from recovering the same pending work on a different port.
+
+**New issues:**
+
+- Tests exposed and corrected ignored database configuration, missing startup diagnostics, and a Windows redirector race in process ownership.
+- All 124 backend tests passed, including 10 lifecycle regressions. Native tests verified actual interpreter ownership and descendant cleanup after delayed assignment.
+- An actual PowerShell smoke check used an empty disposable database to verify shell exit, forced backend exit, recovery, and intentional stop. Existing runner and import tests separately verified checkpoint recovery.
+- No new live Codex analysis ran during this fix. No unresolved implementation issue remains from these checks.
+
+**Needs human judgment:**
+
+- None for this corrective work. Supervision does not install a service or start automatically after reboot. Restart the launcher if the supervisor itself stops or exhausts its retry limit.
+
+---
+
 ## 2026-10-03 - Progressive workflow verification uses isolated local data
 
 **What changed:**

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App, { analysisFailureMessage } from "../../src/app/App";
 
@@ -15,6 +15,7 @@ describe("application shell", () => {
     ["reservation_conflict", "Another analysis owns this report slot"],
     ["no_unseen_reviews", "No unseen usable reviews remain"],
     ["provider_nonzero_exit", "The analysis provider failed"],
+    ["provider_timeout", "A provider call exceeded its time limit. Retry analysis to resume from saved progress."],
     ["checkpoint_invalid", "Saved progress was invalid"],
     ["cancelled", "Analysis was cancelled"],
     ["internal_analysis_error", "internal error"],
@@ -22,13 +23,40 @@ describe("application shell", () => {
     expect(analysisFailureMessage(code)).toContain(expected);
   });
 
-  it("opens with the current-report workspace prompt", async () => {
+  it("opens with an empty recent-report workspace", async () => {
     mockShell();
 
     render(<App />);
 
-    expect(await screen.findByRole("heading", { name: "Select a game" })).toBeVisible();
+    expect(await screen.findByText("No saved reports yet. Select a game to create one.")).toBeVisible();
     expect(screen.queryByText(/Ollama|gpt-5\.6-luna/i)).not.toBeInTheDocument();
+  });
+
+  it("shows recent reports in creation-date order with links to their current slots", async () => {
+    mockShell({ recentReports: [
+      { report_id: "test-1", app_id: 1145350, title: "Hades II", kind: "test",
+        review_count: 50, created_at: "2026-10-03 12:00:00" },
+      { report_id: "stardew-main", app_id: 413150, title: "Stardew Valley", kind: "main",
+        review_count: 1_000, created_at: "2026-10-02 12:00:00" },
+      { report_id: "main-1", app_id: 1145350, title: "Hades II", kind: "main",
+        review_count: 2_000, created_at: "2026-10-01 12:00:00" },
+    ] });
+
+    render(<App />);
+
+    const region: HTMLElement = screen.getByRole("region", { name: "Recent Reports" });
+    const links: HTMLElement[] = await within(region).findAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/test-reports/1145350", "/main-reports/413150", "/main-reports/1145350",
+    ]);
+    expect(links[0]).toHaveTextContent("Hades II");
+    expect(links[0]).toHaveTextContent("Test Report");
+    expect(links[1]).toHaveTextContent("Stardew Valley");
+    expect(links[1]).toHaveTextContent("1,000 English Reviews");
+    expect(links.map((link) => link.querySelector("time")?.getAttribute("datetime"))).toEqual([
+      "2026-10-03T12:00:00Z", "2026-10-02T12:00:00Z", "2026-10-01T12:00:00Z",
+    ]);
+    expect(within(region).queryByText(/Codex|gpt-/i)).not.toBeInTheDocument();
   });
 
   it("previews a game and lists only its current report slots", async () => {
@@ -93,20 +121,31 @@ describe("application shell", () => {
     );
   });
 
-  it("starts a Main Report without provider or model controls", async () => {
+  it.each([1_000, 5_000, 10_000])("starts a %i-review Main Report with the selected scope", async (reviewLimit: number) => {
     const fetchMock = mockShell({
       workspace: workspace(true),
-      analysis: { ...analysisRun("queued"), report_kind: "main", review_count: 1_000 },
+      analysis: { ...analysisRun("queued"), report_kind: "main", review_count: reviewLimit },
     });
 
     render(<App />);
     await previewGame();
-    fireEvent.change(screen.getByLabelText("Analysis scope"), { target: { value: "500" } });
+    const cohortSize: number = reviewLimit / 2;
+    expect(screen.getByRole("option", { name: `Main · ${reviewLimit.toLocaleString()} reviews` })).toBeVisible();
+    fireEvent.change(screen.getByLabelText("Analysis scope"), { target: { value: String(cohortSize) } });
+    expect(screen.getByText(`Scans the complete available English review history, then analyzes up to the ${cohortSize.toLocaleString()} oldest and ${cohortSize.toLocaleString()} newest reviews.`)).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "/api/games/1145350/reports/main",
-      expect.objectContaining({ method: "POST" }),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          minimum_support_percentage: 5,
+          maximum_headlines_per_polarity: 10,
+          review_limit: reviewLimit,
+        }),
+      },
     ));
     expect(screen.queryByText(/gpt-5\.6-luna|Codex analysis/i)).not.toBeInTheDocument();
   });
@@ -145,10 +184,11 @@ describe("application shell", () => {
   });
 
   it("keeps the selected Theme settings after a Full import completes", async () => {
-    mockShell({ workspace: workspace(false), importJob: job("completed", 5_000) });
+    const fetchMock = mockShell({ workspace: workspace(false), importJob: job("completed", 5_000) });
 
     render(<App />);
     await previewGame();
+    fireEvent.change(screen.getByLabelText("Analysis scope"), { target: { value: "5000" } });
     fireEvent.change(screen.getByLabelText("Minimum support percentage"), {
       target: { value: "7.5" },
     });
@@ -161,10 +201,20 @@ describe("application shell", () => {
     expect(screen.getByText("Selected Theme settings: 7.5% minimum cohort support and up to 4 Themes per polarity list."))
       .toBeVisible();
     expect(screen.queryByText(/at least 2 reviews and 1% support/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Create Report" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/games/1145350/reports/main",
+      expect.objectContaining({ body: JSON.stringify({
+        minimum_support_percentage: 7.5,
+        maximum_headlines_per_polarity: 4,
+        review_limit: 10_000,
+      }) }),
+    ));
   });
 });
 
 interface MockOptions {
+  recentReports?: object[];
   workspace?: object;
   analysis?: object;
   importJob?: object;
@@ -174,6 +224,7 @@ function mockShell(options: MockOptions = {}): ReturnType<typeof vi.spyOn> {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (request, init) => {
     const url: string = request.toString();
     if (url === "/api/health") return json({ status: "ok", service: "game-review-analyzer" });
+    if (url === "/api/reports/recent") return json(options.recentReports ?? []);
     if (url === "/api/config") return json(publicConfig());
     if (url === "/api/providers/codex-cli") return json(codexProvider());
     if (url === "/api/games/preview?appid=1145350") return json(metadata());

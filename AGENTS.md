@@ -75,6 +75,15 @@ When the user says “new project,” “init project,” “set up project docs
 - Create `LEARNINGS.md` only after the user confirms the first learning. Record each learning with its capture date, keep the file append-only, and never delete entries.
 - Keep `README.md` aligned with the current project rather than the original proposal.
 
+## Application startup
+
+- Use `scripts/start-app.ps1` for normal Windows operation and preserve the requested port and database.
+- Launch from an execution environment with outbound Steam access. Detached children retain inherited sandbox restrictions.
+- If the agent sandbox blocks outbound sockets, use `exec_command` with `sandbox_permissions: "require_escalated"` for the launcher. Do not substitute a restricted process interface after a shell-tool failure.
+- Before reporting startup success, verify the served frontend, `/api/health`, and `/api/games/search?q=hades` on the selected port. If search uses only local catalog results, verify outbound Steam access separately.
+- If search returns `steam_search_unavailable`, investigate the underlying failure. Windows error `10013` requires checking launch restrictions before changing code.
+- For a restricted running instance, stop its owned supervisor, relaunch with outbound access, and repeat the checks. See `docs/source-operation.md`.
+
 ## General
 
 - More specific local instructions override broader instructions.
@@ -85,6 +94,7 @@ When the user says “new project,” “init project,” “set up project docs
 
 ## Changelog
 
+- 2026-10-12: Require network-enabled application launches and verify Steam search before reporting startup success.
 - 2026-08-11: Added the approved two-root Python/TypeScript repository structure with ownership-based internal boundaries.
 - 2026-08-10: Replaced eager seven-file scaffolding with staged document ownership, lazy history files, and explicit design, plan, and task approval gates.
 - 2026-08-10: Retain prototype explorations until production integration and explicit cleanup approval; do not delete selected prototypes during prototype-only stages.

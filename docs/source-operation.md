@@ -32,14 +32,64 @@ cd frontend
 npm run build
 ```
 
-Run the compiled frontend and API from `backend/`:
+On Windows, start the compiled frontend and API from the repository root:
 
 ```powershell
-cd ../backend
-uv run uvicorn game_review_analyzer.interfaces.http.app:app
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-app.ps1
 ```
 
 Open `http://127.0.0.1:8000`. Port `5173` is not used for normal operation.
+
+Run the launcher from a normal terminal with outbound network access. For agent launches, use an execution environment that permits Steam requests. Detaching the server does not remove inherited sandbox restrictions.
+
+Verify startup from the same terminal:
+
+```powershell
+Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/health'
+Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/games/search?q=hades'
+```
+
+Use the selected port when it differs from 8000. Health must return `status: ok`, and search must return game results. If results come from the local catalog, verify outbound Steam access separately:
+
+```powershell
+Invoke-RestMethod -Uri 'https://store.steampowered.com/api/storesearch/?term=hades&l=english&cc=US'
+```
+
+A healthy backend can still fail Steam requests. HTTP 503 with `steam_search_unavailable` and an underlying Windows socket error `10013` indicate blocked socket access. Check the launch environment before changing application code. Stop the owned instance with the documented stop command, then restart from an environment with outbound network access. Preserve its port and database selection. Repeat the health and search checks before reporting recovery.
+
+The launcher uses the installed backend virtual environment. Restore dependencies before the first launch. Windows `Start-Process` keeps the background process independent of the launching shell. [Microsoft documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/start-process). The PowerShell execution-policy argument applies only to this invocation.
+
+For a custom port and database, run:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-app.ps1 -Port 8001 -Database .\backend\data\workflow-verification-2026-10-03\verification.sqlite3
+```
+
+An explicit `-Database` argument overrides `GAME_REVIEW_ANALYZER_DATABASE` and resolves relative paths from the caller's working directory. Without that argument, the launcher honors the environment setting; relative environment paths resolve under `backend/`. If neither is set, the database is `backend/data/game-review-analyzer.sqlite3` under this repository.
+
+Use the same database when stopping supervision:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-app.ps1 -Action stop -Port 8001 -Database .\backend\data\workflow-verification-2026-10-03\verification.sqlite3
+```
+
+The stop command disables restarts before terminating the owned backend process tree. Saved checkpoints remain available on the next start. Stop an existing foreground backend before switching it to the launcher.
+
+An unexpected backend exit triggers up to three restart attempts, with delays of one, two, and four seconds. Startup failures, an occupied port, and duplicate database ownership stop supervision instead of entering a restart loop. After retries are exhausted, correct the logged cause and run the start command again.
+
+Lifecycle diagnostics are stored at `<database>.server.log`, with three rotating backups of up to 1 MB each. They record process IDs, exit codes, restart attempts, and intentional stops without provider output or review text. Exit codes `2`, `3`, and `4` indicate port binding, database ownership, and startup failures respectively. Safe startup stages and exception types are stored in `<database>.server-startup.log`, with the same rotation limits. The application event log remains at the database path with its extension replaced by `.log`.
+
+On Windows, each backend attempt uses a native Job object. Closing that Job removes its remaining subprocesses before another attempt starts. This prevents an abandoned provider process from overlapping checkpoint recovery. [Microsoft documentation](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects).
+
+Every backend instance holds an operating-system lock for its database before migrations or recovery. Process exit releases the lock automatically. A second backend cannot recover the same database on another port. The supervised backend binds its port before application startup.
+
+Supervision covers backend exits and terminal closure. It does not install a Windows service or start automatically after reboot. If the supervisor itself stops, start the launcher again. Repeated configuration failures require correction.
+
+For foreground operation on another platform, keep the terminal open and run from `backend/`:
+
+```shell
+uv run uvicorn game_review_analyzer.interfaces.http.app:app
+```
 
 The database schema is initialized or migrated automatically at backend startup.
 
@@ -78,11 +128,15 @@ Do not commit real keys. The public configuration API reveals only whether a Ste
 
 ## Analysis
 
+Choose a Main Report scope of 1,000, 5,000, or 10,000 English reviews under `Analysis scope` before selecting `Create Report`. Each scope splits equally between oldest and newest reviews without overlap. If fewer usable reviews exist, the report analyzes all of them. The selected size applies to replacement as well as initial creation and remains saved through retries and backend restarts. Extensions still add up to 1,000 unseen reviews. Larger scopes require more provider calls, time, and subscription quota.
+
 ### Codex CLI
 
 Install and authenticate Codex CLI outside the application. The app checks readiness but never reads or stores Codex credentials. Each run is explicit, uses the configured pinned model, sends the selected review text to external cloud processing, and records measured token usage when Codex exposes it. Subscription quota and dollar cost remain unknown.
 
-The backend console emits redacted JSON timing events for every Codex attempt and analysis stage. `provider.attempt_failed` includes the safe failure code and whether the app retries. These events include counts and byte sizes, but exclude prompts, review text, model output, credentials, and process stderr.
+Each Codex call has a 120-second time limit. Temporary execution failures and invalid output have separate retry budgets. One failure of either kind receives an automatic retry; a second failure of the same kind stops the run. This permits at most three calls per batch. Correction instructions remain in effect after an execution retry. Completed batch checkpoints remain available for manual retry if the automatic budget is exhausted.
+
+The backend console emits redacted JSON timing events for every Codex attempt and analysis stage. `provider.attempt_failed` includes the safe failure code, execution or validation stage, and whether the app retries. Execution failures also include elapsed time. These events include counts and byte sizes, but exclude prompts, review text, model output, credentials, and process stderr. A timeout establishes that the local call exceeded its deadline; these diagnostics do not establish the provider's internal cause.
 
 ## Local data and privacy
 

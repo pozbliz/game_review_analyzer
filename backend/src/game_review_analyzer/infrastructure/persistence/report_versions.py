@@ -1,5 +1,6 @@
 """Append-only SQLite persistence for immutable Report Version snapshots."""
 
+from dataclasses import dataclass
 from pathlib import Path
 import sqlite3
 
@@ -139,3 +140,28 @@ def load_aggregate_report_created_at(
             (app_id, kind),
         ).fetchone()
     return str(row[0]) if row else None
+
+
+@dataclass(frozen=True)
+class RecentAggregateReport:
+    """Describe a current report for navigation without loading its full snapshot."""
+
+    report_id: str
+    app_id: int
+    title: str
+    kind: str
+    review_count: int
+    created_at: str
+
+
+def list_recent_aggregate_reports(database_path: Path) -> tuple[RecentAggregateReport, ...]:
+    """Return the ten newest current report slots across all games."""
+
+    with sqlite3.connect(database_path) as connection:
+        rows: list[tuple[str, int, str, str, int, str]] = connection.execute(
+            "SELECT id, app_id, json_extract(snapshot_json, '$.metadata_snapshot.title'), "
+            "report_kind, json_array_length(snapshot_json, '$.review_revision_ids'), "
+            "created_at FROM report_versions "
+            "ORDER BY created_at DESC, id DESC LIMIT 10"
+        ).fetchall()
+    return tuple(RecentAggregateReport(*row) for row in rows)

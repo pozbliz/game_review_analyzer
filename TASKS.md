@@ -1,5 +1,50 @@
 # Tasks
 
+## 2026-10-16
+
+### Larger initial Main Reports
+
+- [x] Add 5,000- and 10,000-review Main Report options beside the existing 1,000-review option.
+- [x] Validate the selected size and apply it to initial creation and replacement, with non-overlapping oldest and newest cohorts.
+- [x] Persist replacement scope size through refresh failures, retries, and restarts; preserve existing runs through migration.
+- [x] Cover exact sizes, smaller datasets, unsupported sizes, and selection retention after Full Import.
+- [x] Verify 136 backend tests and 27 frontend tests, TypeScript checks, and the production build.
+- [x] Back up the database, restart the existing app, and verify served size options, the API contract, health, and Steam search. Confirm all three saved reports remain unchanged.
+- [x] Recover the real 10,000-review Darkest Dungeon run after a late provider timeout. Reuse all 135 map checkpoints and 39 saved merge checkpoints; verify completion with disjoint 5,000-review cohorts.
+- [x] Reproduce and fix the shared retry budget that let invalid output consume timeout recovery. Bound each failure class independently for map and merge calls.
+- [x] Log execution failure stage, elapsed time, safe error code, and retry decision without provider output.
+- [x] Give provider timeouts a specific message explaining checkpoint recovery.
+- [x] Verify 148 backend tests and 28 frontend tests, TypeScript checks, and the production build. Restart port 8000; verify the timeout message, health, live Steam search, and unchanged saved reports.
+
+## 2026-10-12
+
+### Recent reports in the start-page workspace
+
+- [x] Return the ten newest current Main and Test Report slots by creation date across all games.
+- [x] Show game, report type, English review count, date, and direct report links in Report Workspace.
+- [x] Cover empty results, cross-game ordering, replacement, and start-page navigation with regression tests.
+- [x] Verify all 125 backend tests and 25 frontend tests, TypeScript checks, and the production build.
+- [x] Restart with outbound Steam access; verify real report ordering, current-report endpoints, served frontend assets, health, and Steam search.
+- [ ] [HUMAN] Check the report cards visually in a browser; no connected browser was available for this task.
+
+### Steam search operation
+
+- [x] Diagnose HTTP 503 search failures as inherited socket restrictions (Windows error 10013).
+- [x] Restart the existing launcher outside the restricted tool environment and verify live Steam search and health.
+- [x] Document network-enabled startup, Steam verification, and socket-permission recovery in README.md, docs/source-operation.md, and AGENTS.md.
+
+## 2026-10-04
+
+### Backend lifecycle recovery
+
+- [x] Restore port 8001 against the existing verification database and verify that the interrupted run resumes.
+- [x] Investigate launch history and Windows events. The earlier backend ran in a temporary tool session; its exact termination trigger was not recorded.
+- [x] Add a detached Windows launcher with bounded restart attempts, exit diagnostics, and an explicit stop command.
+- [x] Reject duplicate database owners and occupied ports before startup recovery.
+- [x] Verify process exit recovery, saved checkpoints, duplicate launches, occupied ports, and intentional stop with disposable data. All 124 backend tests passed; actual PowerShell launch, forced backend exit, recovery, and stop also passed.
+- [x] Document the supported launch commands and recovery limits.
+- [x] Activate the supervisor on port 8001 after the interrupted Main Report completed; verify health, progress polling, and unchanged saved-report hashes across the handoff.
+
 ## 2026-10-03
 
 ### Remove report exports and imports

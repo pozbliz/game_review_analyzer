@@ -71,6 +71,14 @@ SQLite integrity and foreign-key checks passed. Original reports, runs, and chec
 
 A concurrent Main update was rejected with `409 main_report_analysis_active`.
 
+## 10,000-review recovery on 2026-10-16
+
+The user-created Darkest Dungeon run `6a8d8c0a-7c38-47b0-a267-cb77d90c77eb` failed with `provider_timeout` during negative merge batch 18. All 10,000 reviews were already analyzed in 135 saved map batches. Twenty-two positive and seventeen negative merge checkpoints were saved.
+
+Retry reused those checkpoints. Negative merge batch 18 completed in 7.312 seconds. The final negative batch 22 then hit the same 120-second limit on its first attempt; its automatic retry completed in 6.547 seconds. The resumed execution completed in 156.953 seconds without changing code or timeout limits.
+
+The published Main Report contains 5,000 oldest and 5,000 newest reviews, with no oversized reviews excluded. Logs record fourteen retained Themes; human usefulness review remains open. The logs do not reveal the provider's internal reason for either stalled call.
+
 ## Browser and human gates
 
 The browser tool reports no connected browsers. Browser isolation, keyboard, narrow-screen, reduced-motion, and non-color acceptance remain open.
@@ -81,7 +89,11 @@ The user must review live Theme usefulness before release work resumes. Human as
 
 While the verification backend runs, the isolated [Test Report](http://127.0.0.1:8001/test-reports/65540) and [Main Report](http://127.0.0.1:8001/main-reports/65540) are available for review.
 
-To reopen them later, set `GAME_REVIEW_ANALYZER_DATABASE` to the absolute verification database path and start the documented backend command with `--port 8001`.
+To reopen them later on Windows, use the supervised launcher from the repository root:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-app.ps1 -Port 8001 -Database .\backend\data\workflow-verification-2026-10-03\verification.sqlite3
+```
 
 ## Corrected findings
 

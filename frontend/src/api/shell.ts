@@ -148,6 +148,12 @@ export interface AvailableReport {
   created_at: string;
 }
 
+export interface RecentReport extends AvailableReport {
+  report_id: string;
+  app_id: number;
+  title: string;
+}
+
 export interface AggregateReportSettings {
   minimum_support_percentage: number;
   maximum_headlines_per_polarity: number;
@@ -162,6 +168,9 @@ export function analysisFailureMessage(code: string): string {
   }
   if (code === "no_unseen_reviews") {
     return "No unseen usable reviews remain. The current report already covers every eligible review.";
+  }
+  if (code === "provider_timeout") {
+    return "A provider call exceeded its time limit. Retry analysis to resume from saved progress.";
   }
   if (code.startsWith("provider_") || code === "codex_cli_not_ready") {
     return "The analysis provider failed. Check provider access, then retry this run.";
@@ -263,11 +272,12 @@ export async function startTestReport(
 export async function startMainReport(
   appId: number,
   settings: AggregateReportSettings,
+  reviewLimit: number = 1_000,
 ): Promise<AnalysisRun> {
   return parseAnalysisRun(await requestJson(`/api/games/${appId}/reports/main`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(settings),
+    body: JSON.stringify({ ...settings, review_limit: reviewLimit }),
   }));
 }
 
@@ -275,6 +285,21 @@ export async function extendMainReport(appId: number): Promise<AnalysisRun> {
   return parseAnalysisRun(await requestJson(`/api/games/${appId}/reports/main/extend`, {
     method: "POST",
   }));
+}
+
+export async function getRecentReports(): Promise<RecentReport[]> {
+  const payload: unknown = await requestJson("/api/reports/recent");
+  if (!Array.isArray(payload)) throw new Error("Invalid recent reports response");
+  return payload.map((report: unknown) => {
+    if (!isRecord(report) || typeof report.report_id !== "string" ||
+        typeof report.app_id !== "number" || typeof report.title !== "string" ||
+        !["main", "test"].includes(String(report.kind)) ||
+        typeof report.review_count !== "number" || typeof report.created_at !== "string" ||
+        Number.isNaN(Date.parse(report.created_at.replace(" ", "T") + "Z"))) {
+      throw new Error("Invalid recent report response");
+    }
+    return report as unknown as RecentReport;
+  });
 }
 
 export async function getGameWorkspace(appId: number): Promise<GameWorkspace> {

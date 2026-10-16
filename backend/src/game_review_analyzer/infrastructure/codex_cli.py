@@ -92,7 +92,7 @@ def _terminate_process_tree(process: subprocess.Popen[str]) -> None:
 
 
 class CodexCliProvider:
-    """Execute one isolated analysis using the user's existing Codex CLI login."""
+    """Run isolated Codex calls; max_attempts bounds each failure class separately."""
 
     def __init__(
         self,
@@ -131,9 +131,14 @@ class CodexCliProvider:
             "type": "integer",
         }
         instructions: str = THEME_ANALYSIS_INSTRUCTIONS
-        for attempt in range(1, self.max_attempts + 1):
+        attempt: int = 0
+        execution_failures: int = 0
+        validation_failures: int = 0
+        while True:
+            attempt += 1
             if cancel_event is not None and cancel_event.is_set():
                 raise CodexCliError("cancelled", "Codex CLI analysis was cancelled")
+            attempt_started_at: float = monotonic()
             try:
                 result_json, stdout = self._run_once(
                     request,
@@ -144,10 +149,17 @@ class CodexCliProvider:
                     attempt=attempt,
                 )
             except CodexCliError as error:
-                if (
-                    error.code not in TRANSIENT_PROVIDER_ERRORS
-                    or attempt == self.max_attempts
-                ):
+                execution_failures += 1
+                retrying: bool = (
+                    error.code in TRANSIENT_PROVIDER_ERRORS
+                    and execution_failures < self.max_attempts
+                )
+                self._log_attempt(
+                    "provider.attempt_failed", request, "theme_analysis",
+                    attempt, attempt_started_at, level="error", stage="execution",
+                    error_code=error.code, retrying=retrying,
+                )
+                if not retrying:
                     raise
                 continue
             try:
@@ -167,8 +179,9 @@ class CodexCliProvider:
                     expected_model=self.model,
                 )
             except (ValidationError, ValueError) as error:
+                validation_failures += 1
                 error_code: str = _theme_validation_error_code(error)
-                retrying: bool = attempt < self.max_attempts
+                retrying = validation_failures < self.max_attempts
                 log_event(
                     "provider.attempt_failed",
                     level="error",
@@ -192,7 +205,6 @@ class CodexCliProvider:
                     "Codex CLI returned invalid Theme output",
                 ) from error
             return ThemeProviderRun(result=result, usage=self._usage(stdout))
-        raise AssertionError("unreachable")
 
     def merge_themes(
         self,
@@ -209,9 +221,14 @@ class CodexCliProvider:
         assignment_schema["minItems"] = len(request.candidates)
         assignment_schema["maxItems"] = len(request.candidates)
         instructions: str = THEME_MERGE_INSTRUCTIONS
-        for attempt in range(1, self.max_attempts + 1):
+        attempt: int = 0
+        execution_failures: int = 0
+        validation_failures: int = 0
+        while True:
+            attempt += 1
             if cancel_event is not None and cancel_event.is_set():
                 raise CodexCliError("cancelled", "Codex CLI analysis was cancelled")
+            attempt_started_at: float = monotonic()
             try:
                 result_json, stdout = self._run_once(
                     request,
@@ -222,10 +239,17 @@ class CodexCliProvider:
                     attempt=attempt,
                 )
             except CodexCliError as error:
-                if (
-                    error.code not in TRANSIENT_PROVIDER_ERRORS
-                    or attempt == self.max_attempts
-                ):
+                execution_failures += 1
+                retrying: bool = (
+                    error.code in TRANSIENT_PROVIDER_ERRORS
+                    and execution_failures < self.max_attempts
+                )
+                self._log_attempt(
+                    "provider.attempt_failed", request, "theme_merge",
+                    attempt, attempt_started_at, level="error", stage="execution",
+                    error_code=error.code, retrying=retrying,
+                )
+                if not retrying:
                     raise
                 continue
             try:
@@ -245,8 +269,9 @@ class CodexCliProvider:
                     expected_model=self.model,
                 )
             except (ValidationError, ValueError) as error:
+                validation_failures += 1
                 error_code: str = _theme_merge_validation_error_code(error)
-                retrying: bool = attempt < self.max_attempts
+                retrying = validation_failures < self.max_attempts
                 log_event(
                     "provider.attempt_failed",
                     level="error",
@@ -270,7 +295,6 @@ class CodexCliProvider:
                     "Codex CLI returned invalid Theme merge output",
                 ) from error
             return ThemeMergeProviderRun(result=result, usage=self._usage(stdout))
-        raise AssertionError("unreachable")
 
     def _log_attempt(
         self,

@@ -15,9 +15,11 @@ import {
   getJob,
   getAnalysisRun,
   getPublicConfig,
+  getRecentReports,
   getReviewLanguageCounts,
   GameSearchResult,
   ReviewLanguageCount,
+  RecentReport,
   retryJob,
   retryAnalysisRun,
   searchGames,
@@ -74,6 +76,8 @@ function CatalogApp(): JSX.Element {
   const [maximumThemesPerPolarity, setMaximumThemesPerPolarity] = useState<number>(10);
   const [analysisRun, setAnalysisRun] = useState<AnalysisRun | null>(null);
   const [availableReports, setAvailableReports] = useState<AvailableReport[]>([]);
+  const [recentReports, setRecentReports] = useState<RecentReport[] | null>(null);
+  const [recentReportsError, setRecentReportsError] = useState<string>("");
   const [analysisError, setAnalysisError] = useState<string>("");
 
   useEffect(() => {
@@ -89,6 +93,19 @@ function CatalogApp(): JSX.Element {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!showGameSearch) return;
+    let active: boolean = true;
+    setRecentReports(null);
+    setRecentReportsError("");
+    getRecentReports()
+      .then((reports) => { if (active) setRecentReports(reports); })
+      .catch(() => {
+        if (active) setRecentReportsError("Unable to load recent reports. Reload the page to try again.");
+      });
+    return () => { active = false; };
+  }, [showGameSearch]);
 
   useEffect(() => {
     if (/^[1-9][0-9]*$/.test(requestedAppId)) loadPreview(requestedAppId);
@@ -279,9 +296,9 @@ function CatalogApp(): JSX.Element {
       minimum_support_percentage: minimumSupportPercentage,
       maximum_headlines_per_polarity: maximumThemesPerPolarity,
     };
-    const start = codexCohortSize === 500
-      ? startMainReport(selectedAppId, reportSettings)
-      : startTestReport(selectedAppId, reportSettings);
+    const start = codexCohortSize === 25
+      ? startTestReport(selectedAppId, reportSettings)
+      : startMainReport(selectedAppId, reportSettings, codexCohortSize * 2);
     start
       .then((run) => {
         window.localStorage.setItem("active-analysis-run", run.id);
@@ -402,8 +419,30 @@ function CatalogApp(): JSX.Element {
           {showGameSearch ? (
             <section className="recent-reports" aria-labelledby="recent-reports-title">
               <p className="eyebrow">REPORT WORKSPACE</p>
-              <h2 id="recent-reports-title">Select a game</h2>
-              <p>Choose a game to open its current Test Report and Main Report.</p>
+              <h2 id="recent-reports-title">Recent Reports</h2>
+              {recentReportsError ? (
+                <p className="error" role="alert">{recentReportsError}</p>
+              ) : recentReports === null ? (
+                <p>Loading recent reports...</p>
+              ) : recentReports.length === 0 ? (
+                <p>No saved reports yet. Select a game to create one.</p>
+              ) : (
+                <ul>
+                  {recentReports.map((report) => (
+                    <li key={report.report_id}>
+                      <a href={`/${report.kind}-reports/${report.app_id}`}>
+                        <strong>{report.title}</strong>
+                        <span>{report.kind === "main" ? "Main Report" : "Test Report"}{" · "}{report.review_count.toLocaleString()} English Reviews</span>
+                        <small>
+                          <time dateTime={`${report.created_at.replace(" ", "T")}Z`}>
+                            {formatReportDate(report.created_at)}
+                          </time>
+                        </small>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           ) : (
             <>
@@ -615,7 +654,7 @@ function CatalogApp(): JSX.Element {
                 <p><strong>{codexCohortSize === 25 ? "Oldest versus newest test" : "Oldest versus newest"}</strong><br />{
                   codexCohortSize === 25
                     ? "Scans the complete available English review history, then analyzes 25 oldest and 25 newest reviews."
-                    : "Scans the complete available English review history, then analyzes up to the 500 oldest and 500 newest reviews."
+                    : `Scans the complete available English review history, then analyzes up to the ${codexCohortSize.toLocaleString()} oldest and ${codexCohortSize.toLocaleString()} newest reviews.`
                 }</p>
                 <label htmlFor="analysis-scope">Analysis scope</label>
                 <select
@@ -625,6 +664,8 @@ function CatalogApp(): JSX.Element {
                 >
                   <option value={25}>Test · 50 reviews</option>
                   <option value={500}>Main · 1,000 reviews</option>
+                  <option value={2500}>Main · 5,000 reviews</option>
+                  <option value={5000}>Main · 10,000 reviews</option>
                 </select>
                 <fieldset className="report-settings">
                   <legend>Theme visibility</legend>

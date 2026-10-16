@@ -84,6 +84,7 @@ from game_review_analyzer.infrastructure.persistence.jobs import (
 from game_review_analyzer.infrastructure.persistence.report_versions import (
     load_aggregate_report_slot,
     load_aggregate_report_created_at,
+    list_recent_aggregate_reports,
 )
 from game_review_analyzer.infrastructure.steam_metadata import (
     SteamGameNotFound,
@@ -104,6 +105,7 @@ from game_review_analyzer.infrastructure.steam_reviews import (
     SteamReviewsMalformed,
     SteamReviewsUnavailable,
 )
+from game_review_analyzer.infrastructure.server import exclusive_lock
 from game_review_analyzer.shared.config import Settings
 from game_review_analyzer.shared.telemetry import configure_telemetry, log_event
 from game_review_analyzer.interfaces.http.reports import (
@@ -167,12 +169,26 @@ class AggregateReportSettings(BaseModel):
     maximum_headlines_per_polarity: int = Field(default=10, ge=1)
 
 
+class MainReportSettings(AggregateReportSettings):
+    """Select a supported Main Report size and its Theme visibility settings."""
+
+    review_limit: Literal[1000, 5000, 10000] = 1000
+
+
 class AvailableReportResponse(BaseModel):
     """Summarize one available Version 3 report in the game workspace."""
 
     kind: Literal["main", "test"]
     review_count: int
     created_at: str
+
+
+class RecentReportResponse(AvailableReportResponse):
+    """Expose a current report's identity for start-page navigation."""
+
+    report_id: str
+    app_id: int
+    title: str
 
 
 class GameWorkspaceResponse(BaseModel):
@@ -281,23 +297,25 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
-        initialize_database(resolved_settings.database_path)
-        # ponytail: one import worker; increase only after measured parallel demand.
-        executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="review-import")
-        analysis_executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="provider-analysis"
-        )
-        application.state.import_executor = executor
-        application.state.analysis_executor = analysis_executor
-        for job_id in recoverable_job_ids(resolved_settings.database_path):
-            executor.submit(runner.run, job_id)
-        for run_id in recoverable_analysis_run_ids(resolved_settings.database_path):
-            analysis_executor.submit(run_analysis, run_id)
         try:
-            yield
-        finally:
-            executor.shutdown(wait=True)
-            analysis_executor.shutdown(wait=True)
+            with exclusive_lock(Path(f"{resolved_settings.database_path.resolve()}.server.lock")):
+                initialize_database(resolved_settings.database_path)
+                # ponytail: one import worker; increase only after measured parallel demand.
+                with (
+                    ThreadPoolExecutor(max_workers=1, thread_name_prefix="review-import") as executor,
+                    ThreadPoolExecutor(max_workers=1, thread_name_prefix="provider-analysis") as analysis_executor,
+                ):
+                    application.state.import_executor = executor
+                    application.state.analysis_executor = analysis_executor
+                    for job_id in recoverable_job_ids(resolved_settings.database_path):
+                        executor.submit(runner.run, job_id)
+                    for run_id in recoverable_analysis_run_ids(resolved_settings.database_path):
+                        analysis_executor.submit(run_analysis, run_id)
+                    yield
+        except Exception as error:
+            application.state.startup_error_type = type(error).__name__
+            log_event("server.startup_failed", level="error", error_type=type(error).__name__)
+            raise
 
     app = FastAPI(title="Game Review Analyzer", lifespan=lifespan)
     configure_telemetry(app, resolved_settings.database_path)
@@ -426,7 +444,7 @@ def create_app(
     )
     def start_main_report(
         app_id: int,
-        report_settings: AggregateReportSettings = AggregateReportSettings(),
+        report_settings: MainReportSettings = MainReportSettings(),
     ) -> AnalysisRun:
         status: CodexCliStatus = resolved_codex_status_source()
         if not status.installed or not status.authenticated:
@@ -446,7 +464,7 @@ def create_app(
                     provider="codex-cli",
                     model=status.model,
                     metric_policy=_aggregate_metric_policy(report_settings),
-                    cohort_size=500,
+                    cohort_size=report_settings.review_limit // 2,
                     report_kind="main",
                     operation="create",
                 )
@@ -459,6 +477,7 @@ def create_app(
                     metric_policy=_aggregate_metric_policy(report_settings),
                     operation="replace",
                     base_report_id=current_report.report_id,
+                    cohort_size=report_settings.review_limit // 2,
                 )
             )
         except AnalysisReservationConflict as error:
@@ -822,6 +841,20 @@ def create_app(
             test_report_available=test_report is not None,
             main_report_available=main_report is not None,
             available_reports=tuple(available_reports),
+        )
+
+    @app.get(f"{API_PREFIX}/reports/recent", response_model=tuple[RecentReportResponse, ...])
+    def recent_reports() -> tuple[RecentReportResponse, ...]:
+        return tuple(
+            RecentReportResponse(
+                report_id=report.report_id,
+                app_id=report.app_id,
+                title=report.title,
+                kind=report.kind,
+                review_count=report.review_count,
+                created_at=report.created_at,
+            )
+            for report in list_recent_aggregate_reports(resolved_settings.database_path)
         )
 
     @app.get(f"{API_PREFIX}/storage", response_model=StorageDiagnostics)

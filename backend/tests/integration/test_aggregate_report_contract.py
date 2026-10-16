@@ -21,6 +21,7 @@ def test_only_current_main_and_test_report_routes_are_exposed(tmp_path: Path) ->
         "/api/games/{app_id}/reports/main/extend",
         "/api/games/{app_id}/reports/{kind}/themes/{theme_id}/evidence",
         "/api/reports/{report_version_id}/delete",
+        "/api/reports/recent",
     }
     assert "/api/providers/ollama" not in client.app.openapi()["paths"]
     assert "/api/games/{app_id}/analyses/ollama" not in client.app.openapi()["paths"]

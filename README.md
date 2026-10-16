@@ -20,15 +20,17 @@ It has no Opinion Points, excerpts, categories, filters, mixed-reception links, 
 
 Slices 16–20 implement the current progressive aggregate-report system.
 
-The Version 3 Test Report, Main Report replacement, and 1,000-review Main Report extension are implemented.
+The Version 3 Test Report, configurable Main Report creation and replacement, and 1,000-review Main Report extension are implemented.
 
 Codex returns only Theme text, polarity, supporting-review positions, and merge decisions. The application derives identifiers, completion, provenance, memberships, and metrics.
 
 The Test Report analyzes 25 oldest and 25 newest reviews in one Codex call.
 
-The shared `Create Report` action supports the 50-review Test Report and 1,000-review Main Report scopes. Before creation, users can set the minimum cohort support percentage and maximum Themes in each polarity list. Defaults remain 5% and 10 Themes.
+The shared `Create Report` action supports the 50-review Test Report and 1,000-, 5,000-, or 10,000-review Main Report scopes. Main Reports split the selected scope equally between oldest and newest reviews, or use all usable reviews when fewer are available. The selected size applies to creation and replacement and survives retries and restarts. Before creation, users can set the minimum cohort support percentage and maximum Themes in each polarity list. Defaults remain 5% and 10 Themes.
 
 Game details keep Steam's overall review count and can load the current nonzero review totals by language on demand. Report scope labels identify analyzed reviews as English Reviews.
+
+The start-page Report Workspace lists the ten newest current Main and Test Reports across games, sorted by creation date descending. Each card shows the game, report type, English review count, and date, with a direct link to the report.
 
 Available reports appear as dated cards above `Create Report` without analysis engine labels. A Main Report can add 500 oldest and 500 newest unseen reviews through `Extend Report` beside its review count. The action shows the usable unseen count when fewer than 1,000 remain before refresh. Starting an extension opens its analysis progress screen automatically. Steam refresh shows measured percentage progress. Each report has a delete control at the bottom and returns to its game page after deletion.
 
@@ -45,7 +47,7 @@ Current application data was reset before this redesign. The gitignored evaluati
 - Search Steam by game name or enter an AppID directly.
 - Complete a Full Import of eligible English reviews before analysis.
 - Refresh stored datasets before extending or replacing the Main Report.
-- Grow one Main Report in 1,000-review increments split between oldest and newest unseen reviews.
+- Create one Main Report from up to 1,000, 5,000, or 10,000 reviews, then grow it in 1,000-review increments.
 - Let users configure the support threshold and per-list Theme cap before creating a report.
 - Keep one separate 50-review Test Report for provider testing.
 - Include tags, regional price, descriptions, features, platforms, DLC/storefront information, screenshots, and opt-in Steam-hosted trailers when available.
@@ -120,14 +122,27 @@ cd frontend
 npm run build
 ```
 
-Run the application from `backend/`:
+On Windows, start the application from the repository root:
 
 ```powershell
-cd ../backend
-uv run uvicorn game_review_analyzer.interfaces.http.app:app
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-app.ps1
 ```
 
 Open <http://127.0.0.1:8000>. FastAPI serves the compiled frontend and API on this port.
+
+Run the launcher from a normal terminal with outbound network access. Agent-launched processes must use an execution environment that permits Steam requests. A detached process retains sandbox restrictions from its launcher.
+
+Before reporting startup success, verify `/api/health` and `/api/games/search?q=hades`. A health check alone does not verify Steam access. See `docs/source-operation.md` for verification and socket-permission recovery.
+
+The launcher runs independently of its terminal and retries unexpected backend exits up to three times. Existing recovery resumes saved imports and analyses. Lifecycle logs record child process IDs and exit codes beside the selected database. It honors `GAME_REVIEW_ANALYZER_DATABASE`; an explicit `-Database` argument overrides it.
+
+Stop the supervised application from the repository root:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-app.ps1 -Action stop
+```
+
+The command sets execution policy only for that PowerShell process. It does not change the machine policy. See `docs/source-operation.md` for custom ports, databases, and recovery limits.
 
 Port `5173` is not used for normal operation.
 
@@ -158,8 +173,8 @@ The frontend shell lives under `frontend/src/app/`. Shared styles use `frontend/
 - Rich Steam storefront metadata relies partly on best-effort public storefront sources and may be incomplete.
 - Keyed catalog synchronization requires a standard Steam Web API key supplied only to the local backend. Store country is configured with `GAME_REVIEW_ANALYZER_STEAM_COUNTRY`; returned currency and formatted prices are shown without conversion.
 - Main and Test Reports require a completed Full Import.
-- The Main Report starts with 500 oldest and 500 newest reviews, then grows through explicit 1,000-review extensions.
+- The Main Report starts with the selected 1,000-, 5,000-, or 10,000-review scope, split equally between oldest and newest reviews. Explicit extensions add up to 1,000 reviews.
 - A separate Test Report uses 25 oldest and 25 newest reviews without refreshing Steam.
-- Full imports and Codex CLI analysis can be slow or quota-intensive for popular games. Each Codex attempt stops after 120 seconds, and transient failures receive one retry.
+- Full imports and Codex CLI analysis can be slow or quota-intensive for popular games. Each Codex attempt stops after 120 seconds. Transient execution failures and invalid output each receive one independent retry, with at most three calls per batch. Persistent failures stop the run and preserve its checkpoints.
 - The application data path can be changed only through an environment variable; there is no in-app relocation workflow.
 - Reports expose deterministic aggregate Theme metrics and load supporting reviews only when requested.

@@ -94,8 +94,8 @@ def create_analysis_run(
 ) -> AnalysisRun:
     """Queue a provider run over non-overlapping oldest and newest review cohorts."""
 
-    if not 1 <= cohort_size <= 2_500:
-        raise ValueError("Cohort size must be between 1 and 2,500")
+    if not 1 <= cohort_size <= 5_000:
+        raise ValueError("Cohort size must be between 1 and 5,000")
 
     try:
         with connect(database_path) as connection:
@@ -158,6 +158,7 @@ def create_refresh_analysis_run(
     metric_policy: ThemeMetricPolicy,
     operation: Literal["extend", "replace"],
     base_report_id: str,
+    cohort_size: int = 500,
 ) -> AnalysisRun:
     """Atomically reserve the Main Report slot and its durable refresh job."""
 
@@ -170,8 +171,8 @@ def create_refresh_analysis_run(
                 "INSERT INTO analysis_runs("
                 "id, app_id, provider, model, state, review_revision_ids_json, "
                 "early_review_revision_ids_json, recent_review_revision_ids_json, "
-                "metric_policy_json, report_kind, operation, base_report_id, refresh_job_id) "
-                "VALUES (?, ?, ?, ?, 'queued', '[]', '[]', '[]', ?, 'main', ?, ?, ?)",
+                "metric_policy_json, report_kind, operation, base_report_id, refresh_job_id, cohort_size) "
+                "VALUES (?, ?, ?, ?, 'queued', '[]', '[]', '[]', ?, 'main', ?, ?, ?, ?)",
                 (
                     run_id,
                     app_id,
@@ -181,6 +182,7 @@ def create_refresh_analysis_run(
                     operation,
                     base_report_id,
                     refresh_job_id,
+                    cohort_size,
                 ),
             )
     except sqlite3.IntegrityError as error:
@@ -195,7 +197,6 @@ def create_refresh_analysis_run(
 def reserve_refreshed_analysis_scope(
     database_path: Path,
     run_id: str,
-    cohort_size: int = 500,
 ) -> AnalysisRun:
     """Reserve one exact post-refresh scope before provider work begins."""
 
@@ -203,7 +204,7 @@ def reserve_refreshed_analysis_scope(
         connection.execute("BEGIN IMMEDIATE")
         row = connection.execute(
             "SELECT app_id, operation, base_report_id, refresh_job_id, "
-            "review_revision_ids_json FROM analysis_runs "
+            "review_revision_ids_json, cohort_size FROM analysis_runs "
             "WHERE id = ? AND state = 'running'",
             (run_id,),
         ).fetchone()
@@ -232,7 +233,7 @@ def reserve_refreshed_analysis_scope(
         early_ids, recent_ids, oversized_count = _select_analysis_scope(
             connection,
             app_id=int(row[0]),
-            cohort_size=cohort_size,
+            cohort_size=int(row[5]),
             filter_oversized=True,
             excluded_revision_ids=excluded_revision_ids,
             available_revision_ids=tuple(json.loads(scope_row[0])),
