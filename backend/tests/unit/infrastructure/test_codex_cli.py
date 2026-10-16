@@ -14,6 +14,7 @@ from game_review_analyzer.domain.analysis import (
     ThemeAnalysisRequest,
     ThemeMergeCandidate,
     ThemeMergeRequest,
+    ThemeMergeTheme,
 )
 from game_review_analyzer.infrastructure.codex_cli import (
     CodexCliError,
@@ -131,6 +132,115 @@ def test_codex_cli_binds_semantic_merge_output_locally(monkeypatch) -> None:
     assert run.result.themes[0].theme_id == "merge-1:theme:1"
     assert run.result.assignments[0].candidate_key == "batch-1:responsive-combat"
     assert run.result.assignments[0].theme_id == "merge-1:theme:1"
+
+
+@pytest.mark.parametrize("new_theme_position", [None, 1])
+def test_codex_cli_removes_only_unassigned_new_themes(
+    monkeypatch, new_theme_position: int | None, caplog,
+) -> None:
+    caplog.set_level("INFO", logger="game_review_analyzer")
+    processes: list[CompletedProcess] = []
+
+    class MergeProcess(CompletedProcess):
+        """Return unused definitions beside explicit established, new, and discard assignments."""
+
+        def communicate(
+            self, input: str | None = None, timeout: float | None = None,
+        ) -> tuple[str, str]:
+            stdout, stderr = super().communicate(input, timeout)
+            output_path = Path(self.command[self.command.index("--output-last-message") + 1])
+            theme: dict[str, str] = {
+                "title": "Responsive combat",
+                "summary": "Players praise responsive combat.",
+                "polarity": "positive",
+            }
+            output_path.write_text(json.dumps({
+                "new_themes": [
+                    {**theme, "title": "Unused before"}, theme,
+                    {**theme, "title": "Unused after"},
+                ],
+                "assignments": [
+                    {"established_theme_position": None, "new_theme_position": new_theme_position},
+                    {"established_theme_position": 0, "new_theme_position": None},
+                    {"established_theme_position": None, "new_theme_position": None},
+                ],
+            }), encoding="utf-8")
+            processes.append(self)
+            return stdout, stderr
+
+    monkeypatch.setattr("subprocess.Popen", MergeProcess)
+    base: ThemeMergeRequest = provider_request("merge_themes")
+    established = ThemeMergeTheme(
+        theme_id="established", title="Existing Theme", summary="Existing summary.",
+        polarity="positive",
+    )
+    request: ThemeMergeRequest = build_theme_merge_request(
+        "merge-1", 1145350, "Hades II",
+        tuple(base.candidates[0].model_copy(update={"candidate_key": f"candidate-{index}"})
+              for index in range(3)),
+        (established,),
+    )
+
+    run = CodexCliProvider(executable="codex.cmd", max_attempts=1).merge_themes(request)
+
+    expected_new_id: str | None = "merge-1:theme:2" if new_theme_position == 1 else None
+    assert tuple(assignment.theme_id for assignment in run.result.assignments) == (
+        expected_new_id, "established", None,
+    )
+    assert run.result.themes[0] == established
+    assert tuple(theme.title for theme in run.result.themes[1:]) == (
+        ("Responsive combat",) if new_theme_position == 1 else ()
+    )
+    assert len(processes) == 1
+    removed_events: list[dict[str, Any]] = [
+        json.loads(record.message) for record in caplog.records
+        if json.loads(record.message).get("event") == "provider.merge_unused_themes_removed"
+    ]
+    assert len(removed_events) == 1
+    assert removed_events[0]["removed_count"] == (2 if new_theme_position == 1 else 3)
+
+
+@pytest.mark.parametrize(("fault", "error_code"), [
+    ("new_target", "theme_merge_target_outside_scope"),
+    ("established_target", "theme_merge_target_outside_scope"),
+    ("ambiguous_target", "theme_merge_target_ambiguous"),
+    ("missing_assignment", "theme_merge_scope_incomplete"),
+    ("polarity", "theme_merge_polarity_mismatch"),
+])
+def test_codex_cli_still_rejects_invalid_merge_assignments(
+    monkeypatch, fault: str, error_code: str,
+) -> None:
+    class InvalidMergeProcess(CompletedProcess):
+        """Return invalid references or polarity at the external process boundary."""
+
+        def communicate(
+            self, input: str | None = None, timeout: float | None = None,
+        ) -> tuple[str, str]:
+            stdout, stderr = super().communicate(input, timeout)
+            output_path = Path(self.command[self.command.index("--output-last-message") + 1])
+            result: dict[str, Any] = json.loads(output_path.read_text(encoding="utf-8"))
+            assignment: dict[str, Any] = result["assignments"][0]
+            if fault == "new_target":
+                assignment["new_theme_position"] = 1
+            elif fault == "established_target":
+                assignment.update(established_theme_position=0, new_theme_position=None)
+            elif fault == "ambiguous_target":
+                assignment["established_theme_position"] = 0
+            elif fault == "missing_assignment":
+                result["assignments"] = []
+            else:
+                result["new_themes"][0]["polarity"] = "negative"
+            output_path.write_text(json.dumps(result), encoding="utf-8")
+            return stdout, stderr
+
+    monkeypatch.setattr("subprocess.Popen", InvalidMergeProcess)
+
+    with pytest.raises(CodexCliError) as raised:
+        CodexCliProvider(executable="codex.cmd", max_attempts=1).merge_themes(
+            provider_request("merge_themes"),
+        )
+
+    assert raised.value.code == error_code
 
 
 def test_codex_cli_retries_invalid_theme_output(monkeypatch) -> None:

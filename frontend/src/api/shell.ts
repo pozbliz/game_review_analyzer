@@ -172,6 +172,9 @@ export function analysisFailureMessage(code: string): string {
   if (code === "provider_timeout") {
     return "A provider call exceeded its time limit. Retry analysis to resume from saved progress.";
   }
+  if (code.startsWith("theme_merge_") || code === "invalid_theme_merge_result") {
+    return "The provider returned an invalid Theme merge. Retry analysis to resume from saved progress.";
+  }
   if (code.startsWith("provider_") || code === "codex_cli_not_ready") {
     return "The analysis provider failed. Check provider access, then retry this run.";
   }

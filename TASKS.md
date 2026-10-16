@@ -15,6 +15,11 @@
 - [x] Log execution failure stage, elapsed time, safe error code, and retry decision without provider output.
 - [x] Give provider timeouts a specific message explaining checkpoint recovery.
 - [x] Verify 148 backend tests and 28 frontend tests, TypeScript checks, and the production build. Restart port 8000; verify the timeout message, health, live Steam search, and unchanged saved reports.
+- [x] Reproduce unused new Theme definitions that exhausted merge validation retries.
+- [x] Remove only unreferenced new definitions in the shared Codex adapter, preserve assignment positions and established Themes, and log the removal count.
+- [x] Verify invalid references, missing assignments, conflicting targets, and polarity mismatches remain rejected.
+- [x] Classify malformed merge output as a provider failure with checkpoint recovery guidance.
+- [x] Verify 155 backend tests, 31 frontend tests, TypeScript checks, and the production build. Restart the app, verify health and Steam search, and recover the Battle Chasers report in 60.047 seconds. All 56 map and 13 prior merge checkpoints remain unchanged.
 
 ## 2026-10-12
 

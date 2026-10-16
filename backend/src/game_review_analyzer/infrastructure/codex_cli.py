@@ -595,15 +595,25 @@ def _bind_theme_merge_output(
                 theme_id=theme_id,
             )
         )
-    if assigned_new_positions != set(range(len(new_themes))):
-        raise ValueError("Every new Theme must have an assignment")
+    assigned_new_themes: tuple[ThemeMergeTheme, ...] = tuple(
+        theme for position, theme in enumerate(new_themes)
+        if position in assigned_new_positions
+    )
+    if len(assigned_new_themes) != len(new_themes):
+        log_event(
+            "provider.merge_unused_themes_removed",
+            provider=provider,
+            model=model,
+            request_id=request.request_id,
+            removed_count=len(new_themes) - len(assigned_new_themes),
+        )
     return ThemeMergeResult(
         schema_version=request.schema_version,
         request_id=request.request_id,
         scope_sha256=request.scope_sha256,
         provider=provider,
         model=model,
-        themes=(*request.established_themes, *new_themes),
+        themes=(*request.established_themes, *assigned_new_themes),
         assignments=tuple(assignments),
     )
 
@@ -629,9 +639,6 @@ def _validation_retry_instructions(instructions: str, error_code: str) -> str:
         ),
         "theme_merge_target_ambiguous": (
             "Choose an established Theme, a new Theme, or discard, never two targets."
-        ),
-        "theme_merge_theme_unassigned": (
-            "Reference every returned new Theme from at least one assignment."
         ),
         "theme_merge_polarity_mismatch": (
             "Assign candidates only to Themes with the same polarity."
@@ -685,7 +692,6 @@ def _theme_merge_validation_error_code(error: ValidationError | ValueError) -> s
         "Theme merge target position outside scope": (
             "theme_merge_target_outside_scope"
         ),
-        "Every new Theme must have an assignment": "theme_merge_theme_unassigned",
         "Theme merge result does not match its request": "theme_merge_request_mismatch",
         "Theme merge must assign every candidate": (
             "theme_merge_scope_incomplete"

@@ -136,6 +136,8 @@ Install and authenticate Codex CLI outside the application. The app checks readi
 
 Each Codex call has a 120-second time limit. Temporary execution failures and invalid output have separate retry budgets. One failure of either kind receives an automatic retry; a second failure of the same kind stops the run. This permits at most three calls per batch. Correction instructions remain in effect after an execution retry. Completed batch checkpoints remain available for manual retry if the automatic budget is exhausted.
 
+The merge adapter removes unused new Theme definitions while preserving every explicit candidate assignment and established Theme. An unused definition contributes no review membership. Removal preserves original assignment positions and records only a safe removal count. Missing assignments, invalid references, conflicting targets, and polarity mismatches still fail validation.
+
 The backend console emits redacted JSON timing events for every Codex attempt and analysis stage. `provider.attempt_failed` includes the safe failure code, execution or validation stage, and whether the app retries. Execution failures also include elapsed time. These events include counts and byte sizes, but exclude prompts, review text, model output, credentials, and process stderr. A timeout establishes that the local call exceeded its deadline; these diagnostics do not establish the provider's internal cause.
 
 ## Local data and privacy

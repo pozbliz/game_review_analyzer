@@ -1,5 +1,32 @@
 # Decision Log
 
+## 2026-10-16 - Remove unused provider Theme definitions during merge binding
+
+**What changed:**
+
+- The shared Codex merge adapter removes new Theme definitions that no assignment references. It preserves the original positions while binding assignments, all explicit candidate assignments, and every established Theme.
+- Removal emits a safe event containing the request identifier and removal count. No review text or provider output is logged.
+- Out-of-range references, missing assignments, conflicting targets, and polarity mismatches still fail validation.
+- Malformed merge output now displays provider-output recovery guidance instead of the generic internal-error message.
+- Verification passed: 155 backend tests, 31 frontend tests, TypeScript checks, and the production build. The restarted app serves the revised message; health and live Steam search passed.
+- Resumed the same Battle Chasers: Nightwar run and verified its completed 3,319-review report. Recovery took 60.047 seconds and retained unchanged hashes for all 56 map and 13 prior merge checkpoints. The live retry returned valid assigned definitions; automated regressions verify removal of unused definitions.
+
+**Why:**
+
+- Run `7cea8a84-a773-45b9-8c1e-c0e20809b33e` failed during negative merge batch 5. Its first output referenced an invalid position; the correction returned an unassigned new Theme and exhausted the validation budget.
+- An unassigned definition has no explicit source candidate or review membership. Removing that definition permits the stated assignments to proceed without inventing evidence or guessing an intended assignment.
+- Normalization prevents this specific output defect from stopping future reports instead of relying on more provider retries. Provider instructions still request that every new Theme be assigned.
+
+**New issues:**
+
+- No new implementation issue. The adapter preserves explicit assignments; it cannot establish whether the provider intended to assign an unused definition.
+
+**Needs human judgment:**
+
+- None for recovery. Semantic completeness and Theme usefulness still require separate evaluation.
+
+---
+
 ## 2026-10-16 - Separate provider execution retries from output corrections
 
 **What changed:**
